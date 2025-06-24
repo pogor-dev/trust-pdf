@@ -22,3 +22,7 @@ target/
 
 # MacOS specific files
 .DS_Store
+
+# Added by cargo
+
+/target

@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "pdf-analyzer"
+]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.87.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Victor Pogor", "TRust PDF contributors"]
+repository = "https://github.com/pogor-dev/trust-pdf"
+
+[workspace.dependencies]
+# Local crates
+pdf-analyzer = { path = "pdf-analyzer", version = "0.1.0" }
