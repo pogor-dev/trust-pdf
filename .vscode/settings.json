@@ -1,0 +1,17 @@
+{
+    "files.readonlyInclude": {
+        "**/.cargo/registry/src/**/*.rs": true,
+        "**/lib/rustlib/src/rust/library/**/*.rs": true,
+        "**/node_modules/**": true,
+    },
+    "[rust]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+        },
+    },
+    "rust-analyzer.testExplorer": true,
+    "debug.allowBreakpointsEverywhere": true,
+    "lldb.consoleMode": "evaluate",
+}
