@@ -1,0 +1,16 @@
+{
+    "folders": [
+        {
+            "name": "rust",
+            "path": "rust"
+        },
+        {
+            "name": "root",
+            "path": "."
+        }
+    ],
+    "settings": {
+        "rust-analyzer.testExplorer": true,
+        "debug.allowBreakpointsEverywhere": true,
+    }
+}

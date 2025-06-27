@@ -1,7 +1,5 @@
 [workspace]
-members = [
-    "pdf-analyzer"
-]
+members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -13,4 +11,9 @@ repository = "https://github.com/pogor-dev/trust-pdf"
 
 [workspace.dependencies]
 # Local crates
-pdf-analyzer = { path = "pdf-analyzer", version = "0.1.0" }
+pdf-analyzer = { path = "./crates/pdf-analyzer", version = "0.1.0" }
+
+# Non-local crates
+
+[workspace.dev-dependencies]
+cargo-deny = "0.18.3"

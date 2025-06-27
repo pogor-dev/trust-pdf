@@ -11,7 +11,9 @@
             "source.fixAll": "explicit"
         },
     },
-    "rust-analyzer.testExplorer": true,
-    "debug.allowBreakpointsEverywhere": true,
+    "[toml]": {
+        "editor.defaultFormatter": "tamasfe.even-better-toml",
+        "editor.formatOnSave": true,
+    },
     "lldb.consoleMode": "evaluate",
 }
