@@ -3,5 +3,17 @@
 version = 4
 
 [[package]]
-name = "pdf-analyzer"
+name = "lexer"
+version = "0.1.0"
+
+[[package]]
+name = "parser"
+version = "0.1.0"
+
+[[package]]
+name = "semantic"
+version = "0.1.0"
+
+[[package]]
+name = "syntax"
 version = "0.1.0"
