@@ -115,7 +115,7 @@ use crate::arc::{MAX_REFCOUNT, arc_inner::ArcInner};
 pub(crate) struct Arc<T: ?Sized> {
     /// Pointer to the heap-allocated `ArcInner<T>` containing both the reference count and data.
     /// This is wrapped in `NonNull` to enable niche optimization and guarantee non-null.
-    pub(crate) pointer: ptr::NonNull<ArcInner<T>>,
+    pub(crate) ptr: ptr::NonNull<ArcInner<T>>,
 
     /// Zero-sized type marker that tells Rust about our ownership of `T`.
     /// This enables proper drop checking and variance but takes no space.
@@ -138,7 +138,7 @@ impl<T> Arc<T> {
         // to subtract the offset of the `data` field from the pointer.
         let ptr = unsafe { (ptr as *const u8).sub(offset_of!(ArcInner<T>, data)) };
         Arc {
-            pointer: unsafe { ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>) },
+            ptr: unsafe { ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>) },
             phantom: PhantomData,
         }
     }
@@ -215,7 +215,7 @@ impl<T: ?Sized> Arc<T> {
     /// The returned pointer is only valid as long as at least one `Arc` pointing
     /// to this data exists.
     pub(crate) fn ptr(&self) -> *mut ArcInner<T> {
-        self.pointer.as_ptr()
+        self.ptr.as_ptr()
     }
 }
 
@@ -270,7 +270,7 @@ impl<T: ?Sized> Clone for Arc<T> {
 
         unsafe {
             Arc {
-                pointer: ptr::NonNull::new_unchecked(self.ptr()),
+                ptr: ptr::NonNull::new_unchecked(self.ptr()),
                 phantom: PhantomData,
             }
         }
@@ -511,7 +511,7 @@ mod tests {
         });
         let ptr = Box::into_raw(inner);
         Arc {
-            pointer: unsafe { NonNull::new_unchecked(ptr) },
+            ptr: unsafe { NonNull::new_unchecked(ptr) },
             phantom: PhantomData,
         }
     }
@@ -521,7 +521,7 @@ mod tests {
 
         // Verify we can access the inner data
         unsafe {
-            let inner = arc.pointer.as_ref();
+            let inner = arc.ptr.as_ref();
             assert_eq!(inner.count.load(Ordering::Relaxed), 1);
             assert_eq!(inner.data, 42);
         }
@@ -534,7 +534,7 @@ mod tests {
         let arc = create_test_arc(test_string.clone());
 
         unsafe {
-            let inner = arc.pointer.as_ref();
+            let inner = arc.ptr.as_ref();
             assert_eq!(inner.count.load(Ordering::Relaxed), 1);
             assert_eq!(inner.data, test_string);
 
@@ -548,7 +548,7 @@ mod tests {
         let arc = create_test_arc(test_vec.clone());
 
         unsafe {
-            let inner = arc.pointer.as_ref();
+            let inner = arc.ptr.as_ref();
             assert_eq!(inner.count.load(Ordering::Relaxed), 1);
             assert_eq!(inner.data, test_vec);
 
@@ -574,7 +574,7 @@ mod tests {
         let arc = create_test_arc(100u64);
 
         // Test that we can get raw pointer
-        let raw_ptr = arc.pointer.as_ptr();
+        let raw_ptr = arc.ptr.as_ptr();
 
         // Test that we can access data through pointer
         unsafe {
@@ -624,7 +624,7 @@ mod tests {
         let arc = create_test_arc(data);
 
         unsafe {
-            let inner = arc.pointer.as_ref();
+            let inner = arc.ptr.as_ref();
             assert_eq!(inner.count.load(Ordering::Relaxed), 1);
             assert_eq!(&*inner.data, &[1, 2, 3][..]);
 
@@ -638,7 +638,7 @@ mod tests {
         // Test that we can create a reference safely
         // NonNull guarantees the pointer is never null
         unsafe {
-            let _inner_ref = arc.pointer.as_ref();
+            let _inner_ref = arc.ptr.as_ref();
             // If we get here without panic, NonNull is working correctly
 
             // Arc automatically cleans up memory when dropped
@@ -654,14 +654,14 @@ mod tests {
 
         unsafe {
             // Verify each has correct data
-            assert_eq!(arc1.pointer.as_ref().data, 1);
-            assert_eq!(arc2.pointer.as_ref().data, 2);
-            assert_eq!(arc3.pointer.as_ref().data, 3);
+            assert_eq!(arc1.ptr.as_ref().data, 1);
+            assert_eq!(arc2.ptr.as_ref().data, 2);
+            assert_eq!(arc3.ptr.as_ref().data, 3);
 
             // Verify they point to different memory locations
-            assert_ne!(arc1.pointer.as_ptr(), arc2.pointer.as_ptr());
-            assert_ne!(arc2.pointer.as_ptr(), arc3.pointer.as_ptr());
-            assert_ne!(arc1.pointer.as_ptr(), arc3.pointer.as_ptr());
+            assert_ne!(arc1.ptr.as_ptr(), arc2.ptr.as_ptr());
+            assert_ne!(arc2.ptr.as_ptr(), arc3.ptr.as_ptr());
+            assert_ne!(arc1.ptr.as_ptr(), arc3.ptr.as_ptr());
 
             // Arc automatically cleans up memory when dropped
             // Arc automatically cleans up memory when dropped
@@ -676,10 +676,10 @@ mod tests {
 
         unsafe {
             // Verify both point to the same memory
-            assert_eq!(arc1.pointer.as_ptr(), arc2.pointer.as_ptr());
+            assert_eq!(arc1.ptr.as_ptr(), arc2.ptr.as_ptr());
 
             // Verify reference count increased
-            let count = arc1.pointer.as_ref().count.load(Ordering::Relaxed);
+            let count = arc1.ptr.as_ref().count.load(Ordering::Relaxed);
             assert_eq!(count, 2);
 
             // Arc automatically cleans up memory when dropped
@@ -748,7 +748,7 @@ mod tests {
     #[test]
     fn test_arc_drop_behavior() {
         let arc1 = create_test_arc(vec![1, 2, 3]);
-        let pointer = arc1.pointer.as_ptr();
+        let pointer = arc1.ptr.as_ptr();
 
         unsafe {
             // Initial reference count should be 1

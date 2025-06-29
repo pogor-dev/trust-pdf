@@ -94,7 +94,7 @@
 //!
 //! // Usage example
 //! let mut cache = FileCache::new();
-//! 
+//!
 //! // Store a file (this allocates memory once)
 //! cache.store_file("config.txt".to_string(), b"debug=true\nport=8080".to_vec());
 //!
@@ -172,8 +172,8 @@ use crate::arc::{arc::Arc, arc_inner::ArcInner, header_slice::HeaderSlice, thin_
 pub(crate) struct ThinArc<H, T> {
     /// Pointer to the heap-allocated data containing reference count, header, and slice.
     /// This is the only field, making ThinArc exactly one pointer in size.
-    pub(super) pointer: ptr::NonNull<ArcInner<HeaderSlice<H, [T; 0]>>>,
-    
+    pub(super) ptr: ptr::NonNull<ArcInner<HeaderSlice<H, [T; 0]>>>,
+
     /// Zero-sized marker that tells Rust about our ownership of H and T types.
     /// This doesn't take up any space but helps the compiler with type checking.
     pub(super) phantom: PhantomData<(H, T)>,
@@ -199,7 +199,7 @@ impl<H, T> ThinArc<H, T> {
     /// ```rust
     /// # use crate::arc::thin_arc::ThinArc;
     /// let thin_arc = ThinArc::from_header_and_iter("test".to_string(), vec![1, 2, 3].into_iter());
-    /// 
+    ///
     /// let result = thin_arc.with_arc(|arc| {
     ///     // Now we can use arc-specific methods
     ///     format!("Header: {}, Length: {}", arc.header, arc.length)
@@ -213,7 +213,7 @@ impl<H, T> ThinArc<H, T> {
         // Synthesize transient Arc, which never touches the refcount of the ArcInner.
         let transient = unsafe {
             ManuallyDrop::new(Arc {
-                pointer: ptr::NonNull::new_unchecked(thin_to_thick(self.pointer.as_ptr())),
+                ptr: ptr::NonNull::new_unchecked(thin_to_thick(self.ptr.as_ptr())),
                 phantom: PhantomData,
             })
         };
@@ -246,10 +246,10 @@ impl<H, T> ThinArc<H, T> {
     /// // Create a ThinArc with a string header and number slice
     /// let numbers = vec![10, 20, 30, 40];
     /// let data = ThinArc::from_header_and_iter("numbers".to_string(), numbers.into_iter());
-    /// 
+    ///
     /// assert_eq!(data.header, "numbers");
     /// assert_eq!(data.slice(), &[10, 20, 30, 40]);
-    /// 
+    ///
     /// // With different types
     /// let metadata = ("file.txt", 1024u64); // (filename, size)
     /// let bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f]; // "Hello"
@@ -272,7 +272,7 @@ impl<H, T> ThinArc<H, T> {
 
         // Calculate where different parts of our data structure will live in memory
         // Memory layout: [ArcInner][HeaderSlice][actual slice data]
-        
+
         // Offset from start of allocation to the HeaderSlice.data field
         let inner_to_data_offset = offset_of!(ArcInner<HeaderSlice<H, [T; 0]>>, data);
         // Offset from HeaderSlice to where the actual slice data starts
@@ -311,19 +311,19 @@ impl<H, T> ThinArc<H, T> {
 
             // Write all the data into the allocated memory
             // Order matters here - we're initializing the memory layout piece by piece
-            
+
             // 1. Write the reference count
             ptr::write(ptr::addr_of_mut!((*ptr).count), count);
             // 2. Write the header data
             ptr::write(ptr::addr_of_mut!((*ptr).data.header), header);
             // 3. Write the slice length
             ptr::write(ptr::addr_of_mut!((*ptr).data.length), num_items);
-            
+
             // 4. Write each element of the slice
             if num_items != 0 {
                 let mut current = ptr::addr_of_mut!((*ptr).data.slice) as *mut T;
                 debug_assert_eq!(current as usize - buffer as usize, slice_offset);
-                
+
                 // Copy elements from iterator into our allocated memory
                 for _ in 0..num_items {
                     ptr::write(
@@ -334,7 +334,7 @@ impl<H, T> ThinArc<H, T> {
                     );
                     current = current.offset(1);
                 }
-                
+
                 // Verify the iterator gave us exactly the number of items it promised
                 assert!(
                     items.next().is_none(),
@@ -344,7 +344,7 @@ impl<H, T> ThinArc<H, T> {
                 // Sanity check: we should have used exactly the memory we calculated
                 debug_assert_eq!(current as *mut u8, buffer.add(usable_size));
             }
-            
+
             // Final check: iterator should be exhausted
             assert!(
                 items.next().is_none(),
@@ -353,7 +353,7 @@ impl<H, T> ThinArc<H, T> {
         }
 
         ThinArc {
-            pointer: unsafe { ptr::NonNull::new_unchecked(ptr) },
+            ptr: unsafe { ptr::NonNull::new_unchecked(ptr) },
             phantom: PhantomData,
         }
     }
@@ -371,7 +371,7 @@ impl<H, T> Deref for ThinArc<H, T> {
     /// ```rust
     /// # use crate::arc::thin_arc::ThinArc;
     /// let data = ThinArc::from_header_and_iter("test".to_string(), vec![1, 2, 3].into_iter());
-    /// 
+    ///
     /// // These work because of Deref:
     /// println!("Header: {}", data.header);     // Access header directly
     /// println!("Length: {}", data.length);     // Access length directly  
@@ -379,7 +379,7 @@ impl<H, T> Deref for ThinArc<H, T> {
     /// ```
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &(*thin_to_thick(self.pointer.as_ptr())).data }
+        unsafe { &(*thin_to_thick(self.ptr.as_ptr())).data }
     }
 }
 
@@ -394,7 +394,7 @@ impl<H, T> Clone for ThinArc<H, T> {
     /// # use crate::arc::thin_arc::ThinArc;
     /// let original = ThinArc::from_header_and_iter("shared".to_string(), vec![1, 2, 3].into_iter());
     /// let copy = original.clone(); // Very fast - no data copying!
-    /// 
+    ///
     /// // Both point to the same data
     /// assert_eq!(original.slice(), copy.slice());
     /// assert_eq!(original.header, copy.header);
@@ -427,7 +427,7 @@ impl<H, T> Drop for ThinArc<H, T> {
     #[inline]
     fn drop(&mut self) {
         let _ = Arc::from_thin(ThinArc {
-            pointer: self.pointer,
+            ptr: self.ptr,
             phantom: PhantomData,
         });
     }
@@ -445,7 +445,7 @@ impl<H: PartialEq, T: PartialEq> PartialEq for ThinArc<H, T> {
     /// let data1 = ThinArc::from_header_and_iter("test".to_string(), vec![1, 2, 3].into_iter());
     /// let data2 = ThinArc::from_header_and_iter("test".to_string(), vec![1, 2, 3].into_iter());
     /// let data3 = ThinArc::from_header_and_iter("different".to_string(), vec![1, 2, 3].into_iter());
-    /// 
+    ///
     /// assert_eq!(data1, data2); // Same content = equal
     /// assert_ne!(data1, data3); // Different header = not equal
     /// ```
@@ -469,7 +469,7 @@ impl<H: Hash, T: Hash> Hash for ThinArc<H, T> {
     /// # use std::collections::HashMap;
     /// let data1 = ThinArc::from_header_and_iter("key1".to_string(), vec![1, 2, 3].into_iter());
     /// let data2 = ThinArc::from_header_and_iter("key2".to_string(), vec![4, 5, 6].into_iter());
-    /// 
+    ///
     /// let mut map = HashMap::new();
     /// map.insert(data1, "value1");
     /// map.insert(data2, "value2");
@@ -482,13 +482,13 @@ impl<H: Hash, T: Hash> Hash for ThinArc<H, T> {
 #[cfg(test)]
 mod tests {
     //! Tests for ThinArc functionality
-    //! 
+    //!
     //! These tests verify that ThinArc works correctly in various scenarios:
     //! - Basic creation and data access
     //! - Memory management (cloning, dropping)
     //! - Edge cases (empty slices, large data)
     //! - Type safety and trait implementations
-    
+
     use super::*;
 
     #[test]
@@ -776,7 +776,7 @@ mod tests {
         let thin_arc = ThinArc::from_header_and_iter("pointer_test".to_string(), data.into_iter());
 
         // Test that we can access the underlying pointer
-        let ptr = thin_arc.pointer;
+        let ptr = thin_arc.ptr;
 
         // Verify that the pointer is correctly typed
         unsafe {

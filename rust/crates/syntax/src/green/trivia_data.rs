@@ -5,7 +5,7 @@ use std::{
 
 use countme::Count;
 
-use crate::green::{ReprThin, trivia::GreenTrivia};
+use crate::green::{GreenTriviaReprThin, trivia::GreenTrivia};
 use crate::syntax::trivia_piece::TriviaPiece;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -15,7 +15,7 @@ pub(crate) struct GreenTriviaHead {
 
 #[repr(transparent)]
 pub(crate) struct GreenTriviaData {
-    pub(crate) data: ReprThin,
+    pub(crate) data: GreenTriviaReprThin,
 }
 
 impl GreenTriviaData {

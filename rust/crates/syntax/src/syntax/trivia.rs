@@ -2,17 +2,17 @@ use std::marker::PhantomData;
 
 use crate::{
     cursor,
-    syntax::{language::Language, syntax_trivia_pieces_iterator::SyntaxTriviaPiecesIterator},
+    syntax::{language::Language, trivia_pieces_iterator::SyntaxTriviaPiecesIterator},
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxTrivia<L: Language> {
-    raw: cursor::SyntaxTrivia,
+    raw: cursor::trivia::SyntaxTrivia,
     _p: PhantomData<L>,
 }
 
 impl<L: Language> SyntaxTrivia<L> {
-    pub(super) fn new(raw: cursor::SyntaxTrivia) -> Self {
+    pub(super) fn new(raw: cursor::trivia::SyntaxTrivia) -> Self {
         Self {
             raw,
             _p: PhantomData,

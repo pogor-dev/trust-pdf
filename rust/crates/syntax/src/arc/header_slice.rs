@@ -139,6 +139,11 @@ impl<H, T> HeaderSlice<H, [T]> {
     pub(crate) fn slice(&self) -> &[T] {
         &self.slice
     }
+
+    /// Returns the number of items
+    pub(crate) fn len(&self) -> usize {
+        self.length
+    }
 }
 
 impl<H, T> Arc<HeaderSlice<H, [T]>> {
@@ -179,7 +184,7 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
         mem::forget(a);
         let thin_ptr = fat_ptr as *mut [usize] as *mut usize;
         ThinArc {
-            pointer: unsafe {
+            ptr: unsafe {
                 ptr::NonNull::new_unchecked(thin_ptr as *mut ArcInner<HeaderSlice<H, [T; 0]>>)
             },
             phantom: PhantomData,
@@ -214,11 +219,11 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
     /// ```
     #[inline]
     pub(crate) fn from_thin(a: ThinArc<H, T>) -> Self {
-        let ptr = thin_to_thick(a.pointer.as_ptr());
+        let ptr = thin_to_thick(a.ptr.as_ptr());
         mem::forget(a);
         unsafe {
             Arc {
-                pointer: ptr::NonNull::new_unchecked(ptr),
+                ptr: ptr::NonNull::new_unchecked(ptr),
                 phantom: PhantomData,
             }
         }

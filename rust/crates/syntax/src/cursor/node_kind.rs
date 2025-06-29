@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use crate::cursor::{syntax_node_data::NodeData, weak_green_element::WeakGreenElement};
+use crate::cursor::{
+    green_element::GreenElement, node_data::NodeData, weak_green_element::WeakGreenElement,
+};
 
 /// A single NodeData (red node) is either a "root node" (no parent node and
 /// holds a strong reference to the root of the green tree) or a "child node"

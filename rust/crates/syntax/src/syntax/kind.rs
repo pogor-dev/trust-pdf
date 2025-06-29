@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::green::syntax_kind::RawSyntaxKind;
+use crate::green::kind::RawSyntaxKind;
 
 /// Type tag for each node or token of a language
 pub trait SyntaxKind: fmt::Debug + PartialEq + Copy {

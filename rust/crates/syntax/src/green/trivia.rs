@@ -4,7 +4,7 @@ use std::mem;
 use countme::Count;
 
 use crate::arc::arc::Arc;
-use crate::green::ReprThin;
+use crate::green::GreenTriviaReprThin;
 use crate::green::trivia_data::GreenTriviaData;
 use crate::syntax::trivia_piece::TriviaPiece;
 use crate::{arc::thin_arc::ThinArc, green::trivia_data::GreenTriviaHead};
@@ -19,13 +19,7 @@ use crate::{arc::thin_arc::ThinArc, green::trivia_data::GreenTriviaHead};
 #[derive(Eq, PartialEq, Hash, Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTrivia {
-    pointer: Option<ThinArc<GreenTriviaHead, TriviaPiece>>,
-}
-
-impl fmt::Debug for GreenTrivia {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.pieces(), f)
-    }
+    ptr: Option<ThinArc<GreenTriviaHead, TriviaPiece>>,
 }
 
 impl GreenTrivia {
@@ -38,19 +32,25 @@ impl GreenTrivia {
         let data =
             ThinArc::from_header_and_iter(GreenTriviaHead { _c: Count::new() }, pieces.into_iter());
 
-        GreenTrivia {
-            pointer: Some(data),
-        }
+        GreenTrivia { ptr: Some(data) }
     }
 
     /// Creates an empty trivia
     pub fn empty() -> Self {
-        GreenTrivia { pointer: None }
+        GreenTrivia { ptr: None }
+    }
+
+    /// Returns the pieces count
+    pub fn len(&self) -> usize {
+        match &self.ptr {
+            None => 0,
+            Some(ptr) => ptr.len(),
+        }
     }
 
     /// Returns the pieces of the trivia
     pub fn pieces(&self) -> &[TriviaPiece] {
-        match &self.pointer {
+        match &self.ptr {
             None => &[],
             Some(ptr) => ptr.slice(),
         }
@@ -58,13 +58,32 @@ impl GreenTrivia {
 
     pub(crate) unsafe fn from_raw(ptr: *mut GreenTriviaData) -> Self {
         if let Some(pointer) = unsafe { ptr.as_ref() } {
-            let arc = unsafe { Arc::from_raw(&pointer.data as *const ReprThin) };
+            let arc = unsafe { Arc::from_raw(&pointer.data as *const GreenTriviaReprThin) };
             let arc = unsafe {
-                mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaHead, TriviaPiece>>(arc)
+                mem::transmute::<Arc<GreenTriviaReprThin>, ThinArc<GreenTriviaHead, TriviaPiece>>(
+                    arc,
+                )
             };
-            Self { pointer: Some(arc) }
+            Self { ptr: Some(arc) }
         } else {
-            Self { pointer: None }
+            Self { ptr: None }
         }
+    }
+
+    /// Returns the total length of all pieces
+    pub fn text_len(&self) -> u64 {
+        let mut len = 0;
+
+        for piece in self.pieces() {
+            len += piece.length
+        }
+
+        len.into()
+    }
+}
+
+impl fmt::Debug for GreenTrivia {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.pieces(), f)
     }
 }
