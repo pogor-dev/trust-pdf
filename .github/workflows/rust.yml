@@ -55,6 +55,12 @@ jobs:
         working-directory: rust
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
+      - name: Run Clippy
+        run: cargo clippy --all --all-features -- -D warnings
+
+      - name: Run Format Check
+        run: cargo fmt --all --check
+
       - name: Compile (tests)
         working-directory: rust
         run: cargo test --no-run --locked
