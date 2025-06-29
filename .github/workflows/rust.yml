@@ -1,9 +1,9 @@
 name: Rust
 on:
   push:
-    branches: ["main"]
+    # branches: ["main"]
   pull_request:
-    branches: ["main"]
+    # branches: ["main"]
 
 permissions:
   contents: read
@@ -43,6 +43,9 @@ jobs:
             ~/.cargo/git
             rust/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust/**/Cargo.lock') }}
+
+      - name: Install cargo-llvm-cov
+        run: cargo +stable install cargo-llvm-cov --locked
 
       - name: Install cargo2junit
         run: cargo install cargo2junit
@@ -84,3 +87,17 @@ jobs:
           name: Tests report ${{ matrix.os }} # Name of the check run which will be created
           path: rust/test-results.xml # Path to test results
           reporter: java-junit # Format of test results
+
+      - name: Generate coverage report
+        working-directory: rust
+        if: success() || failure() # run this step even if previous step failed
+        run: cargo llvm-cov --lcov --output-path coverage.lcov
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        if: success() || failure() # run this step even if previous step failed
+        with:
+          files: rust/coverage.lcov
+          flags: unittests
+          name: codecov-coverage
+          fail_ci_if_error: true
