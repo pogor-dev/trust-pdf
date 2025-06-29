@@ -52,10 +52,10 @@ use std::ptr;
 
 use crate::arc::{arc_inner::ArcInner, header_slice::HeaderSlice};
 
-mod arc;
+pub(crate) mod arc;
 mod arc_inner;
-mod header_slice;
-mod thin_arc;
+pub(crate) mod header_slice;
+pub(crate) mod thin_arc;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///

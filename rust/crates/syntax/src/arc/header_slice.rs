@@ -105,19 +105,19 @@ pub(crate) struct HeaderSlice<H, T: ?Sized> {
     ///
     /// This can be any type - commonly strings, enums, or structs containing metadata.
     /// It's stored first in the layout, immediately followed by the length and slice data.
-    pub(super) header: H,
-    
+    pub(crate) header: H,
+
     /// The length of the slice.
     ///
     /// This stores how many elements are in the slice portion. For `ThinArc`,
     /// this length is read from here to reconstruct fat pointers when needed.
-    pub(super) length: usize,
-    
+    pub(crate) length: usize,
+
     /// The slice data.
     ///
     /// This is where the actual slice elements are stored. The `T: ?Sized` allows
     /// this to be either `[T; 0]` (for thin pointers) or `[T]` (for fat pointers).
-    pub(super) slice: T,
+    pub(crate) slice: T,
 }
 
 impl<H, T> HeaderSlice<H, [T]> {
@@ -131,7 +131,7 @@ impl<H, T> HeaderSlice<H, [T]> {
     /// ```rust,no_run
     /// # use crate::arc::thin_arc::ThinArc;
     /// let data = ThinArc::from_header_and_iter("header".to_string(), vec![1, 2, 3].into_iter());
-    /// 
+    ///
     /// let slice = data.slice();
     /// assert_eq!(slice.len(), 3);
     /// assert_eq!(slice[0], 1);
@@ -270,7 +270,7 @@ mod tests {
     //!
     //! These tests verify that HeaderSlice works correctly in combination with ThinArc
     //! and Arc. They test the basic structure, conversions, and various data types.
-    
+
     use super::*;
 
     /// Helper function to create a test HeaderSlice with ThinArc.

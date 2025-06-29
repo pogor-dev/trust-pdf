@@ -56,6 +56,7 @@
 //! ```
 
 use std::cmp::Ordering;
+use std::mem::offset_of;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use std::{
     hash::{Hash, Hasher},
@@ -115,7 +116,7 @@ pub(crate) struct Arc<T: ?Sized> {
     /// Pointer to the heap-allocated `ArcInner<T>` containing both the reference count and data.
     /// This is wrapped in `NonNull` to enable niche optimization and guarantee non-null.
     pub(crate) pointer: ptr::NonNull<ArcInner<T>>,
-    
+
     /// Zero-sized type marker that tells Rust about our ownership of `T`.
     /// This enables proper drop checking and variance but takes no space.
     pub(crate) phantom: PhantomData<T>,
@@ -124,6 +125,25 @@ pub(crate) struct Arc<T: ?Sized> {
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
 unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 
+impl<T> Arc<T> {
+    /// Reconstruct the Arc<T> from a raw pointer obtained from into_raw()
+    ///
+    /// Note: This raw pointer will be offset in the allocation and must be preceded
+    /// by the atomic count.
+    ///
+    /// It is recommended to use OffsetArc for this
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: *const T) -> Self {
+        // To find the corresponding pointer to the `ArcInner` we need
+        // to subtract the offset of the `data` field from the pointer.
+        let ptr = unsafe { (ptr as *const u8).sub(offset_of!(ArcInner<T>, data)) };
+        Arc {
+            pointer: unsafe { ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>) },
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<T: ?Sized> Arc<T> {
     /// Gets a reference to the inner `ArcInner<T>` structure.
     ///
@@ -131,7 +151,7 @@ impl<T: ?Sized> Arc<T> {
     /// The reference is guaranteed to be valid as long as this `Arc` exists.
     ///
     /// # Safety
-    /// 
+    ///
     /// This is safe because while this `Arc` is alive, we're guaranteed that the inner
     /// pointer is valid. The `ArcInner` structure is `Sync` when the inner data is `Sync`,
     /// so we can safely loan out an immutable reference.
@@ -340,7 +360,7 @@ impl<T: ?Sized> Deref for Arc<T> {
     /// ```rust,no_run
     /// # use crate::arc::arc::Arc;
     /// let arc = Arc::new(String::from("hello"));
-    /// 
+    ///
     /// // Can call String methods directly
     /// assert_eq!(arc.len(), 5);
     /// assert!(arc.starts_with("he"));
