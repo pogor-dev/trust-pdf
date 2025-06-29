@@ -82,7 +82,79 @@ pub(crate) struct ArcInner<T: ?Sized> {
     pub(crate) data: T,
 }
 
+/// # Safety
+///
+/// `ArcInner<T>` can be `Send` (transferred between threads) when `T` is both `Send` and `Sync`.
+///
+/// ## Why This Is Safe
+///
+/// - **T: Send**: The contained data can be moved between threads
+/// - **T: Sync**: The contained data can be accessed from multiple threads simultaneously
+/// - **AtomicUsize**: The reference count uses atomic operations, making concurrent access safe
+///
+/// The `ArcInner` itself doesn't add any non-thread-safe operations beyond what `T` provides.
+/// The atomic reference count ensures that memory management (allocation/deallocation) is
+/// thread-safe regardless of which thread performs the final drop.
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use std::sync::Arc;
+/// use std::thread;
+///
+/// // String is Send + Sync, so Arc<String> can be sent between threads
+/// let data = Arc::new(String::from("shared data"));
+/// let data_clone = Arc::clone(&data);
+///
+/// thread::spawn(move || {
+///     println!("{}", data_clone); // Safe because ArcInner<String> is Send
+/// });
+/// ```
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
+
+/// # Safety
+///
+/// `ArcInner<T>` can be `Sync` (accessed from multiple threads) when `T` is both `Send` and `Sync`.
+///
+/// ## Why This Is Safe
+///
+/// - **Atomic reference count**: All modifications to `count` use atomic operations
+/// - **Immutable data access**: The `data` field is never mutated after creation
+/// - **T: Sync**: The contained data can be safely accessed from multiple threads
+/// - **T: Send**: Required because dropping the `ArcInner` might happen on any thread
+///
+/// Multiple threads can safely:
+/// - Read from the same `ArcInner<T>` simultaneously (via multiple `Arc<T>` instances)
+/// - Increment/decrement the reference count atomically
+/// - Drop their `Arc<T>` instances from different threads
+///
+/// ## Thread Safety Guarantee
+///
+/// The last thread to decrement the reference count to zero will be responsible
+/// for deallocating the `ArcInner<T>`. This is safe because:
+/// - Only one thread can observe the count transition from 1 to 0
+/// - That thread gains exclusive access to deallocate the memory
+/// - The atomic operations provide proper memory ordering guarantees
+///
+/// ## Example
+///
+/// ```rust,no_run
+/// use std::sync::Arc;
+/// use std::thread;
+///
+/// let data = Arc::new(42i32);
+/// let handles: Vec<_> = (0..10).map(|_| {
+///     let data_clone = Arc::clone(&data);
+///     thread::spawn(move || {
+///         println!("{}", *data_clone); // Safe concurrent access
+///     })
+/// }).collect();
+///
+/// for handle in handles {
+///     handle.join().unwrap();
+/// }
+/// // ArcInner deallocated safely by the last thread to drop its Arc
+/// ```
 unsafe impl<T: ?Sized + Sync + Send> Sync for ArcInner<T> {}
 
 #[cfg(test)]
@@ -97,6 +169,16 @@ mod tests {
 
     #[test]
     fn test_arc_inner_creation() {
+        // Verifies basic creation and initialization of ArcInner.
+        //
+        // This test ensures that:
+        // - ArcInner can be created with proper field initialization
+        // - The atomic reference count starts at the expected value
+        // - The data field contains the correct value
+        //
+        // This is fundamental to Arc functionality - every Arc starts with
+        // a reference count of 1 and contains the user's data.
+
         // Test creating ArcInner with a simple type
         let inner = ArcInner {
             count: AtomicUsize::new(1),
@@ -122,6 +204,18 @@ mod tests {
 
     #[test]
     fn test_arc_inner_count_operations() {
+        // Verifies atomic operations on the reference count.
+        //
+        // This test simulates the core operations that Arc::clone() and Arc::drop()
+        // perform on the reference count. It ensures that:
+        // - fetch_add correctly increments the count (used by Arc::clone)
+        // - fetch_sub correctly decrements the count (used by Arc::drop)
+        // - The old value is returned, allowing detection of the 1->0 transition
+        // - Operations are atomic and thread-safe
+        //
+        // These operations are the foundation of Arc's memory management.
+        // When the count reaches 0, the Arc knows it's safe to deallocate.
+
         // Test atomic operations on the count field (simulating Arc clone/drop)
         let inner = ArcInner {
             count: AtomicUsize::new(1),
@@ -141,6 +235,16 @@ mod tests {
 
     #[test]
     fn test_arc_inner_send_sync_properties() {
+        // Verifies that ArcInner implements Send and Sync for appropriate types.
+        //
+        // This test is crucial for thread safety guarantees. It ensures that:
+        // - ArcInner<T> can be sent between threads when T is Send + Sync
+        // - Multiple threads can safely access the same ArcInner simultaneously
+        // - The type system enforces these constraints at compile time
+        //
+        // Without these traits, Arc wouldn't be able to provide safe shared
+        // ownership across multiple threads.
+
         // Test that ArcInner implements Send and Sync for appropriate types
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
@@ -155,6 +259,18 @@ mod tests {
 
     #[test]
     fn test_arc_inner_memory_layout() {
+        // Verifies the #[repr(C)] memory layout requirements.
+        //
+        // This test is critical for the correctness of ThinArc and other
+        // pointer arithmetic operations. It ensures that:
+        // - The count field is always at offset 0 (start of the struct)
+        // - Fields are laid out in the declared order with predictable offsets
+        // - Alignment requirements are met
+        //
+        // The #[repr(C)] attribute guarantees C-compatible layout, which is
+        // essential for any unsafe pointer manipulation that might occur in
+        // more advanced Arc implementations.
+
         // Test the #[repr(C)] layout
         let inner = ArcInner {
             count: AtomicUsize::new(1),

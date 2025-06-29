@@ -71,6 +71,7 @@ applyTo: "**/*.rs,**/Cargo.toml"
   - Context about how the component fits into the overall compiler pipeline
 - Use analogies and real-world examples where appropriate to explain complex concepts.
 - Document edge cases, error conditions, and their implications for PDF processing.
+- When the code changes, ensure that the documentation is updated to reflect the new state of the codebase.
 
 ## Future Considerations
 
