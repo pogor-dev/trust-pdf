@@ -1,3 +1,7 @@
+---
+applyTo: "**/*.rs,**/Cargo.toml"
+---
+
 # GitHub Copilot Custom Instructions for PDF Compiler Project
 
 ## General Guidelines
