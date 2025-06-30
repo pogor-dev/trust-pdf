@@ -62,7 +62,7 @@ applyTo: "**/*.rs,**/Cargo.toml"
 
 ## Documentation Standards
 
-- When adding code documentation, provide comprehensive explanations that are accessible to developers without compiler design or PDF specification experience.
+- When adding code documentation, provide concise explanations that are accessible to developers without compiler design or PDF specification experience.
 - Include clear descriptions of:
   - What each module, function, or field does in plain language
   - Why specific design decisions were made
@@ -72,6 +72,15 @@ applyTo: "**/*.rs,**/Cargo.toml"
 - Use analogies and real-world examples where appropriate to explain complex concepts.
 - Document edge cases, error conditions, and their implications for PDF processing.
 - When the code changes, ensure that the documentation is updated to reflect the new state of the codebase.
+- When the function or module is complex, consider using diagrams or flowcharts to illustrate the logic and data flow.
+
+## Testing and Validation
+
+- When asked to write tests, ensure they cover:
+  - Normal cases as per the PDF specification
+  - Edge cases, including malformed PDFs and error conditions
+  - Performance benchmarks to validate efficiency
+- Check the code coverage by using `llvm-cov --lcov --output-path target/lcov.info`
 
 ## Future Considerations
 

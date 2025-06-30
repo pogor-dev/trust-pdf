@@ -12,8 +12,12 @@ mod trivia;
 mod trivia_data;
 mod trivia_head;
 
+#[cfg(test)]
+mod trivia_tests;
+
 /// SyntaxKind is a type tag for each token or node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxKind(pub u16);
 
 type GreenTriviaReprThin = HeaderSlice<GreenTriviaHead, [u8; 0]>;
+type GreenTriviaRepr = HeaderSlice<GreenTriviaHead, [u8]>;

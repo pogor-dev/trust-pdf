@@ -56,6 +56,7 @@
 //! ```
 
 use std::cmp::Ordering;
+use std::mem::offset_of;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use std::{
     hash::{Hash, Hasher},
@@ -123,6 +124,27 @@ pub(crate) struct Arc<T: ?Sized> {
 
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
 unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
+
+impl<T> Arc<T> {
+    /// Reconstruct the Arc<T> from a raw pointer obtained from into_raw()
+    ///
+    /// Note: This raw pointer will be offset in the allocation and must be preceded
+    /// by the atomic count.
+    ///
+    /// It is recommended to use OffsetArc for this
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: *const T) -> Self {
+        // To find the corresponding pointer to the `ArcInner` we need
+        // to subtract the offset of the `data` field from the pointer.
+        unsafe {
+            let ptr = (ptr as *const u8).sub(offset_of!(ArcInner<T>, data));
+            Arc {
+                pointer: ptr::NonNull::new_unchecked(ptr as *mut ArcInner<T>),
+                phantom: PhantomData,
+            }
+        }
+    }
+}
 
 impl<T: ?Sized> Arc<T> {
     /// Gets a reference to the inner `ArcInner<T>` structure.

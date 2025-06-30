@@ -105,7 +105,7 @@ pub(crate) struct HeaderSlice<H, T: ?Sized> {
     ///
     /// This can be any type - commonly strings, enums, or structs containing metadata.
     /// It's stored first in the layout, immediately followed by the length and slice data.
-    pub(super) header: H,
+    pub(crate) header: H,
 
     /// The length of the slice.
     ///
