@@ -3,4 +3,7 @@ mod arc;
 mod cursor;
 mod green;
 
-pub use crate::api::{language::Language, node::SyntaxNode, token::SyntaxToken};
+pub use crate::{
+    api::{language::Language, trivia::SyntaxTrivia},
+    green::SyntaxKind,
+};

@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::SyntaxKind;
+
 pub trait Language: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash {
     type Kind: Sized + Copy + fmt::Debug + Eq + Ord + std::hash::Hash;
 
