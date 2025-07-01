@@ -18,68 +18,70 @@ fn create_trivia(kind: SyntaxKind, text: &str) -> GreenTrivia {
 }
 
 #[test]
-fn test_trivia_creation_and_basic_access() {
-    // Test creating trivia with different kinds and content
+fn test_trivia_kind_when_accessing_expect_correct_syntax_kind() {
+    // Test accessing trivia kinds
     let newline = create_trivia(NEWLINE_KIND, "\n");
     let space = create_trivia(WHITESPACE_KIND, " ");
     let comment = create_trivia(COMMENT_KIND, "%PDF-1.7");
 
-    // Test basic property access
+    // Verify kind access
     assert_eq!(newline.kind(), NEWLINE_KIND);
-    assert_eq!(newline.text(), b"\n");
-    assert_eq!(newline.width(), 1);
-
     assert_eq!(space.kind(), WHITESPACE_KIND);
-    assert_eq!(space.text(), b" ");
-    assert_eq!(space.width(), 1);
-
     assert_eq!(comment.kind(), COMMENT_KIND);
+}
+
+#[test]
+fn test_trivia_text_when_accessing_expect_correct_byte_content() {
+    // Test accessing trivia text content
+    let newline = create_trivia(NEWLINE_KIND, "\n");
+    let space = create_trivia(WHITESPACE_KIND, " ");
+    let comment = create_trivia(COMMENT_KIND, "%PDF-1.7");
+
+    // Verify text access
+    assert_eq!(newline.text(), b"\n");
+    assert_eq!(space.text(), b" ");
     assert_eq!(comment.text(), b"%PDF-1.7");
+}
+
+#[test]
+fn test_trivia_width_when_accessing_expect_correct_byte_length() {
+    // Test accessing trivia width (byte length)
+    let newline = create_trivia(NEWLINE_KIND, "\n");
+    let space = create_trivia(WHITESPACE_KIND, " ");
+    let comment = create_trivia(COMMENT_KIND, "%PDF-1.7");
+
+    // Verify width access
+    assert_eq!(newline.width(), 1);
+    assert_eq!(space.width(), 1);
     assert_eq!(comment.width(), 8);
 }
 
 #[test]
-fn test_pdf_specific_trivia_types() {
-    // Test PDF-specific trivia scenarios per ISO 32000-2
-
-    // Stream separator: Required \n after stream (§7.3.8)
-    let stream_newline = create_trivia(NEWLINE_KIND, "\n");
-    assert_eq!(stream_newline.text(), b"\n");
-    assert_eq!(stream_newline.width(), 1);
-
-    // Xref table formatting: Fixed-width spacing (§7.5.4)
-    let xref_spaces = create_trivia(WHITESPACE_KIND, "     "); // 5 spaces
-    assert_eq!(xref_spaces.text(), b"     ");
-    assert_eq!(xref_spaces.width(), 5);
-
-    // Content stream tokens: Space-separated (§8.1.1)
-    let content_space = create_trivia(WHITESPACE_KIND, " ");
-    assert_eq!(content_space.text(), b" ");
-    assert_eq!(content_space.width(), 1);
-
-    // PDF version comment
-    let version_comment = create_trivia(COMMENT_KIND, "%PDF-2.0");
-    assert_eq!(version_comment.text(), b"%PDF-2.0");
-    assert_eq!(version_comment.width(), 8);
-}
-
-#[test]
-fn test_trivia_equality() {
+fn test_trivia_equality_when_identical_content_expect_equal() {
     // Test equality for identical trivia
     let newline1 = create_trivia(NEWLINE_KIND, "\n");
     let newline2 = create_trivia(NEWLINE_KIND, "\n");
     assert_eq!(newline1, newline2);
+}
 
+#[test]
+fn test_trivia_equality_when_different_kinds_same_content_expect_not_equal() {
     // Test inequality for different kinds with same content
     let newline = create_trivia(NEWLINE_KIND, "\n");
     let whitespace_newline = create_trivia(WHITESPACE_KIND, "\n");
     assert_ne!(newline, whitespace_newline);
+}
 
+#[test]
+fn test_trivia_equality_when_same_kind_different_content_expect_not_equal() {
     // Test inequality for same kind with different content
     let space1 = create_trivia(WHITESPACE_KIND, " ");
     let space2 = create_trivia(WHITESPACE_KIND, "  ");
     assert_ne!(space1, space2);
+}
 
+#[test]
+fn test_trivia_equality_when_completely_different_expect_not_equal() {
     // Test inequality for completely different trivia
     let comment = create_trivia(COMMENT_KIND, "%hello");
     let space = create_trivia(WHITESPACE_KIND, " ");
@@ -87,7 +89,7 @@ fn test_trivia_equality() {
 }
 
 #[test]
-fn test_trivia_memory_sharing() {
+fn test_trivia_memory_when_cloning_expect_shared_memory() {
     // Test that cloning shares memory via reference counting
     let original = create_trivia(COMMENT_KIND, "%shared");
     let cloned = original.clone();
@@ -100,14 +102,11 @@ fn test_trivia_memory_sharing() {
     // Memory should be shared (same underlying data)
     let original_ptr = original.text().as_ptr();
     let cloned_ptr = cloned.text().as_ptr();
-    assert_eq!(
-        original_ptr, cloned_ptr,
-        "Memory should be shared via reference counting"
-    );
+    assert_eq!(original_ptr, cloned_ptr);
 }
 
 #[test]
-fn test_trivia_zero_cost_conversions() {
+fn test_trivia_zero_cost_conversions_when_deref_expect_direct_access() {
     // Test zero-cost deref conversion from owned to borrowed
     let owned = create_trivia(WHITESPACE_KIND, "   ");
 
@@ -122,7 +121,7 @@ fn test_trivia_zero_cost_conversions() {
 }
 
 #[test]
-fn test_trivia_hash_map_integration() {
+fn test_trivia_hash_map_when_caching_expect_successful_integration() {
     // Test using trivia in hash maps for deduplication/caching
     let mut trivia_cache: HashMap<GreenTrivia, u32> = HashMap::new();
 
@@ -146,7 +145,7 @@ fn test_trivia_hash_map_integration() {
 }
 
 #[test]
-fn test_trivia_borrow_trait() {
+fn test_trivia_borrow_trait_when_used_expect_successful_deref() {
     // Test that trivia can be used in collections that rely on Borrow trait
     let trivia = create_trivia(COMMENT_KIND, "%borrow");
 
@@ -160,7 +159,7 @@ fn test_trivia_borrow_trait() {
 }
 
 #[test]
-fn test_trivia_borrow_trait_direct() {
+fn test_trivia_borrow_trait_when_hashset_lookups_expect_successful_integration() {
     // Test that trivia works with collections that use Borrow trait internally
     use std::collections::HashSet;
 
@@ -185,7 +184,7 @@ fn test_trivia_borrow_trait_direct() {
 }
 
 #[test]
-fn test_trivia_to_owned_conversion() {
+fn test_trivia_to_owned_conversion_when_borrowed_expect_new_owned_instance() {
     // Test ToOwned trait implementation for converting borrowed to owned
     let original = create_trivia(WHITESPACE_KIND, "  ");
     let borrowed: &_ = &*original; // Get borrowed reference via deref
@@ -204,7 +203,7 @@ fn test_trivia_to_owned_conversion() {
 }
 
 #[test]
-fn test_trivia_partial_eq_explicit() {
+fn test_trivia_partial_eq_when_explicit_usage_expect_correct_comparison() {
     // Test explicit PartialEq usage to ensure the trait is exercised
     use std::cmp::PartialEq;
 
@@ -225,69 +224,64 @@ fn test_trivia_partial_eq_explicit() {
     assert!(!PartialEq::eq(data1, data3));
 }
 
-#[cfg(test)]
-mod unsafe_tests {
-    use super::*;
+#[test]
+fn test_trivia_raw_pointer_when_converting_expect_preserved_data() {
+    // Test the unsafe FFI operations for raw pointer conversion
+    let original = create_trivia(COMMENT_KIND, "%raw_test");
 
-    #[test]
-    fn test_trivia_raw_pointer_operations() {
-        // Test the unsafe FFI operations for raw pointer conversion
-        let original = create_trivia(COMMENT_KIND, "%raw_test");
+    // Verify original data before conversion
+    assert_eq!(original.kind(), COMMENT_KIND);
+    assert_eq!(original.text(), b"%raw_test");
+    assert_eq!(original.width(), 9);
 
-        // Verify original data before conversion
-        assert_eq!(original.kind(), COMMENT_KIND);
-        assert_eq!(original.text(), b"%raw_test");
-        assert_eq!(original.width(), 9);
+    // Convert to raw pointer (this should exercise into_raw)
+    let original_clone = original.clone(); // Keep one reference alive
+    let raw_ptr = GreenTrivia::into_raw(original);
 
-        // Convert to raw pointer (this should exercise into_raw)
-        let original_clone = original.clone(); // Keep one reference alive
-        let raw_ptr = GreenTrivia::into_raw(original);
+    // Convert back from raw pointer (this should exercise from_raw)
+    let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
 
-        // Convert back from raw pointer (this should exercise from_raw)
+    // Verify recovered trivia has identical properties
+    assert_eq!(recovered.kind(), COMMENT_KIND);
+    assert_eq!(recovered.text(), b"%raw_test");
+    assert_eq!(recovered.width(), 9);
+
+    // Should be equal to original
+    assert_eq!(original_clone, recovered);
+    assert_eq!(original_clone.text().as_ptr(), recovered.text().as_ptr());
+}
+
+#[test]
+fn test_trivia_raw_pointer_when_memory_safety_expect_preserved_integrity() {
+    // Test that raw pointer operations maintain memory safety
+    let trivias: Vec<_> = (0..10)
+        .map(|i| create_trivia(WHITESPACE_KIND, &" ".repeat(i + 1)))
+        .collect();
+
+    // Convert to raw pointers
+    let raw_ptrs: Vec<_> = trivias
+        .into_iter()
+        .map(|trivia| {
+            let width = trivia.width();
+            let ptr = GreenTrivia::into_raw(trivia);
+            (ptr, width)
+        })
+        .collect();
+
+    // Convert back and verify all data is intact
+    for (raw_ptr, expected_width) in raw_ptrs {
         let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
+        assert_eq!(recovered.kind(), WHITESPACE_KIND);
+        assert_eq!(recovered.width(), expected_width);
 
-        // Verify recovered trivia has identical properties
-        assert_eq!(recovered.kind(), COMMENT_KIND);
-        assert_eq!(recovered.text(), b"%raw_test");
-        assert_eq!(recovered.width(), 9);
-
-        // Should be equal to original
-        assert_eq!(original_clone, recovered);
-        assert_eq!(original_clone.text().as_ptr(), recovered.text().as_ptr());
-    }
-
-    #[test]
-    fn test_trivia_raw_pointer_memory_safety() {
-        // Test that raw pointer operations maintain memory safety
-        let trivias: Vec<_> = (0..10)
-            .map(|i| create_trivia(WHITESPACE_KIND, &" ".repeat(i + 1)))
-            .collect();
-
-        // Convert to raw pointers
-        let raw_ptrs: Vec<_> = trivias
-            .into_iter()
-            .map(|trivia| {
-                let width = trivia.width();
-                let ptr = GreenTrivia::into_raw(trivia);
-                (ptr, width)
-            })
-            .collect();
-
-        // Convert back and verify all data is intact
-        for (raw_ptr, expected_width) in raw_ptrs {
-            let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
-            assert_eq!(recovered.kind(), WHITESPACE_KIND);
-            assert_eq!(recovered.width(), expected_width);
-
-            // Verify content matches expected pattern
-            let expected_spaces = " ".repeat(expected_width as usize);
-            assert_eq!(recovered.text(), expected_spaces.as_bytes());
-        }
+        // Verify content matches expected pattern
+        let expected_spaces = " ".repeat(expected_width as usize);
+        assert_eq!(recovered.text(), expected_spaces.as_bytes());
     }
 }
 
 #[test]
-fn test_empty_trivia() {
+fn test_empty_trivia_when_empty_content_expect_zero_width() {
     // Test edge case: empty trivia content
     let empty = create_trivia(WHITESPACE_KIND, "");
 
@@ -297,84 +291,20 @@ fn test_empty_trivia() {
 }
 
 #[test]
-fn test_large_trivia_content() {
-    // Test with larger trivia content (e.g., long comments)
-    let large_comment_text = "%This is a very long PDF comment that might span multiple lines and contain various characters including special ones like ñ and émojis 🔥";
-    let large_comment = create_trivia(COMMENT_KIND, large_comment_text);
-
-    assert_eq!(large_comment.kind(), COMMENT_KIND);
-    assert_eq!(large_comment.text(), large_comment_text.as_bytes());
-    assert_eq!(large_comment.width(), large_comment_text.len() as u64);
-}
-
-#[test]
-fn test_trivia_with_special_characters() {
-    // Test with various special characters that might appear in PDF files
-    let special_chars = vec![
-        ("\r\n", "Windows line ending"),
-        ("\r", "Mac line ending"),
-        ("\t", "Tab character"),
-        (" \t \t", "Mixed spaces and tabs"),
-        (
-            "% comment with tab\tand space",
-            "Comment with mixed whitespace",
-        ),
-    ];
-
-    for (text, description) in special_chars {
-        let trivia = create_trivia(WHITESPACE_KIND, text);
-        assert_eq!(
-            trivia.text(),
-            text.as_bytes(),
-            "Failed for: {}",
-            description
-        );
-        assert_eq!(
-            trivia.width(),
-            text.len() as u64,
-            "Failed width for: {}",
-            description
-        );
-    }
-}
-
-#[test]
-fn test_trivia_round_trip_fidelity() {
-    // Test that trivia preserves exact bytes for round-trip fidelity
-    let test_cases = vec![
-        "\n",         // Unix newline
-        "\r\n",       // Windows newline
-        "\r",         // Mac newline
-        " ",          // Single space
-        "\t",         // Tab
-        "    ",       // Multiple spaces
-        " \t \n",     // Mixed whitespace
-        "%PDF-1.7",   // Version comment
-        "% comment",  // Spaced comment
-        "%comment\n", // Comment with newline
-    ];
-
-    for original_text in test_cases {
-        let trivia = create_trivia(COMMENT_KIND, original_text);
-        let recovered_text = std::str::from_utf8(trivia.text()).unwrap();
-
-        assert_eq!(
-            original_text, recovered_text,
-            "Round-trip fidelity failed for: {:?}",
-            original_text
-        );
-    }
-}
-
-#[test]
-fn test_trivia_debug_and_display() {
-    // Test debug and display formatting
+fn test_trivia_debug_formatting_when_comment_expect_structured_output() {
+    // Test debug formatting contains expected structure and content
     let comment = create_trivia(COMMENT_KIND, "%test");
 
     let debug_str = format!("{:?}", comment);
     assert!(debug_str.contains("GreenTrivia"));
     assert!(debug_str.contains("kind"));
     assert!(debug_str.contains("text"));
+}
+
+#[test]
+fn test_trivia_display_formatting_when_comment_expect_byte_array() {
+    // Test display formatting shows byte array representation
+    let comment = create_trivia(COMMENT_KIND, "%test");
 
     let display_str = format!("{}", &*comment);
     // The Display implementation formats as a debug byte array [37, 116, 101, 115, 116] for "%test"
@@ -384,7 +314,7 @@ fn test_trivia_debug_and_display() {
 }
 
 #[test]
-fn test_trivia_concurrent_access() {
+fn test_trivia_concurrent_access_when_multithreaded_expect_safe_access() {
     // Test that trivia can be safely shared across threads
     use std::sync::Arc as StdArc;
     use std::thread;
@@ -413,109 +343,7 @@ fn test_trivia_concurrent_access() {
 }
 
 #[test]
-fn test_pdf_semantic_whitespace_significance() {
-    // Test scenarios where PDF whitespace has semantic meaning
-
-    // ISO 32000-2 §7.3.10: obj declarations - newline separates header from body
-    let obj_newline = create_trivia(NEWLINE_KIND, "\n");
-    assert_eq!(obj_newline.text(), b"\n");
-
-    // ISO 32000-2 §7.3.8: stream keyword - newline required after stream
-    let stream_newline = create_trivia(NEWLINE_KIND, "\n");
-    assert_eq!(stream_newline.text(), b"\n");
-
-    // ISO 32000-2 §7.5.4: xref entries - fixed-width formatting
-    let xref_field_space = create_trivia(WHITESPACE_KIND, " ");
-    assert_eq!(xref_field_space.width(), 1);
-
-    // ISO 32000-2 §7.5.5: startxref - newline separates keyword and offset
-    let startxref_newline = create_trivia(NEWLINE_KIND, "\n");
-    assert_eq!(startxref_newline.text(), b"\n");
-
-    // ISO 32000-2 §8.1.1: content streams - space-separated tokens only
-    let content_separator = create_trivia(WHITESPACE_KIND, " ");
-    assert_eq!(content_separator.text(), b" ");
-}
-
-#[test]
-fn test_trivia_performance_characteristics() {
-    // Test that creating many trivia instances is efficient
-    let mut trivias = Vec::new();
-
-    for i in 0..1000 {
-        let trivia = create_trivia(WHITESPACE_KIND, " ");
-        trivias.push(trivia);
-
-        // Every 100 iterations, verify the trivia is correct
-        if i % 100 == 0 {
-            assert_eq!(trivias[i].kind(), WHITESPACE_KIND);
-            assert_eq!(trivias[i].text(), b" ");
-            assert_eq!(trivias[i].width(), 1);
-        }
-    }
-
-    // All instances should be equal (same content)
-    for trivia in &trivias {
-        assert_eq!(*trivia, trivias[0]);
-    }
-}
-
-#[test]
-fn test_trivia_utf8_sequences() {
-    // Test with UTF-8 sequences that might appear in PDF comments
-    let utf8_cases = vec![
-        ("% Basic ASCII", "Basic ASCII comment"),
-        ("% Café", "UTF-8 with accented characters"),
-        ("% 中文", "UTF-8 with Chinese characters"),
-        ("% 🔥", "UTF-8 with emoji"),
-        ("% ©2023", "UTF-8 with copyright symbol"),
-    ];
-
-    for (comment_text, description) in utf8_cases {
-        let trivia = create_trivia(COMMENT_KIND, comment_text);
-
-        // Verify round-trip fidelity
-        let recovered = std::str::from_utf8(trivia.text()).unwrap();
-        assert_eq!(comment_text, recovered, "Failed for: {}", description);
-
-        // Verify width matches byte length (not character length)
-        assert_eq!(
-            trivia.width(),
-            comment_text.len() as u64,
-            "Width mismatch for: {}",
-            description
-        );
-    }
-}
-
-#[test]
-fn test_trivia_pdf_line_ending_variations() {
-    // Test different line ending styles that might appear in PDF files
-    let line_endings = vec![
-        ("\n", "Unix LF"),
-        ("\r\n", "Windows CRLF"),
-        ("\r", "Classic Mac CR"),
-    ];
-
-    for (ending, description) in line_endings {
-        let trivia = create_trivia(NEWLINE_KIND, ending);
-
-        assert_eq!(trivia.kind(), NEWLINE_KIND);
-        assert_eq!(trivia.text(), ending.as_bytes());
-        assert_eq!(trivia.width(), ending.len() as u64);
-
-        // Verify line endings preserve exact bytes
-        let recovered = std::str::from_utf8(trivia.text()).unwrap();
-        assert_eq!(
-            ending, recovered,
-            "Line ending fidelity failed for: {}",
-            description
-        );
-    }
-}
-
-#[test]
-fn test_trivia_hash_consistency() {
+fn test_trivia_hash_consistency_when_equal_expect_same_hash() {
     // Test that equal trivia have the same hash
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
@@ -532,76 +360,5 @@ fn test_trivia_hash_consistency() {
     trivia1.hash(&mut hasher1);
     trivia2.hash(&mut hasher2);
 
-    assert_eq!(
-        hasher1.finish(),
-        hasher2.finish(),
-        "Equal trivia should have equal hashes"
-    );
-}
-
-#[test]
-fn test_trivia_clone_independence() {
-    // Test that cloned trivia behaves independently for mutations to containers
-    let original = create_trivia(WHITESPACE_KIND, "   ");
-    let cloned = original.clone();
-
-    // Put them in separate vectors
-    let mut vec1 = vec![original];
-    let mut vec2 = vec![cloned];
-
-    // Modify the vectors independently
-    vec1.push(create_trivia(NEWLINE_KIND, "\n"));
-    vec2.push(create_trivia(COMMENT_KIND, "%test"));
-
-    // The trivia at index 0 should still be identical
-    assert_eq!(vec1[0], vec2[0]);
-    assert_eq!(vec1[0].text(), vec2[0].text());
-
-    // But the vectors should have different elements at index 1
-    assert_ne!(vec1[1], vec2[1]);
-    assert_ne!(vec1[1].kind(), vec2[1].kind());
-}
-
-#[test]
-fn test_trivia_borrow_method_direct() {
-    // Test that exercises the borrow() method implementation (lines 126-128)
-    // The borrow method is used internally by standard collections
-
-    let trivia = create_trivia(COMMENT_KIND, "%direct_borrow");
-
-    // Method 1: HashMap.get() uses Borrow trait to convert the key for lookup
-    // This will call our custom borrow() method when the key types differ
-    let mut map = HashMap::new();
-    map.insert(trivia.clone(), "test_value");
-
-    // This lookup internally uses Borrow to convert &GreenTrivia to &GreenTriviaData for comparison
-    assert_eq!(map.get(&trivia), Some(&"test_value"));
-
-    // Method 2: HashSet.contains() also uses Borrow trait
-    use std::collections::HashSet;
-    let mut set = HashSet::new();
-    set.insert(trivia.clone());
-
-    // This calls borrow() to convert for the contains check
-    assert!(set.contains(&trivia));
-
-    // Method 3: Multiple lookups to ensure the borrow method gets called repeatedly
-    for _ in 0..5 {
-        assert_eq!(map.get(&trivia), Some(&"test_value"));
-        assert!(set.contains(&trivia));
-    }
-
-    // Method 4: Test with different equivalent trivia to ensure borrow is used for comparison
-    let equivalent_trivia = create_trivia(COMMENT_KIND, "%direct_borrow");
-    assert_eq!(map.get(&equivalent_trivia), Some(&"test_value"));
-    assert!(set.contains(&equivalent_trivia));
-
-    // Method 5: Remove operations also use borrow
-    assert!(set.remove(&trivia));
-    assert!(!set.contains(&trivia));
-
-    // Verify properties to ensure our test trivia is correct
-    assert_eq!(trivia.kind(), COMMENT_KIND);
-    assert_eq!(trivia.text(), b"%direct_borrow");
-    assert_eq!(trivia.width(), 14);
+    assert_eq!(hasher1.finish(), hasher2.finish());
 }

@@ -79,8 +79,11 @@ applyTo: "**/*.rs,**/Cargo.toml"
 - When asked to write tests, ensure they cover:
   - Normal cases as per the PDF specification
   - Edge cases, including malformed PDFs and error conditions
-  - Performance benchmarks to validate efficiency
 - Check the code coverage by using `llvm-cov --lcov --output-path target/lcov.info`
+- Test cases naming convention should follow the pattern `test_<function>_when_<condition>_expect_<expected_result>`, where:
+  - `<function>` is the name of the function being tested
+  - `<condition>` describes the specific scenario being tested, optional
+  - `<expected_result>` describes the expected outcome of the test
 
 ## Future Considerations
 
