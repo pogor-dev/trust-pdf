@@ -12,3 +12,11 @@ repository.workspace = true
 
 # Non-local crates
 countme.workspace = true
+
+[dev-dependencies]
+iai-callgrind.workspace = true
+iai-callgrind-macros.workspace = true
+
+[[bench]]
+name = "green_trivia"
+harness = false

@@ -107,3 +107,24 @@ jobs:
           flags: unittests
           name: codecov-coverage
           fail_ci_if_error: true
+
+      - name: Install Bencher CLI
+        uses: bencherdev/bencher@main
+        if: matrix.os == 'ubuntu-latest'
+      - name: Track base branch benchmarks with Bencher
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          bencher run \
+          --project trust-pdf \
+          --token '${{ secrets.BENCHER_TOKEN }}' \
+          --branch main \
+          --testbed ubuntu-latest \
+          --threshold-measure latency \
+          --threshold-test t_test \
+          --threshold-max-sample-size 64 \
+          --threshold-upper-boundary 0.99 \
+          --thresholds-reset \
+          --err \
+          --adapter json \
+          --github-actions '${{ secrets.GITHUB_TOKEN }}' \
+          bencher mock
