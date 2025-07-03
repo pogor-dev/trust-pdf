@@ -15,7 +15,7 @@
 //!
 //! When you have dynamic data like `Arc<(Header, Vec<T>)>`, Rust stores this as a "fat pointer"
 //! - it needs to store both the memory address AND the length of the vector. This takes up more
-//! memory on the stack (16 bytes instead of 8 bytes on 64-bit systems).
+//!   memory on the stack (16 bytes instead of 8 bytes on 64-bit systems).
 //!
 //! ## How ThinArc Solves This
 //!
@@ -117,7 +117,7 @@ use std::{
     sync::atomic,
 };
 
-use crate::arc::{arc::Arc, arc_inner::ArcInner, header_slice::HeaderSlice, thin_to_thick};
+use crate::arc::{arc_inner::ArcInner, arc_main::Arc, header_slice::HeaderSlice, thin_to_thick};
 
 /// A memory-efficient reference-counted smart pointer for header + slice data.
 ///

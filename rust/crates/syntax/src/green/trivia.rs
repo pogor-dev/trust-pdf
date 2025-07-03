@@ -32,7 +32,7 @@ use std::{
 
 use crate::{
     SyntaxKind,
-    arc::{arc::Arc, thin_arc::ThinArc},
+    arc::{arc_main::Arc, thin_arc::ThinArc},
     green::{
         GreenTriviaRepr, GreenTriviaReprThin, trivia_data::GreenTriviaData,
         trivia_head::GreenTriviaHead,

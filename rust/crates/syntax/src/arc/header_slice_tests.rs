@@ -3,7 +3,7 @@
 //! These tests verify that HeaderSlice works correctly in combination with ThinArc
 //! and Arc. They test the basic structure, conversions, and various data types.
 
-use crate::arc::{arc::Arc, header_slice::HeaderSlice, thin_arc::ThinArc};
+use crate::arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc};
 
 /// Helper function to create a test HeaderSlice with ThinArc.
 ///

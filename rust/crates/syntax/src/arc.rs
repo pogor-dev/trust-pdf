@@ -52,15 +52,19 @@ use std::ptr;
 
 use crate::arc::{arc_inner::ArcInner, header_slice::HeaderSlice};
 
-pub(crate) mod arc;
+#[allow(dead_code)]
 pub(crate) mod arc_inner;
+#[allow(dead_code)]
+pub(crate) mod arc_main;
+#[allow(dead_code)]
 pub(crate) mod header_slice;
+#[allow(dead_code)]
 pub(crate) mod thin_arc;
 
 #[cfg(test)]
 mod arc_inner_tests;
 #[cfg(test)]
-mod arc_tests;
+mod arc_main_tests;
 #[cfg(test)]
 mod header_slice_tests;
 #[cfg(test)]

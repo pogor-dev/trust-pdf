@@ -1,5 +1,5 @@
-use crate::arc::arc::Arc;
 use crate::arc::arc_inner::ArcInner;
+use crate::arc::arc_main::Arc;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};

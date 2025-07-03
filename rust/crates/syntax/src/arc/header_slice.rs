@@ -55,7 +55,7 @@
 
 use std::{marker::PhantomData, mem, ops::Deref, ptr};
 
-use crate::arc::{arc::Arc, arc_inner::ArcInner, thin_arc::ThinArc, thin_to_thick};
+use crate::arc::{arc_inner::ArcInner, arc_main::Arc, thin_arc::ThinArc, thin_to_thick};
 
 /// A data structure that combines a header value with a dynamically-sized slice.
 ///
