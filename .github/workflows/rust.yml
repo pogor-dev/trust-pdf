@@ -113,6 +113,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
       - name: Track base branch benchmarks with Bencher
         if: matrix.os == 'ubuntu-latest'
+        working-directory: rust
         run: |
           bencher run \
           --project trust-pdf \

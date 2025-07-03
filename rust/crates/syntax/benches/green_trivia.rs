@@ -1,4 +1,4 @@
-use iai_callgrind::{library_benchmark_group, main};
+use iai_callgrind::{Dhat, LibraryBenchmarkConfig, library_benchmark_group, main};
 use iai_callgrind_macros::library_benchmark;
 use std::hint::black_box;
 
@@ -22,4 +22,7 @@ library_benchmark_group!(
     benchmarks = bench_fibonacci
 );
 
-main!(library_benchmark_groups = bench_fibonacci_group);
+main!(
+    config = LibraryBenchmarkConfig::default()
+        .tool(Dhat::default());
+    library_benchmark_groups = bench_fibonacci_group);
