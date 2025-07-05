@@ -1,5 +1,10 @@
-type Repr = HeaderSlice<GreenTokenHead, [u8]>;
-type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
+use std::{borrow::Borrow, fmt, ops, ptr};
+
+use crate::{
+    SyntaxKind,
+    arc::thin_arc::ThinArc,
+    green::{token_data::GreenTokenData, token_head::GreenTokenHead},
+};
 
 /// Leaf node in the immutable tree.
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -11,41 +16,37 @@ pub struct GreenToken {
 impl GreenToken {
     /// Creates new Token.
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenToken {}
-    #[inline]
-    pub(crate) fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {}
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenHead, u8>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {}
-}
-
-impl Borrow<GreenTokenData> for GreenToken {
-    #[inline]
-    fn borrow(&self) -> &GreenTokenData {
-        self
+    pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenToken {
+        let head = GreenTokenHead::new(kind);
+        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
+        GreenToken { ptr }
     }
+
+    // #[inline]
+    // pub(crate) fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {}
+
+    // #[inline]
+    // pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {}
 }
 
-impl fmt::Debug for GreenToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
-}
+// impl Borrow<GreenTokenData> for GreenToken {
+//     #[inline]
+//     fn borrow(&self) -> &GreenTokenData {
+//         self
+//     }
+// }
 
-impl fmt::Display for GreenToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
-}
+// impl fmt::Debug for GreenToken {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+// }
 
-impl ops::Deref for GreenToken {
-    type Target = GreenTokenData;
+// impl fmt::Display for GreenToken {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+// }
 
-    #[inline]
-    fn deref(&self) -> &GreenTokenData {}
-}
+// impl ops::Deref for GreenToken {
+//     type Target = GreenTokenData;
+
+//     #[inline]
+//     fn deref(&self) -> &GreenTokenData {}
+// }
