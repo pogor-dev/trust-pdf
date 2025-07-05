@@ -1,3 +1,7 @@
+---
+applyTo: "**/*.rs,**/Cargo.toml"
+---
+
 # GitHub Copilot Custom Instructions for PDF Compiler Project
 
 ## General Guidelines
@@ -55,6 +59,31 @@
 
 - Implement robust error recovery and resilience mechanisms to handle malformed or corrupted PDF files gracefully.
 - Ensure that the compiler can recover from errors and continue processing to the extent possible.
+
+## Documentation Standards
+
+- When adding code documentation, provide concise explanations that are accessible to developers without compiler design or PDF specification experience.
+- Include clear descriptions of:
+  - What each module, function, or field does in plain language
+  - Why specific design decisions were made
+  - How components relate to PDF specification sections (with ISO references)
+  - Examples of the data structures or operations being handled
+  - Context about how the component fits into the overall compiler pipeline
+- Use analogies and real-world examples where appropriate to explain complex concepts.
+- Document edge cases, error conditions, and their implications for PDF processing.
+- When the code changes, ensure that the documentation is updated to reflect the new state of the codebase.
+- When the function or module is complex, consider using diagrams or flowcharts to illustrate the logic and data flow.
+
+## Testing and Validation
+
+- When asked to write tests, ensure they cover:
+  - Normal cases as per the PDF specification
+  - Edge cases, including malformed PDFs and error conditions
+- Check the code coverage by using `llvm-cov --lcov --output-path target/lcov.info`
+- Test cases naming convention should follow the pattern `test_<function>_when_<condition>_expect_<expected_result>`, where:
+  - `<function>` is the name of the function being tested
+  - `<condition>` describes the specific scenario being tested, optional
+  - `<expected_result>` describes the expected outcome of the test
 
 ## Future Considerations
 

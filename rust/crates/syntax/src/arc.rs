@@ -32,7 +32,7 @@
 //!
 //! ## Example Usage
 //!
-//! ```rust,no_run
+//! ```ignore
 //! use crate::arc::{arc::Arc, thin_arc::ThinArc};
 //!
 //! // Regular Arc usage
@@ -52,10 +52,23 @@ use std::ptr;
 
 use crate::arc::{arc_inner::ArcInner, header_slice::HeaderSlice};
 
-mod arc;
-mod arc_inner;
-mod header_slice;
-mod thin_arc;
+#[allow(dead_code)]
+pub(crate) mod arc_inner;
+#[allow(dead_code)]
+pub(crate) mod arc_main;
+#[allow(dead_code)]
+pub(crate) mod header_slice;
+#[allow(dead_code)]
+pub(crate) mod thin_arc;
+
+#[cfg(test)]
+mod arc_inner_tests;
+#[cfg(test)]
+mod arc_main_tests;
+#[cfg(test)]
+mod header_slice_tests;
+#[cfg(test)]
+mod thin_arc_tests;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///

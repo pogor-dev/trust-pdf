@@ -5,3 +5,9 @@
 Rust library for reading, viewing, editing and validating the PDF files.
 
 Currently in development.
+
+## Run test coverate
+
+```sh
+cargo llvm-cov --html --open
+```
