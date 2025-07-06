@@ -9,5 +9,5 @@ Currently in development.
 ## Run test coverate
 
 ```sh
-cargo llvm-cov --html --open
+cargo llvm-cov --ignore-filename-regex=".*_tests.rs" --html --open
 ```

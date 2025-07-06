@@ -17,11 +17,25 @@ lexer = { path = "./crates/lexer", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 
 # Non-local crates
-countme = "3.0.1"
 cargo-deny = "0.18.3"
-iai-callgrind = "0.15.1"
+countme = "3.0.1"
+iai-callgrind = "0.15.2"
 iai-callgrind-macros = "0.6.0"
+
+# Optimized profiles for faster builds
+[profile.dev]
+# Faster debug builds
+debug = 1
+incremental = true
+codegen-units = 256
+
+[profile.test]
+# Optimized test builds
+debug = 1
+incremental = true
+codegen-units = 256
 
 [profile.bench]
 debug = true
 strip = false
+incremental = true

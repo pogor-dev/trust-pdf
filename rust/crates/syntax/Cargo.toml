@@ -13,10 +13,18 @@ repository.workspace = true
 # Non-local crates
 countme.workspace = true
 
+# Conditional benchmark dependencies (only when bench feature is enabled)
+iai-callgrind = { workspace = true, optional = true }
+iai-callgrind-macros = { workspace = true, optional = true }
+
 [dev-dependencies]
-iai-callgrind.workspace = true
-iai-callgrind-macros.workspace = true
+# Unit test dependencies go here (lightweight only)
+
+[features]
+# Feature flag for benchmark dependencies
+bench = ["dep:iai-callgrind", "dep:iai-callgrind-macros"]
 
 [[bench]]
 name = "green_trivia"
 harness = false
+required-features = ["bench"]
