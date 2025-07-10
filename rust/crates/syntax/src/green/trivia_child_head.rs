@@ -26,7 +26,7 @@
 
 use countme::Count;
 
-use crate::{SyntaxKind, green::trivia::GreenTrivia};
+use crate::{SyntaxKind, green::trivia_child::GreenTriviaChild};
 
 /// Header metadata for PDF trivia elements with memory management tracking.
 ///
@@ -49,7 +49,7 @@ use crate::{SyntaxKind, green::trivia::GreenTrivia};
 /// "%comment"   →   GreenTriviaHead { kind: Comment, .. }
 /// ```
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct GreenTriviaHead {
+pub(crate) struct GreenTriviaChildHead {
     /// Semantic classification of the trivia element.
     ///
     /// Determines how this trivia should be interpreted during PDF processing:
@@ -74,10 +74,10 @@ pub(crate) struct GreenTriviaHead {
     /// Release builds:   Zero-cost abstraction (likely optimized away)
     /// Testing:          Detect memory leaks in trivia handling
     /// ```
-    _c: Count<GreenTrivia>,
+    _c: Count<GreenTriviaChild>,
 }
 
-impl GreenTriviaHead {
+impl GreenTriviaChildHead {
     /// Creates a new trivia header with the specified PDF trivia classification.
     ///
     /// Initializes both the semantic kind and memory tracking for a new trivia element.

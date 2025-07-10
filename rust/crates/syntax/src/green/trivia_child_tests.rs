@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::{SyntaxKind, green::trivia::GreenTrivia};
+use crate::{SyntaxKind, green::trivia_child::GreenTriviaChild};
 
 // Test constants for different PDF trivia types
 const NEWLINE_KIND: SyntaxKind = SyntaxKind(1);
@@ -13,8 +13,8 @@ const WHITESPACE_KIND: SyntaxKind = SyntaxKind(2);
 const COMMENT_KIND: SyntaxKind = SyntaxKind(3);
 
 /// Helper function to create test trivia with different content types
-fn create_trivia(kind: SyntaxKind, text: &str) -> GreenTrivia {
-    GreenTrivia::new(kind, text.as_bytes())
+fn create_trivia(kind: SyntaxKind, text: &str) -> GreenTriviaChild {
+    GreenTriviaChild::new(kind, text.as_bytes())
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn test_trivia_zero_cost_conversions_when_deref_expect_direct_access() {
 #[test]
 fn test_trivia_hash_map_when_caching_expect_successful_integration() {
     // Test using trivia in hash maps for deduplication/caching
-    let mut trivia_cache: HashMap<GreenTrivia, u32> = HashMap::new();
+    let mut trivia_cache: HashMap<GreenTriviaChild, u32> = HashMap::new();
 
     let space = create_trivia(WHITESPACE_KIND, " ");
     let newline = create_trivia(NEWLINE_KIND, "\n");
@@ -236,10 +236,10 @@ fn test_trivia_raw_pointer_when_converting_expect_preserved_data() {
 
     // Convert to raw pointer (this should exercise into_raw)
     let original_clone = original.clone(); // Keep one reference alive
-    let raw_ptr = GreenTrivia::into_raw(original);
+    let raw_ptr = GreenTriviaChild::into_raw(original);
 
     // Convert back from raw pointer (this should exercise from_raw)
-    let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
+    let recovered = unsafe { GreenTriviaChild::from_raw(raw_ptr) };
 
     // Verify recovered trivia has identical properties
     assert_eq!(recovered.kind(), COMMENT_KIND);
@@ -263,14 +263,14 @@ fn test_trivia_raw_pointer_when_memory_safety_expect_preserved_integrity() {
         .into_iter()
         .map(|trivia| {
             let width = trivia.width();
-            let ptr = GreenTrivia::into_raw(trivia);
+            let ptr = GreenTriviaChild::into_raw(trivia);
             (ptr, width)
         })
         .collect();
 
     // Convert back and verify all data is intact
     for (raw_ptr, expected_width) in raw_ptrs {
-        let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
+        let recovered = unsafe { GreenTriviaChild::from_raw(raw_ptr) };
         assert_eq!(recovered.kind(), WHITESPACE_KIND);
         assert_eq!(recovered.width(), expected_width);
 

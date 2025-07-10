@@ -34,8 +34,8 @@ use crate::{
     SyntaxKind,
     arc::{arc_main::Arc, thin_arc::ThinArc},
     green::{
-        GreenTriviaRepr, GreenTriviaReprThin, trivia_data::GreenTriviaData,
-        trivia_head::GreenTriviaHead,
+        GreenTriviaRepr, GreenTriviaReprThin, trivia_child_data::GreenTriviaChildData,
+        trivia_child_head::GreenTriviaChildHead,
     },
 };
 
@@ -49,12 +49,12 @@ use crate::{
 /// ```
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
-pub(crate) struct GreenTrivia {
+pub(crate) struct GreenTriviaChild {
     /// Single allocation for metadata + text content
-    ptr: ThinArc<GreenTriviaHead, u8>,
+    ptr: ThinArc<GreenTriviaChildHead, u8>,
 }
 
-impl GreenTrivia {
+impl GreenTriviaChild {
     /// Creates PDF trivia preserving exact bytes for round-trip fidelity.
     ///
     /// ```text
@@ -67,10 +67,10 @@ impl GreenTrivia {
     /// └─────────────┴────────┘
     /// ```
     #[inline]
-    pub(crate) fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
-        let head = GreenTriviaHead::new(kind);
+    pub(crate) fn new(kind: SyntaxKind, text: &[u8]) -> GreenTriviaChild {
+        let head = GreenTriviaChildHead::new(kind);
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
-        GreenTrivia { ptr }
+        GreenTriviaChild { ptr }
     }
 
     /// Transfers ownership to raw pointer for FFI/custom allocators.
@@ -87,23 +87,23 @@ impl GreenTrivia {
     ///
     /// Caller must eventually free the returned pointer.
     #[inline]
-    pub(crate) fn into_raw(this: GreenTrivia) -> ptr::NonNull<GreenTriviaData> {
+    pub(crate) fn into_raw(this: GreenTriviaChild) -> ptr::NonNull<GreenTriviaChildData> {
         let green = ManuallyDrop::new(this);
-        let green: &GreenTriviaData = &green;
+        let green: &GreenTriviaChildData = &green;
         ptr::NonNull::from(green)
     }
 
     #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaChildData>) -> GreenTriviaChild {
         let arc = unsafe {
             let arc = Arc::from_raw(&ptr.as_ref().data as *const GreenTriviaReprThin);
-            mem::transmute::<Arc<GreenTriviaReprThin>, ThinArc<GreenTriviaHead, u8>>(arc)
+            mem::transmute::<Arc<GreenTriviaReprThin>, ThinArc<GreenTriviaChildHead, u8>>(arc)
         };
-        GreenTrivia { ptr: arc }
+        GreenTriviaChild { ptr: arc }
     }
 }
 
-impl Borrow<GreenTriviaData> for GreenTrivia {
+impl Borrow<GreenTriviaChildData> for GreenTriviaChild {
     /// Borrows trivia data for collections and generic operations.
     ///
     /// Enables using `GreenTrivia` in hash maps/sets with `GreenTriviaData` keys,
@@ -122,13 +122,13 @@ impl Borrow<GreenTriviaData> for GreenTrivia {
     ///
     /// Implementation leverages `Deref` coercion for zero-cost conversion.
     #[inline]
-    fn borrow(&self) -> &GreenTriviaData {
+    fn borrow(&self) -> &GreenTriviaChildData {
         self
     }
 }
 
-impl ops::Deref for GreenTrivia {
-    type Target = GreenTriviaData;
+impl ops::Deref for GreenTriviaChild {
+    type Target = GreenTriviaChildData;
 
     /// Zero-cost conversion via memory layout reinterpretation.
     ///
@@ -146,7 +146,7 @@ impl ops::Deref for GreenTrivia {
     /// Same bytes, different type views
     /// ```
     #[inline]
-    fn deref(&self) -> &GreenTriviaData {
+    fn deref(&self) -> &GreenTriviaChildData {
         unsafe {
             // Step 1: Get full memory representation
             let repr: &GreenTriviaRepr = &self.ptr;
@@ -160,12 +160,12 @@ impl ops::Deref for GreenTrivia {
                 &*(repr as *const GreenTriviaRepr as *const GreenTriviaReprThin);
 
             // Step 3: Final API view (same bytes, API methods)
-            mem::transmute::<&GreenTriviaReprThin, &GreenTriviaData>(repr)
+            mem::transmute::<&GreenTriviaReprThin, &GreenTriviaChildData>(repr)
         }
     }
 }
 
-impl std::fmt::Debug for GreenTrivia {
+impl std::fmt::Debug for GreenTriviaChild {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Use the Deref trait to access GreenTriviaData and its Debug impl
         (**self).fmt(f)

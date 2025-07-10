@@ -7,7 +7,7 @@ use std::{fmt, mem::ManuallyDrop, ptr};
 
 use crate::{
     SyntaxKind,
-    green::{GreenTriviaReprThin, trivia::GreenTrivia},
+    green::{GreenTriviaReprThin, trivia_child::GreenTriviaChild},
 };
 
 /// API interface for accessing PDF trivia data with zero-cost operations.
@@ -45,12 +45,12 @@ use crate::{
 /// Comment:     Header{kind=comment, len=8}    Body{"%hello"}
 /// ```
 #[repr(transparent)]
-pub(crate) struct GreenTriviaData {
+pub(crate) struct GreenTriviaChildData {
     /// Underlying thin representation providing access to both header and body
     pub(crate) data: GreenTriviaReprThin,
 }
 
-impl GreenTriviaData {
+impl GreenTriviaChildData {
     /// Returns the semantic kind of this trivia element.
     ///
     /// Accesses the **header** portion of the trivia to determine its PDF-specific
@@ -141,7 +141,7 @@ impl GreenTriviaData {
     }
 }
 
-impl PartialEq for GreenTriviaData {
+impl PartialEq for GreenTriviaChildData {
     /// Compares trivia for semantic equality (kind + content).
     ///
     /// Essential for PDF trivia deduplication, caching, and incremental updates.
@@ -170,8 +170,8 @@ impl PartialEq for GreenTriviaData {
     }
 }
 
-impl ToOwned for GreenTriviaData {
-    type Owned = GreenTrivia;
+impl ToOwned for GreenTriviaChildData {
+    type Owned = GreenTriviaChild;
 
     /// Converts borrowed trivia to owned with reference counting (zero-copy).
     ///
@@ -193,14 +193,14 @@ impl ToOwned for GreenTriviaData {
     ///
     /// Implementation: Reconstruct from raw pointer → wrap in `ManuallyDrop` → clone reference count.
     #[inline]
-    fn to_owned(&self) -> GreenTrivia {
-        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
+    fn to_owned(&self) -> GreenTriviaChild {
+        let green = unsafe { GreenTriviaChild::from_raw(ptr::NonNull::from(self)) };
         let green = ManuallyDrop::new(green);
-        GreenTrivia::clone(&green)
+        GreenTriviaChild::clone(&green)
     }
 }
 
-impl fmt::Debug for GreenTriviaData {
+impl fmt::Debug for GreenTriviaChildData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTrivia")
             .field("kind", &self.kind())
@@ -209,7 +209,7 @@ impl fmt::Debug for GreenTriviaData {
     }
 }
 
-impl fmt::Display for GreenTriviaData {
+impl fmt::Display for GreenTriviaChildData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.text())
     }
