@@ -29,7 +29,10 @@
 
 use countme::Count;
 
-use crate::{SyntaxKind, green::token::GreenToken};
+use crate::{
+    SyntaxKind,
+    green::{token::GreenToken, trivia::GreenTrivia},
+};
 
 /// Header metadata for PDF token elements with memory management tracking.
 ///
@@ -71,6 +74,9 @@ pub(crate) struct GreenTokenHead {
     /// This field drives parsing decisions, semantic analysis, and serialization
     /// behavior throughout the compiler pipeline.
     pub(crate) kind: SyntaxKind,
+
+    pub(crate) leading: GreenTrivia,
+    pub(crate) trailing: GreenTrivia,
 
     /// Memory allocation tracking for development and debugging.
     ///
@@ -137,9 +143,11 @@ impl GreenTokenHead {
     /// Token Construction:                                
     /// Header + content bytes → ThinArc allocation → GreenToken
     /// ```
-    pub(crate) fn new(kind: SyntaxKind) -> Self {
+    pub(crate) fn new(kind: SyntaxKind, leading: GreenTrivia, trailing: GreenTrivia) -> Self {
         Self {
             kind,
+            leading,
+            trailing,
             _c: Count::new(),
         }
     }

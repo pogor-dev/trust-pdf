@@ -1,13 +1,19 @@
-use crate::{SyntaxKind, green::token::GreenToken};
+use crate::{
+    SyntaxKind,
+    green::{token::GreenToken, trivia::GreenTrivia},
+};
 
 // Test constants for different PDF token types
 const STRING_KIND: SyntaxKind = SyntaxKind(1);
 const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
 const NULL_KIND: SyntaxKind = SyntaxKind(3);
+const WHITESPACE_KIND: SyntaxKind = SyntaxKind(4);
 
 /// Helper function to create test tokens with different content types
 fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
-    GreenToken::new(kind, text.as_bytes())
+    let leading = GreenTrivia::new(WHITESPACE_KIND, b" ");
+    let trailing = leading.clone();
+    GreenToken::new(kind, text.as_bytes(), leading, trailing)
 }
 
 #[test]

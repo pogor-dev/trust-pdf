@@ -37,6 +37,7 @@ use crate::{
     arc::{arc_main::Arc, thin_arc::ThinArc},
     green::{
         GreenTokenRepr, GreenTokenReprThin, token_data::GreenTokenData, token_head::GreenTokenHead,
+        trivia::GreenTrivia,
     },
 };
 
@@ -107,8 +108,13 @@ impl GreenToken {
     /// Essential for preserving PDF parsing fidelity where exact whitespace,
     /// capitalization, and byte sequences determine semantic meaning.
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenToken {
-        let head = GreenTokenHead::new(kind);
+    pub fn new(
+        kind: SyntaxKind,
+        text: &[u8],
+        leading: GreenTrivia,
+        trailing: GreenTrivia,
+    ) -> GreenToken {
+        let head = GreenTokenHead::new(kind, leading, trailing);
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenToken { ptr }
     }
