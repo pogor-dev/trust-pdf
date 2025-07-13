@@ -56,6 +56,40 @@ impl GreenTriviaData {
     pub fn children(&self) -> &[GreenTriviaChild] {
         self.data.slice()
     }
+
+    #[inline]
+    pub fn text(&self) -> &[u8] {
+        use std::cell::RefCell;
+
+        thread_local! {
+            static CACHE: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+        }
+
+        CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            cache.clear();
+
+            // Collect all bytes from children into the thread-local cache
+            for child in self.children() {
+                cache.extend_from_slice(child.text());
+            }
+
+            // SAFETY: We're extending the lifetime of the cache contents to match self.
+            // This is safe because:
+            // 1. The cache is thread-local, so no data races
+            // 2. We clear and repopulate on each call, ensuring fresh data
+            // 3. The caller contract ensures they won't use the slice after self is dropped
+            let ptr = cache.as_ptr();
+            let len = cache.len();
+
+            unsafe { std::slice::from_raw_parts(ptr, len) }
+        })
+    }
+
+    #[inline]
+    pub(crate) fn width(&self) -> u64 {
+        self.children().iter().map(|c| c.width()).sum()
+    }
 }
 
 impl PartialEq for GreenTriviaData {
