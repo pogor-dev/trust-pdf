@@ -37,7 +37,7 @@ use crate::{
     arc::{arc_main::Arc, thin_arc::ThinArc},
     green::{
         GreenTokenRepr, GreenTokenReprThin, token_data::GreenTokenData, token_head::GreenTokenHead,
-        trivia_child::GreenTriviaChild,
+        trivia::GreenTrivia,
     },
 };
 
@@ -111,8 +111,8 @@ impl GreenToken {
     pub fn new(
         kind: SyntaxKind,
         text: &[u8],
-        leading: GreenTriviaChild,
-        trailing: GreenTriviaChild,
+        leading: GreenTrivia,
+        trailing: GreenTrivia,
     ) -> GreenToken {
         let head = GreenTokenHead::new(kind, leading, trailing);
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());

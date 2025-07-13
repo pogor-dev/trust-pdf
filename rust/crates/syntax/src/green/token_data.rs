@@ -39,7 +39,7 @@ use std::{fmt, mem::ManuallyDrop, ptr};
 
 use crate::{
     SyntaxKind,
-    green::{GreenTokenReprThin, token::GreenToken, trivia_child::GreenTriviaChild},
+    green::{GreenTokenReprThin, token::GreenToken, trivia::GreenTrivia},
 };
 
 /// API interface for accessing PDF token data with zero-cost operations.
@@ -201,12 +201,12 @@ impl GreenTokenData {
     }
 
     #[inline]
-    pub fn leading_trivia(&self) -> &GreenTriviaChild {
+    pub fn leading_trivia(&self) -> &GreenTrivia {
         &self.data.header.leading
     }
 
     #[inline]
-    pub fn trailing_trivia(&self) -> &GreenTriviaChild {
+    pub fn trailing_trivia(&self) -> &GreenTrivia {
         &self.data.header.trailing
     }
 }
