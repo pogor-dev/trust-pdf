@@ -58,7 +58,7 @@ use crate::{
 /// PDF Example:        Trivia Collection Elements:
 /// %header comment     ┌─ Comment("%header comment")
 ///                     ├─ Newline("\n")
-/// 1 0 obj            ├─ Whitespace("")
+/// 1 0 obj             ├─ Whitespace("")
 ///                     └─ (continues to next token)
 /// ```
 #[derive(PartialEq, Eq, Hash, Clone)]
