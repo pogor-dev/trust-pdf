@@ -7,7 +7,7 @@ use std::{fmt, mem::ManuallyDrop, ptr};
 
 use crate::{
     SyntaxKind,
-    green::{GreenTriviaReprThin, trivia_child::GreenTriviaChild},
+    green::{GreenTriviaChildReprThin, trivia_child::GreenTriviaChild},
 };
 
 /// API interface for accessing PDF trivia data with zero-cost operations.
@@ -47,7 +47,7 @@ use crate::{
 #[repr(transparent)]
 pub(crate) struct GreenTriviaChildData {
     /// Underlying thin representation providing access to both header and body
-    pub(crate) data: GreenTriviaReprThin,
+    pub(crate) data: GreenTriviaChildReprThin,
 }
 
 impl GreenTriviaChildData {

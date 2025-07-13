@@ -34,7 +34,7 @@ use crate::{
     SyntaxKind,
     arc::{arc_main::Arc, thin_arc::ThinArc},
     green::{
-        GreenTriviaRepr, GreenTriviaReprThin, trivia_child_data::GreenTriviaChildData,
+        GreenTriviaChildRepr, GreenTriviaChildReprThin, trivia_child_data::GreenTriviaChildData,
         trivia_child_head::GreenTriviaChildHead,
     },
 };
@@ -96,8 +96,8 @@ impl GreenTriviaChild {
     #[inline]
     pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaChildData>) -> GreenTriviaChild {
         let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const GreenTriviaReprThin);
-            mem::transmute::<Arc<GreenTriviaReprThin>, ThinArc<GreenTriviaChildHead, u8>>(arc)
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const GreenTriviaChildReprThin);
+            mem::transmute::<Arc<GreenTriviaChildReprThin>, ThinArc<GreenTriviaChildHead, u8>>(arc)
         };
         GreenTriviaChild { ptr: arc }
     }
@@ -149,18 +149,18 @@ impl ops::Deref for GreenTriviaChild {
     fn deref(&self) -> &GreenTriviaChildData {
         unsafe {
             // Step 1: Get full memory representation
-            let repr: &GreenTriviaRepr = &self.ptr;
+            let repr: &GreenTriviaChildRepr = &self.ptr;
 
             // Step 2: Normalize layout (remove metadata)
             //   &*(ptr as *const A as *const B) pattern:
             //   - Convert to raw pointer
             //   - Reinterpret type
             //   - Dereference and re-borrow
-            let repr: &GreenTriviaReprThin =
-                &*(repr as *const GreenTriviaRepr as *const GreenTriviaReprThin);
+            let repr: &GreenTriviaChildReprThin =
+                &*(repr as *const GreenTriviaChildRepr as *const GreenTriviaChildReprThin);
 
             // Step 3: Final API view (same bytes, API methods)
-            mem::transmute::<&GreenTriviaReprThin, &GreenTriviaChildData>(repr)
+            mem::transmute::<&GreenTriviaChildReprThin, &GreenTriviaChildData>(repr)
         }
     }
 }
