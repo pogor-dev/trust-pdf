@@ -163,19 +163,6 @@ impl GreenTokenData {
         unsafe { std::slice::from_raw_parts(slice.as_ptr(), slice.len()) }
     }
 
-    #[inline]
-    pub fn full_text(&self) -> &[u8] {
-        // text + trivia
-        let text = self.text();
-        let leading = self.leading_trivia().text();
-        let trailing = self.trailing_trivia().text();
-        let mut full_text = Vec::with_capacity(text.len() + leading.len() + trailing.len());
-        full_text.extend_from_slice(leading);
-        full_text.extend_from_slice(text);
-        full_text.extend_from_slice(trailing);
-        unsafe { std::slice::from_raw_parts(full_text.as_ptr(), full_text.len()) }
-    }
-
     /// Returns the byte width (length) of this token element.
     ///
     /// Computed from the **body** length for consistency with actual content.
