@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::{
     SyntaxKind,
-    green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild},
+    green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild, trivia_head::GreenTriviaHead},
 };
 
 // Test constants for different PDF trivia types
@@ -429,4 +429,10 @@ fn test_trivia_pdf_specific_when_content_stream_spacing_expect_space_separation(
         assert_eq!(child.kind(), WHITESPACE_KIND);
         assert_eq!(child.text(), b" ");
     }
+}
+
+#[test]
+fn sizes() {
+    assert_eq!(0, std::mem::size_of::<GreenTriviaHead>());
+    assert_eq!(8, std::mem::size_of::<GreenTrivia>());
 }

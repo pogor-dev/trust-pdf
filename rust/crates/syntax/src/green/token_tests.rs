@@ -1,6 +1,6 @@
 use crate::{
     SyntaxKind,
-    green::{token::GreenToken, trivia::GreenTrivia},
+    green::{token::GreenToken, token_head::GreenTokenHead, trivia::GreenTrivia},
 };
 
 // Test constants for different PDF token types
@@ -402,4 +402,10 @@ fn test_green_token_display_when_formatting_expect_delegated_output() {
         number_display, "42.5",
         "GreenToken display should show number content via delegation"
     );
+}
+
+#[test]
+fn sizes() {
+    assert_eq!(24, std::mem::size_of::<GreenTokenHead>());
+    assert_eq!(8, std::mem::size_of::<GreenToken>());
 }

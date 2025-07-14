@@ -5,7 +5,10 @@
 
 use std::collections::HashMap;
 
-use crate::{SyntaxKind, green::trivia_child::GreenTriviaChild};
+use crate::{
+    SyntaxKind,
+    green::{trivia_child::GreenTriviaChild, trivia_child_head::GreenTriviaChildHead},
+};
 
 // Test constants for different PDF trivia types
 const NEWLINE_KIND: SyntaxKind = SyntaxKind(1);
@@ -361,4 +364,10 @@ fn test_trivia_hash_consistency_when_equal_expect_same_hash() {
     trivia2.hash(&mut hasher2);
 
     assert_eq!(hasher1.finish(), hasher2.finish());
+}
+
+#[test]
+fn sizes() {
+    assert_eq!(2, std::mem::size_of::<GreenTriviaChildHead>());
+    assert_eq!(8, std::mem::size_of::<GreenTriviaChild>());
 }
