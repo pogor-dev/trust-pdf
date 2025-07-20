@@ -57,11 +57,36 @@ impl GreenTriviaData {
         self.data.slice()
     }
 
+    /// Returns the total byte width of all trivia children in this collection.
+    ///
+    /// Calculates the cumulative width by summing the individual widths of all
+    /// child trivia elements. Essential for PDF layout calculations and memory
+    /// allocation planning.
+    ///
+    /// ## Example Usage
+    ///
+    /// ```text
+    /// PDF trivia: "%comment\n  "
+    /// Children:   [Comment(8), Newline(1), Whitespace(2)]
+    /// Total width: 8 + 1 + 2 = 11 bytes
+    /// ```
     #[inline]
     pub(crate) fn width(&self) -> u64 {
         self.children().iter().map(|c| c.width()).sum()
     }
 
+    /// Returns the concatenated text content of all trivia children as a String.
+    ///
+    /// Efficiently combines all child trivia text into a single String using
+    /// pre-calculated capacity to avoid reallocations. Critical for PDF round-trip
+    /// fidelity where exact trivia preservation is required.
+    ///
+    /// ## Example
+    ///
+    /// ```text
+    /// Input children: [Comment("%PDF-1.7"), Newline("\n"), Whitespace("  ")]
+    /// Output string: "%PDF-1.7\n  "
+    /// ```
     #[inline]
     pub(crate) fn text(&self) -> String {
         let total_width = self.width() as usize;
