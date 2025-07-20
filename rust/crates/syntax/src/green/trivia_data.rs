@@ -58,37 +58,22 @@ impl GreenTriviaData {
     }
 
     #[inline]
-    pub fn text(&self) -> &[u8] {
-        use std::cell::RefCell;
-
-        thread_local! {
-            static CACHE: RefCell<Vec<u8>> = RefCell::new(Vec::new());
-        }
-
-        CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            cache.clear();
-
-            // Collect all bytes from children into the thread-local cache
-            for child in self.children() {
-                cache.extend_from_slice(child.text());
-            }
-
-            // SAFETY: We're extending the lifetime of the cache contents to match self.
-            // This is safe because:
-            // 1. The cache is thread-local, so no data races
-            // 2. We clear and repopulate on each call, ensuring fresh data
-            // 3. The caller contract ensures they won't use the slice after self is dropped
-            let ptr = cache.as_ptr();
-            let len = cache.len();
-
-            unsafe { std::slice::from_raw_parts(ptr, len) }
-        })
+    pub(crate) fn width(&self) -> u64 {
+        self.children().iter().map(|c| c.width()).sum()
     }
 
     #[inline]
-    pub(crate) fn width(&self) -> u64 {
-        self.children().iter().map(|c| c.width()).sum()
+    pub(crate) fn text(&self) -> String {
+        let total_width = self.width() as usize;
+        let mut result = String::with_capacity(total_width);
+
+        for child in self.children() {
+            // SAFETY: We know the total width, so this won't reallocate
+            unsafe {
+                result.as_mut_vec().extend_from_slice(child.text());
+            }
+        }
+        result
     }
 }
 

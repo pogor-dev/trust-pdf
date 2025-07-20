@@ -28,7 +28,7 @@ use crate::green::trivia::GreenTrivia;
 ///
 /// Contains reference counting information and other collection-level
 /// metadata needed for proper memory management and identity.
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub(crate) struct GreenTriviaHead {
     /// Reference counting integration for memory usage tracking.
     ///

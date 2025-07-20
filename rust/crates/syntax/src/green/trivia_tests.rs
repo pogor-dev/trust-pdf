@@ -432,6 +432,78 @@ fn test_trivia_pdf_specific_when_content_stream_spacing_expect_space_separation(
 }
 
 #[test]
+fn test_trivia_text_when_multiple_children_expect_concatenated_string() {
+    // Test the collection-level text() method that returns a String
+    let mixed_trivia = create_trivia_collection(vec![
+        (COMMENT_KIND, "%PDF-1.7"),
+        (NEWLINE_KIND, "\n"),
+        (WHITESPACE_KIND, "  "),
+        (COMMENT_KIND, "%header"),
+        (NEWLINE_KIND, "\n"),
+    ]);
+
+    let concatenated_text = mixed_trivia.text();
+
+    assert_eq!(concatenated_text, "%PDF-1.7\n  %header\n");
+    assert_eq!(concatenated_text.len(), 19); // Verify expected total length (8+1+2+7+1)
+}
+
+#[test]
+fn test_trivia_text_when_empty_collection_expect_empty_string() {
+    // Test text() method with empty trivia collection
+    let empty_trivia = GreenTrivia::new(Vec::<GreenTriviaChild>::new());
+
+    let text = empty_trivia.text();
+
+    assert_eq!(text, "");
+    assert_eq!(text.len(), 0);
+}
+
+#[test]
+fn test_trivia_text_when_single_child_expect_same_content() {
+    // Test text() method with single trivia child
+    let single_comment = create_trivia_collection(vec![(COMMENT_KIND, "%single comment")]);
+
+    let text = single_comment.text();
+
+    assert_eq!(text, "%single comment");
+    assert_eq!(text.len(), 15);
+}
+
+#[test]
+fn test_trivia_header_when_accessing_expect_valid_metadata() {
+    // Test the header() method that provides access to collection metadata
+    let test_trivia = create_trivia_collection(vec![
+        (COMMENT_KIND, "%test header"),
+        (NEWLINE_KIND, "\n"),
+        (WHITESPACE_KIND, "  "),
+    ]);
+
+    // Access the header
+    let header = test_trivia.header();
+
+    // Verify header exists and can be accessed
+    // Since GreenTriviaHead has a size of 0 (as verified in sizes test),
+    // we mainly verify that the method works and returns a valid reference
+    assert_eq!(std::mem::size_of_val(header), 0);
+
+    // Verify header equality with itself (tests PartialEq implementation)
+    assert_eq!(header, header);
+
+    // Test that different trivia collections have comparable headers
+    let another_trivia = create_trivia_collection(vec![
+        (WHITESPACE_KIND, " "),
+        (COMMENT_KIND, "%different content"),
+    ]);
+
+    let another_header = another_trivia.header();
+
+    // Headers should be equal since they only contain Count<GreenTrivia> which
+    // implements PartialEq and both are valid trivia collection headers
+    assert_eq!(header, another_header);
+}
+
+#[test]
 fn sizes() {
     assert_eq!(0, std::mem::size_of::<GreenTriviaHead>());
     assert_eq!(8, std::mem::size_of::<GreenTrivia>());
