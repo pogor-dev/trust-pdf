@@ -200,6 +200,23 @@ impl GreenTokenData {
         self.text().len() as u64
     }
 
+    /// Returns the total byte width including leading and trailing trivia.
+    ///
+    /// Calculates the complete width by summing the token's content width with
+    /// the widths of its associated leading and trailing trivia. Essential for
+    /// accurate layout calculations and position tracking during PDF processing.
+    ///
+    /// ## Width Calculation Formula
+    ///
+    /// ```text
+    /// full_width = token_width + leading_trivia_width + trailing_trivia_width
+    ///
+    /// Example:
+    /// Leading trivia: "  %comment\n"     (11 bytes)
+    /// Token content:  "/Type"            (6 bytes)  
+    /// Trailing trivia: " "               (1 byte)
+    /// Total width:    11 + 6 + 1 = 18 bytes
+    /// ```
     #[inline]
     pub(crate) fn full_width(&self) -> u64 {
         let leading = self.leading_trivia().width();
@@ -207,11 +224,71 @@ impl GreenTokenData {
         (self.width() + leading + trailing) as u64
     }
 
+    /// Returns the leading trivia associated with this token.
+    ///
+    /// Provides access to trivia elements (whitespace, comments, newlines) that
+    /// appear before this token in the source text. Leading trivia is semantically
+    /// attached to the token for PDF layout preservation and round-trip fidelity.
+    ///
+    /// ## Trivia Attachment Model
+    ///
+    /// ```text
+    /// PDF Source:    "  %comment\n  /Type  %trailing\n"
+    /// Tokenization:  [leading="  %comment\n  "][token="/Type"][trailing="  %trailing\n"]
+    ///                          ↑                      ↑                    ↑
+    ///                    leading_trivia()         token content      trailing_trivia()
+    /// ```
+    ///
+    /// ## Usage Examples
+    ///
+    /// ```text
+    /// Dictionary entry:
+    /// Leading: "  "           (indentation)
+    /// Token:   "/Pages"       (dictionary key)
+    ///
+    /// Object header:
+    /// Leading: "\n"           (line break)
+    /// Token:   "7"            (object number)
+    ///
+    /// Stream boundary:
+    /// Leading: "%comment\n  " (comment + spacing)
+    /// Token:   "stream"       (stream keyword)
+    /// ```
     #[inline]
     pub fn leading_trivia(&self) -> &GreenTrivia {
         &self.data.header.leading
     }
 
+    /// Returns the trailing trivia associated with this token.
+    ///
+    /// Provides access to trivia elements (whitespace, comments, newlines) that
+    /// appear after this token in the source text. Trailing trivia is semantically
+    /// attached to the token for PDF layout preservation and round-trip fidelity.
+    ///
+    /// ## Trivia Attachment Model
+    ///
+    /// ```text
+    /// PDF Source:    "/Type  %comment\n  /Pages"
+    /// Tokenization:  [token="/Type"][trailing="  %comment\n  "][token="/Pages"]
+    ///                        ↑                   ↑                      ↑
+    ///                  token content      trailing_trivia()       next token
+    /// ```
+    ///
+    /// ## Usage Examples
+    ///
+    /// ```text
+    /// Dictionary key-value:
+    /// Token:    "/Type"      (dictionary key)
+    /// Trailing: " "          (separator space)
+    ///
+    /// Object number:
+    /// Token:    "7"          (object number)
+    /// Trailing: " "          (space before generation)
+    ///
+    /// Array element:
+    /// Token:    "42"         (array element)
+    /// Trailing: "  %note\n"  (spacing + comment)
+    /// ```
     #[inline]
     pub fn trailing_trivia(&self) -> &GreenTrivia {
         &self.data.header.trailing
