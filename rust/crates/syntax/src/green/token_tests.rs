@@ -405,6 +405,29 @@ fn test_green_token_display_when_formatting_expect_delegated_output() {
 }
 
 #[test]
+fn test_full_width_when_token_with_trivia_expect_combined_width() {
+    use crate::green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild};
+
+    // Create trivia elements
+    let leading_comment = GreenTriviaChild::new(SyntaxKind(1), b"%leading comment");
+    let leading_newline = GreenTriviaChild::new(SyntaxKind(2), b"\n");
+    let leading_spaces = GreenTriviaChild::new(SyntaxKind(3), b"  ");
+
+    let trailing_space = GreenTriviaChild::new(SyntaxKind(3), b" ");
+    let trailing_comment = GreenTriviaChild::new(SyntaxKind(1), b"%trailing");
+
+    // Create trivia collections
+    let leading_trivia = GreenTrivia::new(vec![leading_comment, leading_newline, leading_spaces]);
+    let trailing_trivia = GreenTrivia::new(vec![trailing_space, trailing_comment]);
+
+    // Create token with trivia
+    let token = GreenToken::new(STRING_KIND, b"/Type", leading_trivia, trailing_trivia);
+
+    // Test full_width calculation
+    assert_eq!(token.full_width(), 34);
+}
+
+#[test]
 fn sizes() {
     assert_eq!(24, std::mem::size_of::<GreenTokenHead>());
     assert_eq!(8, std::mem::size_of::<GreenToken>());
