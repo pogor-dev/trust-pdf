@@ -196,8 +196,8 @@ impl GreenTokenData {
     /// "3.14159"    →   7 bytes
     /// ```
     #[inline]
-    pub(crate) fn width(&self) -> u64 {
-        self.text().len() as u64
+    pub(crate) fn width(&self) -> u32 {
+        self.text().len() as u32
     }
 
     /// Returns the total byte width including leading and trailing trivia.
@@ -218,10 +218,10 @@ impl GreenTokenData {
     /// Total width:    11 + 6 + 1 = 18 bytes
     /// ```
     #[inline]
-    pub(crate) fn full_width(&self) -> u64 {
+    pub(crate) fn full_width(&self) -> u32 {
         let leading = self.leading_trivia().width();
         let trailing = self.trailing_trivia().width();
-        (self.width() + leading + trailing) as u64
+        (self.width() + leading + trailing) as u32
     }
 
     /// Returns the leading trivia associated with this token.

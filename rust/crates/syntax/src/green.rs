@@ -1,11 +1,19 @@
 use crate::{
     arc::header_slice::HeaderSlice,
     green::{
-        token_head::GreenTokenHead, trivia_child::GreenTriviaChild,
-        trivia_child_head::GreenTriviaChildHead, trivia_head::GreenTriviaHead,
+        node_child::GreenChild, node_head::GreenNodeHead, token_head::GreenTokenHead,
+        trivia_child::GreenTriviaChild, trivia_child_head::GreenTriviaChildHead,
+        trivia_head::GreenTriviaHead,
     },
 };
 
+mod element;
+mod element_ref;
+mod node;
+mod node_child;
+mod node_children;
+mod node_data;
+mod node_head;
 #[allow(dead_code)]
 mod token;
 #[allow(dead_code)]
@@ -42,3 +50,5 @@ type GreenTriviaReprThin = HeaderSlice<GreenTriviaHead, [GreenTriviaChild; 0]>;
 type GreenTriviaRepr = HeaderSlice<GreenTriviaHead, [GreenTriviaChild]>;
 type GreenTokenRepr = HeaderSlice<GreenTokenHead, [u8]>;
 type GreenTokenReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
+type GreenNodeRepr = HeaderSlice<GreenNodeHead, [GreenChild]>;
+type GreenNodeReprThin = HeaderSlice<GreenNodeHead, [GreenChild; 0]>;

@@ -1,6 +1,19 @@
+use std::{
+    fmt,
+    ops::{self, Range},
+};
+
+use crate::{
+    SyntaxKind,
+    green::{
+        GreenNodeHead, GreenNodeReprThin, element::GreenElement, element_ref::GreenElementRef,
+        node::GreenNode, node_child::GreenChild, node_children::NodeChildren,
+    },
+};
+
 #[repr(transparent)]
 pub struct GreenNodeData {
-    data: ReprThin,
+    data: GreenNodeReprThin,
 }
 
 impl GreenNodeData {
@@ -16,11 +29,14 @@ impl GreenNodeData {
 
     /// Returns the length of the text covered by this node.
     #[inline]
-    pub fn text_len(&self) -> u32 {}
+    pub fn width(&self) -> u32 {}
+
+    #[inline]
+    pub fn full_width(&self) -> u32 {}
 
     /// Children of this node.
     #[inline]
-    pub fn children(&self) -> Children<'_> {}
+    pub fn children(&self) -> NodeChildren<'_> {}
 
     pub(crate) fn child_at_range(
         &self,

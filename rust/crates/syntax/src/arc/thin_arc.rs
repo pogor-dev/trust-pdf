@@ -59,8 +59,8 @@
 //! #[derive(Debug, Clone, PartialEq)]
 //! struct FileMetadata {
 //!     path: String,
-//!     size: u64,
-//!     modified: u64, // timestamp
+//!     size: u32,
+//!     modified: u32, // timestamp
 //! }
 //!
 //! // Our file cache entry
@@ -78,7 +78,7 @@
 //!
 //!     fn store_file(&mut self, path: String, contents: Vec<u8>) {
 //!         let metadata = FileMetadata {
-//!             size: contents.len() as u64,
+//!             size: contents.len() as u32,
 //!             modified: 1640995200, // example timestamp
 //!             path: path.clone(),
 //!         };
@@ -251,7 +251,7 @@ impl<H, T> ThinArc<H, T> {
     /// assert_eq!(data.slice(), &[10, 20, 30, 40]);
     ///
     /// // With different types
-    /// let metadata = ("file.txt", 1024u64); // (filename, size)
+    /// let metadata = ("file.txt", 1024u32); // (filename, size)
     /// let bytes = vec![0x48, 0x65, 0x6c, 0x6c, 0x6f]; // "Hello"
     /// let file = ThinArc::from_header_and_iter(metadata, bytes.into_iter());
     /// ```

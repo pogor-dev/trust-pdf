@@ -76,7 +76,7 @@ fn test_width_when_empty_token_expect_zero() {
     let empty_token = create_token(NULL_KIND, "");
 
     assert_eq!(empty_token.width(), 0);
-    assert_eq!(empty_token.text().len() as u64, empty_token.width());
+    assert_eq!(empty_token.text().len() as u32, empty_token.width());
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn test_width_when_unicode_content_expect_byte_count() {
 
     // "café" has 4 Unicode characters but 5 UTF-8 bytes (é = 2 bytes)
     assert_eq!(unicode_token.width(), 5);
-    assert_eq!(unicode_token.text().len() as u64, unicode_token.width());
+    assert_eq!(unicode_token.text().len() as u32, unicode_token.width());
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn test_width_when_large_content_expect_accurate_count() {
     let large_token = create_token(STRING_KIND, &large_content);
 
     assert_eq!(large_token.width(), 1000);
-    assert_eq!(large_token.text().len() as u64, large_token.width());
+    assert_eq!(large_token.text().len() as u32, large_token.width());
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn test_width_when_consistency_with_text_length_expect_match() {
     for (content, expected_width) in test_cases {
         let token = create_token(STRING_KIND, content);
         assert_eq!(token.width(), expected_width);
-        assert_eq!(token.width(), token.text().len() as u64);
+        assert_eq!(token.width(), token.text().len() as u32);
     }
 }
 

@@ -71,7 +71,7 @@ impl GreenTriviaData {
     /// Total width: 8 + 1 + 2 = 11 bytes
     /// ```
     #[inline]
-    pub(crate) fn width(&self) -> u64 {
+    pub(crate) fn width(&self) -> u32 {
         self.children().iter().map(|c| c.width()).sum()
     }
 

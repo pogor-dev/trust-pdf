@@ -28,9 +28,9 @@ pub struct NodeCache {
     tokens: HashMap<NoHash<GreenToken>, ()>,
 }
 
-fn token_hash(token: &GreenTokenData) -> u64 {}
+fn token_hash(token: &GreenTokenData) -> u32 {}
 
-fn node_hash(node: &GreenNodeData) -> u64 {}
+fn node_hash(node: &GreenNodeData) -> u32 {}
 
 fn element_id(elem: GreenElementRef<'_>) -> *const () {}
 
@@ -38,10 +38,10 @@ impl NodeCache {
     pub(crate) fn node(
         &mut self,
         kind: SyntaxKind,
-        children: &mut Vec<(u64, GreenElement)>,
+        children: &mut Vec<(u32, GreenElement)>,
         first_child: usize,
-    ) -> (u64, GreenNode) {
+    ) -> (u32, GreenNode) {
     }
 
-    pub(crate) fn token(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenToken) {}
+    pub(crate) fn token(&mut self, kind: SyntaxKind, text: &[u8]) -> (u32, GreenToken) {}
 }

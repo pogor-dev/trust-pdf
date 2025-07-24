@@ -167,7 +167,7 @@ fn test_arc_inner_with_complex_types() {
     // Test with complex nested structures
     #[derive(Debug, PartialEq, Clone)]
     struct ComplexData {
-        id: u64,
+        id: u32,
         name: String,
         values: Vec<f64>,
         metadata: std::collections::HashMap<String, String>,

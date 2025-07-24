@@ -73,7 +73,7 @@ fn test_arc_memory_layout() {
 }
 #[test]
 fn test_arc_pointer_operations() {
-    let arc = create_test_arc(100u64);
+    let arc = create_test_arc(100u32);
 
     // Test that we can get raw pointer
     let raw_ptr = arc.pointer.as_ptr();
@@ -81,7 +81,7 @@ fn test_arc_pointer_operations() {
     // Test that we can access data through pointer
     unsafe {
         let inner_ref = &*raw_ptr;
-        assert_eq!(inner_ref.data, 100u64);
+        assert_eq!(inner_ref.data, 100u32);
         assert_eq!(inner_ref.count.load(Ordering::Relaxed), 1);
 
         // Arc automatically cleans up memory when dropped

@@ -136,8 +136,8 @@ impl GreenTriviaChildData {
     /// Could alternatively read from `header.len`, but using `text().len()`
     /// ensures consistency between header metadata and actual body content.
     #[inline]
-    pub(crate) fn width(&self) -> u64 {
-        self.text().len() as u64
+    pub(crate) fn width(&self) -> u32 {
+        self.text().len() as u32
     }
 }
 
