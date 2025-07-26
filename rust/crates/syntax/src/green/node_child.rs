@@ -31,7 +31,7 @@ impl GreenChild {
     }
 
     #[inline]
-    fn rel_range(&self) -> Range<u32> {
+    pub(crate) fn rel_range(&self) -> Range<u32> {
         let len = self.as_ref().full_width();
         let rel_offset = self.rel_offset();
         rel_offset..(rel_offset + len)
