@@ -108,7 +108,7 @@ impl GreenToken {
     /// Essential for preserving PDF parsing fidelity where exact whitespace,
     /// capitalization, and byte sequences determine semantic meaning.
     #[inline]
-    pub fn new(
+    pub(crate) fn new(
         kind: SyntaxKind,
         text: &[u8],
         leading: GreenTrivia,

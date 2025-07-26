@@ -53,7 +53,7 @@ impl GreenTriviaData {
     /// Children are stored contiguously in memory for efficient iteration.
     /// The slice provides zero-cost access to individual trivia elements.
     #[inline]
-    pub fn children(&self) -> &[GreenTriviaChild] {
+    pub(crate) fn children(&self) -> &[GreenTriviaChild] {
         self.data.slice()
     }
 
