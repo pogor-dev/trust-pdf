@@ -49,7 +49,7 @@ use crate::{SyntaxKind, green::trivia_child::GreenTriviaChild};
 /// "%comment"   →   GreenTriviaHead { kind: Comment, .. }
 /// ```
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct GreenTriviaChildHead {
+pub(super) struct GreenTriviaChildHead {
     /// Semantic classification of the trivia element.
     ///
     /// Determines how this trivia should be interpreted during PDF processing:
@@ -59,7 +59,7 @@ pub(crate) struct GreenTriviaChildHead {
     ///
     /// This field is the primary interface for trivia type discrimination
     /// throughout the compiler pipeline.
-    pub(crate) kind: SyntaxKind,
+    pub(super) kind: SyntaxKind,
 
     /// Memory allocation tracking for development and debugging.
     ///
@@ -100,7 +100,7 @@ impl GreenTriviaChildHead {
     ///
     /// The header is then combined with the actual trivia bytes to form
     /// a complete `GreenTrivia` instance.
-    pub(crate) fn new(kind: SyntaxKind) -> Self {
+    pub(super) fn new(kind: SyntaxKind) -> Self {
         Self {
             kind,
             _c: Count::new(),

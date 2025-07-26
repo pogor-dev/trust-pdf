@@ -14,23 +14,14 @@ mod node_child;
 mod node_children;
 mod node_data;
 mod node_head;
-#[allow(dead_code)]
 mod token;
-#[allow(dead_code)]
 mod token_data;
-#[allow(dead_code)]
 mod token_head;
-#[allow(dead_code)]
 mod trivia;
-#[allow(dead_code)]
 mod trivia_child;
-#[allow(dead_code)]
 mod trivia_child_data;
-#[allow(dead_code)]
 mod trivia_child_head;
-#[allow(dead_code)]
 mod trivia_data;
-#[allow(dead_code)]
 mod trivia_head;
 
 #[cfg(test)]

@@ -60,7 +60,7 @@ use crate::{
 /// "m"          →   GreenTokenHead { kind: Operator, .. }
 /// ```
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct GreenTokenHead {
+pub(super) struct GreenTokenHead {
     /// Semantic classification of the token element.
     ///
     /// Determines how this token should be interpreted during PDF processing:
@@ -73,10 +73,10 @@ pub(crate) struct GreenTokenHead {
     ///
     /// This field drives parsing decisions, semantic analysis, and serialization
     /// behavior throughout the compiler pipeline.
-    pub(crate) kind: SyntaxKind,
+    pub(super) kind: SyntaxKind,
 
-    pub(crate) leading: GreenTrivia,
-    pub(crate) trailing: GreenTrivia,
+    pub(super) leading: GreenTrivia,
+    pub(super) trailing: GreenTrivia,
 
     /// Memory allocation tracking for development and debugging.
     ///
@@ -143,7 +143,7 @@ impl GreenTokenHead {
     /// Token Construction:                                
     /// Header + content bytes → ThinArc allocation → GreenToken
     /// ```
-    pub(crate) fn new(kind: SyntaxKind, leading: GreenTrivia, trailing: GreenTrivia) -> Self {
+    pub(super) fn new(kind: SyntaxKind, leading: GreenTrivia, trailing: GreenTrivia) -> Self {
         Self {
             kind,
             leading,

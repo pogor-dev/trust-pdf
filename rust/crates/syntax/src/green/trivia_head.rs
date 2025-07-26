@@ -29,7 +29,7 @@ use crate::green::trivia::GreenTrivia;
 /// Contains reference counting information and other collection-level
 /// metadata needed for proper memory management and identity.
 #[derive(PartialEq, Eq, Hash, Debug)]
-pub(crate) struct GreenTriviaHead {
+pub(super) struct GreenTriviaHead {
     /// Reference counting integration for memory usage tracking.
     ///
     /// This field enables monitoring of trivia collection instances
@@ -42,7 +42,7 @@ impl GreenTriviaHead {
     ///
     /// Initializes the reference counting system and prepares
     /// the header for use in a `ThinArc` allocation.
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self { _c: Count::new() }
     }
 }
