@@ -25,21 +25,7 @@ mod trivia_data;
 mod trivia_head;
 
 #[cfg(test)]
-mod element_ref_tests;
-#[cfg(test)]
-mod element_tests;
-#[cfg(test)]
-mod node_child_tests;
-#[cfg(test)]
-mod node_children_tests;
-#[cfg(test)]
-mod node_tests;
-#[cfg(test)]
-mod token_tests;
-#[cfg(test)]
-mod trivia_child_tests;
-#[cfg(test)]
-mod trivia_tests;
+mod tests;
 
 /// SyntaxKind is a type tag for each token or node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
