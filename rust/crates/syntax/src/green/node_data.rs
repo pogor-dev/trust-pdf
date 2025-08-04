@@ -37,7 +37,7 @@ impl GreenNodeData {
 
     #[inline]
     pub(crate) fn width(&self) -> u32 {
-        self.header().full_width
+        self.header().width
     }
 
     #[inline]
