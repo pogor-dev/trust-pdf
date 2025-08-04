@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::{
     NodeOrToken,
-    green::{element_ref::GreenElementRef, node::GreenNode, token::GreenToken},
+    green::{element::GreenElementRef, node::GreenNode, token::GreenToken},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

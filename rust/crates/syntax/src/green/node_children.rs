@@ -1,6 +1,6 @@
 use std::{iter::FusedIterator, slice};
 
-use crate::green::{element_ref::GreenElementRef, node_child::GreenChild};
+use crate::green::{element::GreenElementRef, node_child::GreenChild};
 
 #[derive(Debug, Clone)]
 pub struct NodeChildren<'a> {

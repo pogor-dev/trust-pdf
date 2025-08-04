@@ -2,10 +2,14 @@ use std::borrow::Cow;
 
 use crate::{
     NodeOrToken, SyntaxKind,
-    green::{node::GreenNode, node::GreenNodeData, token::GreenToken},
+    green::{
+        node::{GreenNode, GreenNodeData},
+        token::{GreenToken, GreenTokenData},
+    },
 };
 
 pub(super) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
+pub(crate) type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
 
 impl GreenElement {
     /// Returns kind of this element.
@@ -44,5 +48,56 @@ impl From<Cow<'_, GreenNodeData>> for GreenElement {
     #[inline]
     fn from(cow: Cow<'_, GreenNodeData>) -> Self {
         NodeOrToken::Node(cow.into_owned())
+    }
+}
+
+impl GreenElementRef<'_> {
+    /// Returns kind of this element.
+    #[inline]
+    pub fn kind(&self) -> SyntaxKind {
+        match self {
+            NodeOrToken::Node(it) => it.kind(),
+            NodeOrToken::Token(it) => it.kind(),
+        }
+    }
+
+    /// Returns the length of the text covered by this element.
+    #[inline]
+    pub fn width(self) -> u32 {
+        match self {
+            NodeOrToken::Node(it) => it.width(),
+            NodeOrToken::Token(it) => it.width(),
+        }
+    }
+
+    #[inline]
+    pub fn full_width(self) -> u32 {
+        match self {
+            NodeOrToken::Node(it) => it.full_width(),
+            NodeOrToken::Token(it) => it.full_width(),
+        }
+    }
+}
+
+impl<'a> From<&'a GreenNode> for GreenElementRef<'a> {
+    #[inline]
+    fn from(node: &'a GreenNode) -> GreenElementRef<'a> {
+        NodeOrToken::Node(node)
+    }
+}
+
+impl<'a> From<&'a GreenToken> for GreenElementRef<'a> {
+    #[inline]
+    fn from(token: &'a GreenToken) -> GreenElementRef<'a> {
+        NodeOrToken::Token(token)
+    }
+}
+
+impl GreenElementRef<'_> {
+    pub fn to_owned(self) -> GreenElement {
+        match self {
+            NodeOrToken::Node(it) => NodeOrToken::Node(it.to_owned()),
+            NodeOrToken::Token(it) => NodeOrToken::Token(it.to_owned()),
+        }
     }
 }
