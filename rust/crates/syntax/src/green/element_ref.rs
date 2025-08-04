@@ -1,8 +1,10 @@
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        element::GreenElement, node::GreenNode, node_data::GreenNodeData, token::GreenToken,
-        token_data::GreenTokenData,
+        element::GreenElement,
+        node::GreenNode,
+        node_data::GreenNodeData,
+        token::{GreenToken, GreenTokenData},
     },
 };
 

@@ -1,6 +1,9 @@
 use crate::{
     SyntaxKind,
-    green::{token::GreenToken, token_head::GreenTokenHead, trivia::GreenTrivia},
+    green::{
+        token::{GreenToken, GreenTokenData},
+        trivia::GreenTrivia,
+    },
 };
 
 // Test constants for different PDF token types
@@ -223,7 +226,7 @@ fn test_to_owned_when_converting_token_data_expect_equivalent_token() {
     let original_token = create_token(STRING_KIND, "(Hello World)");
 
     // Get reference to GreenTokenData and convert to owned GreenToken
-    let token_data: &crate::green::token_data::GreenTokenData = &*original_token;
+    let token_data: &GreenTokenData = &*original_token;
     let owned_token = token_data.to_owned();
 
     // Verify the owned token has the same properties as the original
@@ -251,7 +254,7 @@ fn test_to_owned_when_converting_token_data_expect_equivalent_token() {
 
     // Test with different token types to ensure consistency
     let number_token = create_token(NUMBER_KIND, "42.5");
-    let number_data: &crate::green::token_data::GreenTokenData = &*number_token;
+    let number_data: &GreenTokenData = &*number_token;
     let owned_number = number_data.to_owned();
 
     assert_eq!(
@@ -274,9 +277,9 @@ fn test_debug_when_formatting_token_data_expect_structured_output() {
     let empty_token = create_token(NULL_KIND, "");
 
     // Get references to GreenTokenData for formatting
-    let string_data: &crate::green::token_data::GreenTokenData = &*string_token;
-    let number_data: &crate::green::token_data::GreenTokenData = &*number_token;
-    let empty_data: &crate::green::token_data::GreenTokenData = &*empty_token;
+    let string_data: &GreenTokenData = &*string_token;
+    let number_data: &GreenTokenData = &*number_token;
+    let empty_data: &GreenTokenData = &*empty_token;
 
     // Test debug formatting contains expected structure and content
     let string_debug = format!("{:?}", string_data);
@@ -321,8 +324,8 @@ fn test_display_when_valid_utf8_expect_string_content() {
     let number_token = create_token(NUMBER_KIND, "42.5");
 
     // Get references to GreenTokenData for display formatting
-    let string_data: &crate::green::token_data::GreenTokenData = &*string_token;
-    let number_data: &crate::green::token_data::GreenTokenData = &*number_token;
+    let string_data: &GreenTokenData = &*string_token;
+    let number_data: &GreenTokenData = &*number_token;
 
     // Test display formatting shows readable string content
     let string_display = format!("{}", string_data);
@@ -425,10 +428,4 @@ fn test_full_width_when_token_with_trivia_expect_combined_width() {
 
     // Test full_width calculation
     assert_eq!(token.full_width(), 34);
-}
-
-#[test]
-fn sizes() {
-    assert_eq!(24, std::mem::size_of::<GreenTokenHead>());
-    assert_eq!(8, std::mem::size_of::<GreenToken>());
 }
