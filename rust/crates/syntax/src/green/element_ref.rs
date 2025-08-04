@@ -3,7 +3,7 @@ use crate::{
     green::{
         element::GreenElement,
         node::GreenNode,
-        node_data::GreenNodeData,
+        node::GreenNodeData,
         token::{GreenToken, GreenTokenData},
     },
 };

@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        element::GreenElement, node::GreenNode, node_data::GreenNodeData, token::GreenToken,
+        element::GreenElement, node::GreenNode, node::GreenNodeData, token::GreenToken,
         trivia::GreenTrivia,
     },
 };

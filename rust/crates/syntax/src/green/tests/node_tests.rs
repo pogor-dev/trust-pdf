@@ -3,8 +3,8 @@ use std::borrow::{Borrow, Cow};
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        element::GreenElement, node::GreenNode, node_data::GreenNodeData, node_head::GreenNodeHead,
-        token::GreenToken, trivia::GreenTrivia,
+        element::GreenElement, node::GreenNode, node::GreenNodeData, token::GreenToken,
+        trivia::GreenTrivia,
     },
 };
 
@@ -310,64 +310,6 @@ fn test_new_when_creating_deep_nested_structure_expect_correct_traversal() {
         panic!("Expected dict node");
     }
 }
-
-// Tests for GreenNodeHead
-
-#[test]
-fn test_node_head_new_when_creating_with_values_expect_correct_fields() {
-    let head = GreenNodeHead::new(DICT_KIND, 10, 15);
-
-    assert_eq!(head.kind, DICT_KIND);
-    assert_eq!(head.width, 10);
-    assert_eq!(head.full_width, 15);
-}
-
-#[test]
-fn test_node_head_clone_when_cloning_head_expect_identical_values() {
-    let original = GreenNodeHead::new(OBJ_KIND, 42, 50);
-    let cloned = original.clone();
-
-    assert_eq!(original, cloned);
-    assert_eq!(cloned.kind, OBJ_KIND);
-    assert_eq!(cloned.width, 42);
-    assert_eq!(cloned.full_width, 50);
-}
-
-#[test]
-fn test_node_head_eq_when_comparing_identical_heads_expect_equality() {
-    let head1 = GreenNodeHead::new(STRING_KIND, 5, 8);
-    let head2 = GreenNodeHead::new(STRING_KIND, 5, 8);
-
-    assert_eq!(head1, head2);
-}
-
-#[test]
-fn test_node_head_eq_when_comparing_different_kinds_expect_inequality() {
-    let head1 = GreenNodeHead::new(STRING_KIND, 5, 8);
-    let head2 = GreenNodeHead::new(NUMBER_KIND, 5, 8);
-
-    assert_ne!(head1, head2);
-}
-
-#[test]
-fn test_node_head_eq_when_comparing_different_widths_expect_inequality() {
-    let head1 = GreenNodeHead::new(STRING_KIND, 5, 8);
-    let head2 = GreenNodeHead::new(STRING_KIND, 6, 8);
-
-    assert_ne!(head1, head2);
-}
-
-#[test]
-fn test_node_head_debug_when_formatting_expect_readable_output() {
-    let head = GreenNodeHead::new(ARRAY_KIND, 20, 25);
-    let debug_str = format!("{:?}", head);
-
-    assert!(!debug_str.is_empty());
-    assert!(debug_str.contains("20")); // width
-    assert!(debug_str.contains("25")); // full_width
-}
-
-// Tests for GreenNodeData methods
 
 #[test]
 fn test_node_data_replace_child_when_replacing_first_child_expect_new_node() {
