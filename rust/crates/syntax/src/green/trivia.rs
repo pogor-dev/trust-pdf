@@ -37,17 +37,20 @@
 
 use std::{
     borrow::Borrow,
+    fmt,
     mem::{self, ManuallyDrop},
     ops, ptr,
 };
 
+use countme::Count;
+
 use crate::{
-    arc::{arc_main::Arc, thin_arc::ThinArc},
-    green::{
-        GreenTriviaRepr, GreenTriviaReprThin, trivia_child::GreenTriviaChild,
-        trivia_data::GreenTriviaData, trivia_head::GreenTriviaHead,
-    },
+    arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc},
+    green::trivia_child::GreenTriviaChild,
 };
+
+type ReprThin = HeaderSlice<GreenTriviaHead, [GreenTriviaChild; 0]>;
+type Repr = HeaderSlice<GreenTriviaHead, [GreenTriviaChild]>;
 
 /// Immutable PDF trivia collection with efficient sharing and zero-cost data access.
 ///
@@ -63,8 +66,19 @@ use crate::{
 /// ```
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
-pub(crate) struct GreenTrivia {
+pub struct GreenTrivia {
     ptr: ThinArc<GreenTriviaHead, GreenTriviaChild>,
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+struct GreenTriviaHead {
+    _c: Count<GreenTrivia>,
+}
+
+#[repr(transparent)]
+pub struct GreenTriviaData {
+    /// Underlying thin representation providing access to both header and body
+    data: ReprThin,
 }
 
 impl GreenTrivia {
@@ -73,12 +87,13 @@ impl GreenTrivia {
     /// The iterator must provide an exact size hint for efficient memory allocation.
     /// All trivia children are stored contiguously in memory for cache efficiency.
     #[inline]
-    pub(crate) fn new<I>(pieces: I) -> Self
+    pub fn new<I>(pieces: I) -> Self
     where
         I: IntoIterator<Item = GreenTriviaChild>,
         I::IntoIter: ExactSizeIterator,
     {
-        let data = ThinArc::from_header_and_iter(GreenTriviaHead::new(), pieces.into_iter());
+        let data =
+            ThinArc::from_header_and_iter(GreenTriviaHead { _c: Count::new() }, pieces.into_iter());
 
         GreenTrivia { ptr: data }
     }
@@ -103,10 +118,8 @@ impl GreenTrivia {
     #[inline]
     pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
         let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const GreenTriviaReprThin);
-            mem::transmute::<Arc<GreenTriviaReprThin>, ThinArc<GreenTriviaHead, GreenTriviaChild>>(
-                arc,
-            )
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaHead, GreenTriviaChild>>(arc)
         };
         GreenTrivia { ptr: arc }
     }
@@ -126,18 +139,17 @@ impl ops::Deref for GreenTrivia {
     fn deref(&self) -> &GreenTriviaData {
         unsafe {
             // Step 1: Get full memory representation
-            let repr: &GreenTriviaRepr = &self.ptr;
+            let repr: &Repr = &self.ptr;
 
             // Step 2: Normalize layout (remove metadata)
             //   &*(ptr as *const A as *const B) pattern:
             //   - Convert to raw pointer
             //   - Reinterpret type
             //   - Dereference and re-borrow
-            let repr: &GreenTriviaReprThin =
-                &*(repr as *const GreenTriviaRepr as *const GreenTriviaReprThin);
+            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
 
             // Step 3: Final API view (same bytes, API methods)
-            mem::transmute::<&GreenTriviaReprThin, &GreenTriviaData>(repr)
+            mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
         }
     }
 }
@@ -146,5 +158,106 @@ impl std::fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Use the Deref trait to access GreenTriviaData and its Debug impl
         (**self).fmt(f)
+    }
+}
+
+impl GreenTriviaData {
+    /// Returns a slice of all trivia children in this collection.
+    ///
+    /// Children are stored contiguously in memory for efficient iteration.
+    /// The slice provides zero-cost access to individual trivia elements.
+    #[inline]
+    pub fn children(&self) -> &[GreenTriviaChild] {
+        self.data.slice()
+    }
+
+    /// Returns the total byte width of all trivia children in this collection.
+    ///
+    /// Calculates the cumulative width by summing the individual widths of all
+    /// child trivia elements. Essential for PDF layout calculations and memory
+    /// allocation planning.
+    ///
+    /// ## Example Usage
+    ///
+    /// ```text
+    /// PDF trivia: "%comment\n  "
+    /// Children:   [Comment(8), Newline(1), Whitespace(2)]
+    /// Total width: 8 + 1 + 2 = 11 bytes
+    /// ```
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.children().iter().map(|c| c.width()).sum()
+    }
+
+    /// Returns the concatenated text content of all trivia children as a String.
+    ///
+    /// Efficiently combines all child trivia text into a single String using
+    /// pre-calculated capacity to avoid reallocations. Critical for PDF round-trip
+    /// fidelity where exact trivia preservation is required.
+    ///
+    /// ## Example
+    ///
+    /// ```text
+    /// Input children: [Comment("%PDF-1.7"), Newline("\n"), Whitespace("  ")]
+    /// Output string: "%PDF-1.7\n  "
+    /// ```
+    #[inline]
+    pub fn text(&self) -> String {
+        let total_width = self.width() as usize;
+        let mut result = String::with_capacity(total_width);
+
+        for child in self.children() {
+            // SAFETY: We know the total width, so this won't reallocate
+            unsafe {
+                result.as_mut_vec().extend_from_slice(child.text());
+            }
+        }
+        result
+    }
+}
+
+impl PartialEq for GreenTriviaData {
+    fn eq(&self, other: &Self) -> bool {
+        self.children() == other.children()
+    }
+}
+
+impl ToOwned for GreenTriviaData {
+    type Owned = GreenTrivia;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTrivia {
+        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTrivia::clone(&green)
+    }
+}
+
+impl fmt::Debug for GreenTriviaData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.children().iter()).finish()
+    }
+}
+
+impl fmt::Display for GreenTriviaData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for child in self.children() {
+            match std::str::from_utf8(child.text()) {
+                Ok(text) => write!(f, "{}", text)?,
+                Err(_) => write!(f, "{:?}", child.text())?,
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sizes() {
+        assert_eq!(0, std::mem::size_of::<GreenTriviaHead>());
+        assert_eq!(8, std::mem::size_of::<GreenTrivia>());
     }
 }

@@ -215,7 +215,7 @@ impl GreenTriviaChildData {
     /// - `Whitespace`: Spaces and tabs for formatting and separation
     /// - `Comment`: PDF comments starting with '%' character
     #[inline]
-    pub(crate) fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
     }
 
@@ -251,7 +251,7 @@ impl GreenTriviaChildData {
     /// Safe because the slice is created from valid memory managed by `ThinArc`.
     /// The length is stored in the header and guaranteed to match allocated space.
     #[inline]
-    pub(crate) fn text(&self) -> &[u8] {
+    pub fn text(&self) -> &[u8] {
         let slice = self.data.slice();
         unsafe { std::slice::from_raw_parts(slice.as_ptr(), slice.len()) }
     }
@@ -275,7 +275,7 @@ impl GreenTriviaChildData {
     /// Could alternatively read from `header.len`, but using `text().len()`
     /// ensures consistency between header metadata and actual body content.
     #[inline]
-    pub(crate) fn width(&self) -> u32 {
+    pub fn width(&self) -> u32 {
         self.text().len() as u32
     }
 }

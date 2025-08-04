@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::{
     SyntaxKind,
-    green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild, trivia_head::GreenTriviaHead},
+    green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild},
 };
 
 // Test constants for different PDF trivia types
@@ -468,43 +468,4 @@ fn test_trivia_text_when_single_child_expect_same_content() {
 
     assert_eq!(text, "%single comment");
     assert_eq!(text.len(), 15);
-}
-
-#[test]
-fn test_trivia_header_when_accessing_expect_valid_metadata() {
-    // Test the header() method that provides access to collection metadata
-    let test_trivia = create_trivia_collection(vec![
-        (COMMENT_KIND, "%test header"),
-        (NEWLINE_KIND, "\n"),
-        (WHITESPACE_KIND, "  "),
-    ]);
-
-    // Access the header
-    let header = test_trivia.header();
-
-    // Verify header exists and can be accessed
-    // Since GreenTriviaHead has a size of 0 (as verified in sizes test),
-    // we mainly verify that the method works and returns a valid reference
-    assert_eq!(std::mem::size_of_val(header), 0);
-
-    // Verify header equality with itself (tests PartialEq implementation)
-    assert_eq!(header, header);
-
-    // Test that different trivia collections have comparable headers
-    let another_trivia = create_trivia_collection(vec![
-        (WHITESPACE_KIND, " "),
-        (COMMENT_KIND, "%different content"),
-    ]);
-
-    let another_header = another_trivia.header();
-
-    // Headers should be equal since they only contain Count<GreenTrivia> which
-    // implements PartialEq and both are valid trivia collection headers
-    assert_eq!(header, another_header);
-}
-
-#[test]
-fn sizes() {
-    assert_eq!(0, std::mem::size_of::<GreenTriviaHead>());
-    assert_eq!(8, std::mem::size_of::<GreenTrivia>());
 }
