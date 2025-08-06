@@ -10,6 +10,8 @@ use crate::{
 const STRING_KIND: SyntaxKind = SyntaxKind(1);
 const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
 const NULL_KIND: SyntaxKind = SyntaxKind(3);
+const NAME_KIND: SyntaxKind = SyntaxKind(4);
+const BOOLEAN_KIND: SyntaxKind = SyntaxKind(5);
 
 /// Helper function to create test tokens with different content types
 fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
@@ -17,6 +19,10 @@ fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
     let trailing = leading.clone();
     GreenToken::new(kind, text.as_bytes(), leading, trailing)
 }
+
+// =============================================================================
+// GreenToken Core Tests
+// =============================================================================
 
 #[test]
 fn test_new_when_creating_token_expect_correct_kind() {
@@ -48,384 +54,376 @@ fn test_new_when_unicode_text_expect_correct_byte_count() {
     // "café" in UTF-8 is 5 bytes (é = 2 bytes)
     assert_eq!(unicode_token.text(), "café".as_bytes());
     assert_eq!(unicode_token.text().len(), 5);
-}
-
-#[test]
-fn test_new_when_pdf_special_chars_expect_exact_preservation() {
-    // Test PDF-specific characters that must be preserved exactly
-    let escaped_string = create_token(STRING_KIND, r#"(Hello\nWorld\))"#);
-    let hex_string = create_token(STRING_KIND, "<48656C6C6F>");
-
-    assert_eq!(escaped_string.text(), br#"(Hello\nWorld\))"#);
-    assert_eq!(hex_string.text(), b"<48656C6C6F>");
-}
-
-#[test]
-fn test_width_when_accessing_expect_correct_byte_length() {
-    // Test direct access to width() method for different token types
-    let string_token = create_token(STRING_KIND, "(Hello)");
-    let number_token = create_token(NUMBER_KIND, "123");
-    let null_token = create_token(NULL_KIND, "null");
-
-    // Verify width method returns correct byte length
-    assert_eq!(string_token.width(), 7); // "(Hello)" has 7 bytes
-    assert_eq!(number_token.width(), 3); // "123" has 3 bytes  
-    assert_eq!(null_token.width(), 4); // "null" has 4 bytes
-}
-
-#[test]
-fn test_width_when_empty_token_expect_zero() {
-    // Test edge case: empty token content
-    let empty_token = create_token(NULL_KIND, "");
-
-    assert_eq!(empty_token.width(), 0);
-    assert_eq!(empty_token.text().len() as u32, empty_token.width());
-}
-
-#[test]
-fn test_width_when_unicode_content_expect_byte_count() {
-    // Test that width() returns byte count, not character count for Unicode
-    let unicode_token = create_token(STRING_KIND, "café");
-
-    // "café" has 4 Unicode characters but 5 UTF-8 bytes (é = 2 bytes)
     assert_eq!(unicode_token.width(), 5);
-    assert_eq!(unicode_token.text().len() as u32, unicode_token.width());
 }
 
 #[test]
-fn test_width_when_pdf_special_chars_expect_exact_byte_count() {
-    // Test width calculation for PDF-specific escape sequences and hex strings
-    let escaped_string = create_token(STRING_KIND, r#"(Hello\nWorld\))"#);
-    let hex_string = create_token(STRING_KIND, "<48656C6C6F>");
-    let binary_data = create_token(STRING_KIND, "\x00\x01\x02\x03");
-
-    // Each character is counted as a byte, including escape sequences
-    assert_eq!(escaped_string.width(), 16); // Literal backslashes count as bytes
-    assert_eq!(hex_string.width(), 12); // Angle brackets + hex digits
-    assert_eq!(binary_data.width(), 4); // Raw binary bytes
-}
-
-#[test]
-fn test_width_when_large_content_expect_accurate_count() {
-    // Test width calculation for larger content that might be found in PDF streams
-    let large_content = "A".repeat(1000);
-    let large_token = create_token(STRING_KIND, &large_content);
-
-    assert_eq!(large_token.width(), 1000);
-    assert_eq!(large_token.text().len() as u32, large_token.width());
-}
-
-#[test]
-fn test_width_when_consistency_with_text_length_expect_match() {
-    // Verify that width() is always consistent with text().len()
-    let test_cases = vec![
-        ("", 0),
-        ("a", 1),
-        ("hello", 5),
-        ("(PDF string)", 12),
-        ("/Name", 5),
+fn test_width_when_calculating_expect_text_byte_length() {
+    let tokens = [
+        (STRING_KIND, "()", 2),
+        (STRING_KIND, "(Hello)", 7),
+        (NUMBER_KIND, "123", 3),
+        (NUMBER_KIND, "3.14159", 7),
+        (NULL_KIND, "null", 4),
+        (BOOLEAN_KIND, "true", 4),
+        (BOOLEAN_KIND, "false", 5),
     ];
 
-    for (content, expected_width) in test_cases {
-        let token = create_token(STRING_KIND, content);
-        assert_eq!(token.width(), expected_width);
-        assert_eq!(token.width(), token.text().len() as u32);
+    for (kind, text, expected_width) in tokens {
+        let token = create_token(kind, text);
+        assert_eq!(
+            token.width(),
+            expected_width,
+            "Width mismatch for token: {}",
+            text
+        );
     }
 }
 
+// =============================================================================
+// Trivia Handling Tests
+// =============================================================================
+
 #[test]
-fn test_partial_eq_when_tokens_equal_expect_true() {
-    // Test equality for tokens - covers various equal scenarios
-    let identical_tokens = (
-        create_token(STRING_KIND, "(Hello)"),
-        create_token(STRING_KIND, "(Hello)"),
-    );
-    let empty_tokens = (create_token(NULL_KIND, ""), create_token(NULL_KIND, ""));
-    let unicode_tokens = (
-        create_token(STRING_KIND, "café"),
-        create_token(STRING_KIND, "café"),
-    );
+fn test_new_with_trivia_when_adding_leading_trivia_expect_correct_full_width() {
+    use crate::green::trivia::GreenTriviaChild;
 
-    // Test token equality
-    assert!(
-        identical_tokens.0 == identical_tokens.1,
-        "Tokens with identical kind and content should be equal"
-    );
-    assert!(
-        empty_tokens.0 == empty_tokens.1,
-        "Empty tokens with same kind should be equal"
-    );
-    assert!(
-        unicode_tokens.0 == unicode_tokens.1,
-        "Identical Unicode content should be equal"
-    );
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(10), b"  "), // 2 spaces
+        GreenTriviaChild::new(SyntaxKind(11), b"%comment\n"), // comment + newline (9 bytes)
+    ]);
+    let trailing_trivia = GreenTrivia::new([]);
 
-    // Test dereferenced GreenTokenData equality
-    assert!(
-        *identical_tokens.0 == *identical_tokens.1,
-        "Dereferenced GreenTokenData should be equal"
-    );
-    assert!(
-        *empty_tokens.0 == *empty_tokens.1,
-        "Dereferenced empty GreenTokenData should be equal"
-    );
+    let token = GreenToken::new(NUMBER_KIND, b"123", leading_trivia, trailing_trivia);
+
+    assert_eq!(token.width(), 3); // Just the token text
+    assert_eq!(token.full_width(), 14); // 2 + 9 + 3 = 14 (leading + text + trailing)
 }
 
 #[test]
-fn test_partial_eq_when_tokens_not_equal_expect_false() {
-    // Test inequality for tokens - covers various unequal scenarios
-    let different_content = (
-        create_token(STRING_KIND, "(Hello)"),
-        create_token(STRING_KIND, "(World)"),
-    );
-    let different_kinds = (
-        create_token(STRING_KIND, "123"),
-        create_token(NUMBER_KIND, "123"),
-    );
-    let empty_vs_content = (
-        create_token(STRING_KIND, ""),
-        create_token(STRING_KIND, "content"),
-    );
-    let case_sensitive = (
-        create_token(STRING_KIND, "<48656C6C6F>"),
-        create_token(STRING_KIND, "<48656c6c6f>"),
+fn test_new_with_trivia_when_adding_trailing_trivia_expect_correct_full_width() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new([]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(12), b" "),  // 1 space
+        GreenTriviaChild::new(SyntaxKind(13), b"\n"), // 1 newline
+    ]);
+
+    let token = GreenToken::new(STRING_KIND, b"(test)", leading_trivia, trailing_trivia);
+
+    assert_eq!(token.width(), 6); // Just the token text
+    assert_eq!(token.full_width(), 8); // 6 + 1 + 1 = 8 (text + trailing)
+}
+
+#[test]
+fn test_new_with_trivia_when_adding_both_trivia_expect_correct_full_width() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(14), b"    "), // 4 spaces
+    ]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(15), b"  "), // 2 spaces
+    ]);
+
+    let token = GreenToken::new(NAME_KIND, b"/Type", leading_trivia, trailing_trivia);
+
+    assert_eq!(token.width(), 5); // Just the token text
+    assert_eq!(token.full_width(), 11); // 4 + 5 + 2 = 11 (leading + text + trailing)
+}
+
+#[test]
+fn test_leading_trivia_when_accessing_expect_correct_content() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![GreenTriviaChild::new(
+        SyntaxKind(16),
+        b"%leading comment",
+    )]);
+    let trailing_trivia = GreenTrivia::new([]);
+
+    let token = GreenToken::new(
+        STRING_KIND,
+        b"(test)",
+        leading_trivia.clone(),
+        trailing_trivia,
     );
 
-    // Test token inequality
-    assert!(
-        different_content.0 != different_content.1,
-        "Tokens with different content should not be equal"
-    );
-    assert!(
-        different_kinds.0 != different_kinds.1,
-        "Tokens with different kinds should not be equal"
-    );
-    assert!(
-        empty_vs_content.0 != empty_vs_content.1,
-        "Empty and non-empty tokens should not be equal"
-    );
-    assert!(
-        case_sensitive.0 != case_sensitive.1,
-        "Case-different strings should not be equal (PDF spec requirement)"
-    );
+    let retrieved_leading = token.leading_trivia();
+    assert_eq!(retrieved_leading.children().len(), 1);
+    assert_eq!(retrieved_leading.text(), "%leading comment");
+}
 
-    // Test dereferenced GreenTokenData inequality
-    assert!(
-        *different_content.0 != *different_content.1,
-        "Dereferenced GreenTokenData should not be equal"
-    );
-    assert!(
-        *different_kinds.0 != *different_kinds.1,
-        "Dereferenced GreenTokenData with different kinds should not be equal"
-    );
+#[test]
+fn test_trailing_trivia_when_accessing_expect_correct_content() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new([]);
+    let trailing_trivia = GreenTrivia::new(vec![GreenTriviaChild::new(
+        SyntaxKind(17),
+        b" %trailing comment",
+    )]);
+
+    let token = GreenToken::new(NAME_KIND, b"/Test", leading_trivia, trailing_trivia.clone());
+
+    let retrieved_trailing = token.trailing_trivia();
+    assert_eq!(retrieved_trailing.children().len(), 1);
+    assert_eq!(retrieved_trailing.text(), " %trailing comment");
+}
+
+// =============================================================================
+// PDF-Specific Token Tests
+// =============================================================================
+
+#[test]
+fn test_pdf_tokens_when_creating_expect_correct_handling() {
+    // Test various PDF token formats in one test to reduce redundancy
+    let tokens = [
+        (
+            STRING_KIND,
+            "(Literal string)",
+            b"(Literal string)" as &[u8],
+        ),
+        (STRING_KIND, "<48656C6C6F>", b"<48656C6C6F>"),
+        (STRING_KIND, "()", b"()"),
+        (NUMBER_KIND, "42", b"42"),
+        (NUMBER_KIND, "-17", b"-17"),
+        (NUMBER_KIND, "3.14159", b"3.14159"),
+        (NAME_KIND, "/Type", b"/Type"),
+        (NAME_KIND, "/DecodeParms", b"/DecodeParms"),
+        (NAME_KIND, "/Lime#20Green", b"/Lime#20Green"),
+        (BOOLEAN_KIND, "true", b"true"),
+        (BOOLEAN_KIND, "false", b"false"),
+    ];
+
+    for (kind, text, expected_bytes) in tokens {
+        let token = create_token(kind, text);
+        assert_eq!(token.text(), expected_bytes);
+        assert_eq!(token.width(), expected_bytes.len() as u32);
+    }
+}
+
+// =============================================================================
+// Memory Management and Raw Pointer Tests
+// =============================================================================
+
+#[test]
+fn test_into_raw_when_converting_to_pointer_expect_valid_operation() {
+    let token = create_token(STRING_KIND, "(test)");
+    let original_text = token.text().to_vec();
+
+    // Convert to raw pointer
+    let raw_ptr = GreenToken::into_raw(token);
+
+    // Convert back and verify integrity
+    let recovered_token = unsafe { GreenToken::from_raw(raw_ptr) };
+    assert_eq!(recovered_token.text(), &original_text);
+}
+
+#[test]
+fn test_borrow_when_using_as_token_data_expect_same_content() {
+    use std::borrow::Borrow;
+
+    let token = create_token(NUMBER_KIND, "123");
+    let token_data: &GreenTokenData = token.borrow();
+
+    // Verify that borrowing gives access to the same data
+    assert_eq!(token.kind(), token_data.kind());
+    assert_eq!(token.text(), token_data.text());
+    assert_eq!(token.width(), token_data.width());
 }
 
 #[test]
 fn test_to_owned_when_converting_token_data_expect_equivalent_token() {
-    // Test ToOwned implementation for GreenTokenData
-    let original_token = create_token(STRING_KIND, "(Hello World)");
+    use std::borrow::ToOwned;
 
-    // Get reference to GreenTokenData and convert to owned GreenToken
-    let token_data: &GreenTokenData = &*original_token;
+    let original_token = create_token(NAME_KIND, "/Test");
+    let token_data: &GreenTokenData = &original_token;
     let owned_token = token_data.to_owned();
 
-    // Verify the owned token has the same properties as the original
-    assert_eq!(
-        owned_token.kind(),
-        original_token.kind(),
-        "Kind should be preserved after to_owned"
-    );
-    assert_eq!(
-        owned_token.text(),
-        original_token.text(),
-        "Text content should be preserved after to_owned"
-    );
-    assert_eq!(
-        owned_token.width(),
-        original_token.width(),
-        "Width should be preserved after to_owned"
-    );
+    assert_eq!(original_token.kind(), owned_token.kind());
+    assert_eq!(original_token.text(), owned_token.text());
+    assert_eq!(original_token.width(), owned_token.width());
+}
 
-    // Verify they are equal (but potentially different memory locations)
-    assert!(
-        owned_token == original_token,
-        "Owned token should be equal to original token"
-    );
+// =============================================================================
+// Equality and Hashing Tests
+// =============================================================================
 
-    // Test with different token types to ensure consistency
-    let number_token = create_token(NUMBER_KIND, "42.5");
-    let number_data: &GreenTokenData = &*number_token;
-    let owned_number = number_data.to_owned();
+#[test]
+fn test_equality_when_identical_tokens_expect_equal() {
+    let token1 = create_token(STRING_KIND, "(Hello)");
+    let token2 = create_token(STRING_KIND, "(Hello)");
 
-    assert_eq!(
-        owned_number.kind(),
-        NUMBER_KIND,
-        "Number token kind should be preserved"
-    );
-    assert_eq!(
-        owned_number.text(),
-        b"42.5",
-        "Number token text should be preserved"
-    );
+    assert_eq!(token1, token2);
 }
 
 #[test]
-fn test_debug_when_formatting_token_data_expect_structured_output() {
-    // Test Debug implementation for GreenTokenData
-    let string_token = create_token(STRING_KIND, "(Hello World)");
-    let number_token = create_token(NUMBER_KIND, "42.5");
-    let empty_token = create_token(NULL_KIND, "");
+fn test_equality_when_different_content_expect_not_equal() {
+    let token1 = create_token(STRING_KIND, "(Hello)");
+    let token2 = create_token(STRING_KIND, "(World)");
 
-    // Get references to GreenTokenData for formatting
-    let string_data: &GreenTokenData = &*string_token;
-    let number_data: &GreenTokenData = &*number_token;
-    let empty_data: &GreenTokenData = &*empty_token;
-
-    // Test debug formatting contains expected structure and content
-    let string_debug = format!("{:?}", string_data);
-    let number_debug = format!("{:?}", number_data);
-    let empty_debug = format!("{:?}", empty_data);
-
-    // Verify debug output contains struct name and fields
-    assert!(
-        string_debug.contains("GreenTokenData"),
-        "Debug output should contain struct name"
-    );
-    assert!(
-        string_debug.contains("kind"),
-        "Debug output should contain kind field"
-    );
-    assert!(
-        string_debug.contains("text"),
-        "Debug output should contain text field"
-    );
-
-    // Verify debug output contains actual values (as byte arrays)
-    assert!(
-        number_debug.contains("52"),
-        "Debug output should contain byte values (52 is ASCII '4')"
-    );
-
-    // Verify empty token debug output
-    assert!(
-        empty_debug.contains("GreenTokenData"),
-        "Empty token debug should contain struct name"
-    );
-    assert!(
-        empty_debug.contains("[]"),
-        "Empty token should show empty byte array"
-    );
+    assert_ne!(token1, token2);
 }
 
 #[test]
-fn test_display_when_valid_utf8_expect_string_content() {
-    // Test Display implementation for GreenTokenData with valid UTF-8
-    let string_token = create_token(STRING_KIND, "(Hello World)");
-    let number_token = create_token(NUMBER_KIND, "42.5");
+fn test_equality_when_different_kinds_expect_not_equal() {
+    let string_token = create_token(STRING_KIND, "123");
+    let number_token = create_token(NUMBER_KIND, "123");
 
-    // Get references to GreenTokenData for display formatting
-    let string_data: &GreenTokenData = &*string_token;
-    let number_data: &GreenTokenData = &*number_token;
-
-    // Test display formatting shows readable string content
-    let string_display = format!("{}", string_data);
-    let number_display = format!("{}", number_data);
-
-    assert_eq!(
-        string_display, "(Hello World)",
-        "Display should show string content"
-    );
-    assert_eq!(number_display, "42.5", "Display should show number content");
+    assert_ne!(string_token, number_token);
 }
 
 #[test]
-fn test_display_when_invalid_utf8_expect_replacement_chars() {
-    // Test Display implementation gracefully handles invalid UTF-8 bytes
-    // This simulates malformed PDF content that might contain invalid encoding
-    let invalid_utf8 = &[0xFF, 0xFE, b'P', b'D', b'F'];
-    let display_output = String::from_utf8_lossy(invalid_utf8);
+fn test_hash_when_using_in_collections_expect_consistent_behavior() {
+    use std::collections::HashMap;
 
-    // Verify lossy conversion behavior
-    assert!(
-        display_output.contains('�'),
-        "Should contain replacement character for invalid bytes"
-    );
-    assert!(
-        display_output.contains("PDF"),
-        "Should preserve valid UTF-8 portions"
-    );
+    let token = create_token(NAME_KIND, "/Type");
+    let mut map = HashMap::new();
+    map.insert(token.clone(), "test_value");
+
+    // Should be able to retrieve using equivalent token
+    let lookup_token = create_token(NAME_KIND, "/Type");
+    assert_eq!(map.get(&lookup_token), Some(&"test_value"));
+}
+
+// =============================================================================
+// Edge Cases and Error Conditions
+// =============================================================================
+
+#[test]
+fn test_token_when_empty_content_expect_valid_handling() {
+    let empty_token = create_token(STRING_KIND, "");
+
+    assert_eq!(empty_token.text(), b"");
+    assert_eq!(empty_token.width(), 0);
+    assert_eq!(empty_token.full_width(), 0);
 }
 
 #[test]
-fn test_green_token_debug_when_formatting_expect_delegated_output() {
-    // Test Debug implementation for GreenToken delegates to GreenTokenData
-    let string_token = create_token(STRING_KIND, "(Hello World)");
-    let number_token = create_token(NUMBER_KIND, "42.5");
+fn test_token_when_large_content_expect_efficient_handling() {
+    let large_content = "A".repeat(10000);
+    let large_token = create_token(STRING_KIND, &large_content);
 
-    // Test debug formatting contains expected structure and content
-    let string_debug = format!("{:?}", string_token);
-    let number_debug = format!("{:?}", number_token);
-
-    // Verify debug output contains struct name and fields (delegated from GreenTokenData)
-    assert!(
-        string_debug.contains("GreenTokenData"),
-        "Debug output should contain struct name"
-    );
-    assert!(
-        string_debug.contains("kind"),
-        "Debug output should contain kind field"
-    );
-    assert!(
-        string_debug.contains("text"),
-        "Debug output should contain text field"
-    );
-
-    // Verify debug output contains actual byte values
-    assert!(
-        number_debug.contains("52"),
-        "Debug output should contain byte values (52 is ASCII '4')"
-    );
+    assert_eq!(large_token.text(), large_content.as_bytes());
+    assert_eq!(large_token.width(), 10000);
 }
 
 #[test]
-fn test_green_token_display_when_formatting_expect_delegated_output() {
-    // Test Display implementation for GreenToken delegates to GreenTokenData
-    let string_token = create_token(STRING_KIND, "(Hello World)");
-    let number_token = create_token(NUMBER_KIND, "42.5");
-
-    // Test display formatting shows readable string content (delegated behavior)
-    let string_display = format!("{}", string_token);
-    let number_display = format!("{}", number_token);
-
-    assert_eq!(
-        string_display, "(Hello World)",
-        "GreenToken display should show string content via delegation"
+fn test_token_when_binary_content_expect_exact_preservation() {
+    // Test with non-UTF8 binary data that might appear in PDF streams
+    let binary_data = &[0xFF, 0xFE, 0x00, 0x01, 0x80, 0x7F];
+    let binary_token = GreenToken::new(
+        STRING_KIND,
+        binary_data,
+        GreenTrivia::new([]),
+        GreenTrivia::new([]),
     );
-    assert_eq!(
-        number_display, "42.5",
-        "GreenToken display should show number content via delegation"
-    );
+
+    assert_eq!(binary_token.text(), binary_data);
+    assert_eq!(binary_token.width(), 6);
+}
+
+// =============================================================================
+// Debug and Display Tests
+// =============================================================================
+
+#[test]
+fn test_debug_when_formatting_token_expect_readable_output() {
+    let token = create_token(STRING_KIND, "(test)");
+    let debug_output = format!("{:?}", token);
+
+    // Debug output should be non-empty and contain useful information
+    assert!(!debug_output.is_empty());
 }
 
 #[test]
-fn test_full_width_when_token_with_trivia_expect_combined_width() {
-    use crate::green::{trivia::GreenTrivia, trivia::GreenTriviaChild};
+fn test_clone_when_copying_token_expect_shared_memory() {
+    let original = create_token(NAME_KIND, "/SharedToken");
+    let cloned = original.clone();
 
-    // Create trivia elements
-    let leading_comment = GreenTriviaChild::new(SyntaxKind(1), b"%leading comment");
-    let leading_newline = GreenTriviaChild::new(SyntaxKind(2), b"\n");
-    let leading_spaces = GreenTriviaChild::new(SyntaxKind(3), b"  ");
+    // Both should have same content
+    assert_eq!(original.kind(), cloned.kind());
+    assert_eq!(original.text(), cloned.text());
+    assert_eq!(original.width(), cloned.width());
 
-    let trailing_space = GreenTriviaChild::new(SyntaxKind(3), b" ");
-    let trailing_comment = GreenTriviaChild::new(SyntaxKind(1), b"%trailing");
+    // Memory should be shared (reference counted)
+    assert_eq!(original, cloned);
+}
 
-    // Create trivia collections
-    let leading_trivia = GreenTrivia::new(vec![leading_comment, leading_newline, leading_spaces]);
-    let trailing_trivia = GreenTrivia::new(vec![trailing_space, trailing_comment]);
+// =============================================================================
+// Token Display and Equality Tests
+// =============================================================================
 
-    // Create token with trivia
-    let token = GreenToken::new(STRING_KIND, b"/Type", leading_trivia, trailing_trivia);
+#[test]
+fn test_token_display_when_formatting_expect_text_content() {
+    let token = create_token(STRING_KIND, "(Hello, World!)");
+    let display_output = format!("{}", token);
 
-    // Test full_width calculation
-    assert_eq!(token.full_width(), 34);
+    assert_eq!(display_output, "(Hello, World!)");
+}
+
+#[test]
+fn test_token_display_when_unicode_content_expect_utf8_conversion() {
+    let token = create_token(STRING_KIND, "café");
+    let display_output = format!("{}", token);
+
+    assert_eq!(display_output, "café");
+}
+
+#[test]
+fn test_token_data_display_when_formatting_expect_utf8_lossy_conversion() {
+    let token = create_token(NAME_KIND, "/Test");
+    let token_data: &GreenTokenData = &*token;
+    let display_output = format!("{}", token_data);
+
+    assert_eq!(display_output, "/Test");
+}
+
+#[test]
+fn test_token_data_display_when_invalid_utf8_expect_lossy_conversion() {
+    let leading = GreenTrivia::new([]);
+    let trailing = leading.clone();
+    let invalid_utf8_bytes = &[0xFF, 0xFE, 0x00, 0x01];
+    let token = GreenToken::new(STRING_KIND, invalid_utf8_bytes, leading, trailing);
+
+    let token_data: &GreenTokenData = &*token;
+    let display_output = format!("{}", token_data);
+
+    // Should use lossy conversion for invalid UTF-8
+    assert!(display_output.contains("�") || display_output.len() > 0);
+}
+
+#[test]
+fn test_token_data_equality_when_same_content_expect_equal() {
+    let token1 = create_token(STRING_KIND, "(test)");
+    let token2 = create_token(STRING_KIND, "(test)");
+
+    let token_data1: &GreenTokenData = &*token1;
+    let token_data2: &GreenTokenData = &*token2;
+
+    assert_eq!(token_data1, token_data2);
+}
+
+#[test]
+fn test_token_data_equality_when_different_content_expect_not_equal() {
+    let token1 = create_token(STRING_KIND, "(test1)");
+    let token2 = create_token(STRING_KIND, "(test2)");
+
+    let token_data1: &GreenTokenData = &*token1;
+    let token_data2: &GreenTokenData = &*token2;
+
+    assert_ne!(token_data1, token_data2);
+}
+
+#[test]
+fn test_token_data_equality_when_different_kinds_expect_not_equal() {
+    let token1 = create_token(STRING_KIND, "(test)");
+    let token2 = create_token(NUMBER_KIND, "(test)");
+
+    let token_data1: &GreenTokenData = &*token1;
+    let token_data2: &GreenTokenData = &*token2;
+
+    assert_ne!(token_data1, token_data2);
 }

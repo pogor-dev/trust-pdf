@@ -1,3 +1,7 @@
+//! # Green Node - PDF Composite Syntax Structures
+//!
+//! Immutable, shareable internal nodes representing PDF composite structures.
+
 use std::{
     borrow::{Borrow, Cow},
     fmt,
@@ -18,34 +22,46 @@ use crate::{
     },
 };
 
+/// Internal representation of child nodes with positional metadata.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub(crate) enum GreenChild {
+    /// Child node with relative byte offset from parent start
     Node { rel_offset: u32, node: GreenNode },
+    /// Child token with relative byte offset from parent start  
     Token { rel_offset: u32, token: GreenToken },
 }
 
 type Repr = HeaderSlice<GreenNodeHead, [GreenChild]>;
 type ReprThin = HeaderSlice<GreenNodeHead, [GreenChild; 0]>;
 
-/// Internal node in the immutable tree.
-/// It has other nodes and tokens as children.
+/// Immutable PDF composite node with efficient sharing and zero-cost data access.
+///
+/// Represents PDF structures that contain child elements (objects, dictionaries, arrays).
+/// Supports efficient cloning via reference counting and structural sharing.
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct GreenNode {
     ptr: ThinArc<GreenNodeHead, GreenChild>,
 }
 
+/// Metadata header for green nodes containing size and classification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct GreenNodeHead {
+    /// PDF syntax kind (Object, Dictionary, Array, etc.)
     kind: SyntaxKind,
+    /// Text width excluding trivia (whitespace, comments)
     width: u32,
+    /// Total width including all trivia elements
     full_width: u32,
+    /// Reference counting for memory management
     _c: Count<GreenNode>,
 }
 
 impl GreenNode {
-    /// Creates new Node.
+    /// Creates a new PDF composite node from child elements.
+    ///
+    /// Constructs immutable node with calculated width metrics and relative child offsets.
     #[inline]
     pub fn new<I>(kind: SyntaxKind, children: I) -> GreenNode
     where
@@ -142,6 +158,7 @@ impl ops::Deref for GreenNode {
     }
 }
 
+/// Data access layer for green nodes providing zero-cost API methods.
 #[repr(transparent)]
 pub struct GreenNodeData {
     data: ReprThin,
@@ -158,23 +175,25 @@ impl GreenNodeData {
         self.data.slice()
     }
 
-    /// Kind of this node.
+    /// Returns the semantic classification of this PDF node.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.header().kind
     }
 
+    /// Returns the byte length of text content excluding trivia.
     #[inline]
     pub fn width(&self) -> u32 {
         self.header().width
     }
 
+    /// Returns the total byte span including all child trivia.
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
     }
 
-    /// Children of this node.
+    /// Returns an iterator over all immediate child elements.
     #[inline]
     pub fn children(&self) -> NodeChildren<'_> {
         NodeChildren {
@@ -182,6 +201,7 @@ impl GreenNodeData {
         }
     }
 
+    /// Creates a new node with one child replaced.
     #[must_use]
     pub fn replace_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
         let mut replacement = Some(new_child);
@@ -195,16 +215,19 @@ impl GreenNodeData {
         GreenNode::new(self.kind(), children)
     }
 
+    /// Creates a new node with a child inserted at the specified position.
     #[must_use]
     pub fn insert_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
         self.splice_children(index..index, iter::once(new_child))
     }
 
+    /// Creates a new node with a child removed at the specified position.
     #[must_use]
     pub fn remove_child(&self, index: usize) -> GreenNode {
         self.splice_children(index..=index, iter::empty())
     }
 
+    /// Creates a new node with children replaced in the specified range.
     #[must_use]
     pub fn splice_children<R, I>(&self, range: R, replace_with: I) -> GreenNode
     where
@@ -279,6 +302,7 @@ impl GreenChild {
     }
 }
 
+/// Iterator over PDF node children with efficient access patterns.
 #[derive(Debug, Clone)]
 pub struct NodeChildren<'a> {
     pub(crate) raw: slice::Iter<'a, GreenChild>,

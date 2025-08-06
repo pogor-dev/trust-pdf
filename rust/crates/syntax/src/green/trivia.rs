@@ -1,39 +1,4 @@
-//! # Green Trivia Collection - PDF Trivia Sequence Management
-//!
-//! Immutable, shareable collections of PDF trivia with zero-cost conversions and efficient memory layout.
-//!
-//! ## PDF Trivia Collections
-//!
-//! PDF syntax often requires sequences of trivia elements per ISO 32000-2:
-//! - **Leading trivia**: Comments and whitespace before tokens
-//! - **Trailing trivia**: Whitespace and comments after tokens
-//! - **Xref spacing**: Fixed-width whitespace sequences (§7.5.4)
-//! - **Stream boundaries**: Precise newline requirements (§7.3.8)
-//!
-//! ## Memory Architecture
-//!
-//! ```text
-//! GreenTrivia                    Memory Layout
-//! ┌─────────────────┐           ┌─────────────┬─────────────────────┐
-//! │ ThinArc pointer │ ────────► │ Head        │ [TriviaChild; n]    │
-//! └─────────────────┘           │─────────────┼─────────────────────┤
-//!         |                     │ count info  │ child1, child2, ... │
-//!         │ Deref (zero-cost)   └─────────────┴─────────────────────┘
-//!         ▼
-//! ┌─────────────────┐
-//! │ GreenTriviaData │ ──► API methods: children(), header(), etc.
-//! └─────────────────┘
-//! ```
-//!
-//! ## Usage Examples
-//!
-//! ```text
-//! PDF Fragment:      Trivia Collection:
-//! %comment           ┌─ Comment("%comment")
-//!                    ├─ Newline("\n")
-//!   /Type            ├─ Whitespace("  ")
-//!                    └─ (token: /Type)
-//! ```
+//! Immutable, shareable collections of PDF trivia elements with efficient memory layout.
 
 use std::{
     borrow::Borrow,
@@ -55,18 +20,7 @@ type Repr = HeaderSlice<GreenTriviaHead, [GreenTriviaChild]>;
 type ChildReprThin = HeaderSlice<GreenTriviaChildHead, [u8; 0]>;
 type ChildRepr = HeaderSlice<GreenTriviaChildHead, [u8]>;
 
-/// Immutable PDF trivia collection with efficient sharing and zero-cost data access.
-///
-/// Represents a sequence of trivia elements (whitespace, comments, newlines) that
-/// appear together in PDF content. Supports efficient cloning via reference counting.
-///
-/// ```text
-/// PDF Example:        Trivia Collection Elements:
-/// %header comment     ┌─ Comment("%header comment")
-///                     ├─ Newline("\n")
-/// 1 0 obj             ├─ Whitespace("")
-///                     └─ (continues to next token)
-/// ```
+/// Immutable PDF trivia collection with efficient sharing.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub struct GreenTrivia {
@@ -86,9 +40,6 @@ pub struct GreenTriviaData {
 
 impl GreenTrivia {
     /// Creates a new trivia collection from an iterator of trivia children.
-    ///
-    /// The iterator must provide an exact size hint for efficient memory allocation.
-    /// All trivia children are stored contiguously in memory for cache efficiency.
     #[inline]
     pub fn new<I>(pieces: I) -> Self
     where
@@ -105,7 +56,6 @@ impl GreenTrivia {
     ///
     /// # Safety
     /// The returned pointer must be converted back using `from_raw` to prevent memory leaks.
-    /// The pointer remains valid as long as there are other references to the data.
     #[inline]
     pub(crate) fn into_raw(this: GreenTrivia) -> ptr::NonNull<GreenTriviaData> {
         let green = ManuallyDrop::new(this);
@@ -117,7 +67,6 @@ impl GreenTrivia {
     ///
     /// # Safety
     /// The pointer must have been created by `into_raw` and not yet reclaimed.
-    /// This operation assumes ownership of the reference count.
     #[inline]
     pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
         let arc = unsafe {
@@ -141,17 +90,9 @@ impl ops::Deref for GreenTrivia {
     #[inline]
     fn deref(&self) -> &GreenTriviaData {
         unsafe {
-            // Step 1: Get full memory representation
+            // Zero-cost memory layout reinterpretation for efficient access
             let repr: &Repr = &self.ptr;
-
-            // Step 2: Normalize layout (remove metadata)
-            //   &*(ptr as *const A as *const B) pattern:
-            //   - Convert to raw pointer
-            //   - Reinterpret type
-            //   - Dereference and re-borrow
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-
-            // Step 3: Final API view (same bytes, API methods)
             mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
         }
     }
@@ -166,44 +107,18 @@ impl std::fmt::Debug for GreenTrivia {
 
 impl GreenTriviaData {
     /// Returns a slice of all trivia children in this collection.
-    ///
-    /// Children are stored contiguously in memory for efficient iteration.
-    /// The slice provides zero-cost access to individual trivia elements.
     #[inline]
     pub fn children(&self) -> &[GreenTriviaChild] {
         self.data.slice()
     }
 
     /// Returns the total byte width of all trivia children in this collection.
-    ///
-    /// Calculates the cumulative width by summing the individual widths of all
-    /// child trivia elements. Essential for PDF layout calculations and memory
-    /// allocation planning.
-    ///
-    /// ## Example Usage
-    ///
-    /// ```text
-    /// PDF trivia: "%comment\n  "
-    /// Children:   [Comment(8), Newline(1), Whitespace(2)]
-    /// Total width: 8 + 1 + 2 = 11 bytes
-    /// ```
     #[inline]
     pub fn width(&self) -> u32 {
         self.children().iter().map(|c| c.width()).sum()
     }
 
     /// Returns the concatenated text content of all trivia children as a String.
-    ///
-    /// Efficiently combines all child trivia text into a single String using
-    /// pre-calculated capacity to avoid reallocations. Critical for PDF round-trip
-    /// fidelity where exact trivia preservation is required.
-    ///
-    /// ## Example
-    ///
-    /// ```text
-    /// Input children: [Comment("%PDF-1.7"), Newline("\n"), Whitespace("  ")]
-    /// Output string: "%PDF-1.7\n  "
-    /// ```
     #[inline]
     pub fn text(&self) -> String {
         let total_width = self.width() as usize;
@@ -245,10 +160,7 @@ impl fmt::Debug for GreenTriviaData {
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for child in self.children() {
-            match std::str::from_utf8(child.text()) {
-                Ok(text) => write!(f, "{}", text)?,
-                Err(_) => write!(f, "{:?}", child.text())?,
-            }
+            write!(f, "{}", child)?;
         }
         Ok(())
     }
@@ -275,16 +187,6 @@ pub struct GreenTriviaChildData {
 
 impl GreenTriviaChild {
     /// Creates PDF trivia preserving exact bytes for round-trip fidelity.
-    ///
-    /// ```text
-    /// Input: kind=Newline, text=b"\n"
-    ///        ↓
-    /// ┌─────────────┬────────┐
-    /// │ Head        │ Text   │
-    /// ├─────────────┼────────┤
-    /// │ kind=newline│ "\n"   │
-    /// └─────────────┴────────┘
-    /// ```
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTriviaChild {
         let head = GreenTriviaChildHead {
@@ -297,16 +199,6 @@ impl GreenTriviaChild {
     }
 
     /// Transfers ownership to raw pointer for FFI/custom allocators.
-    ///
-    /// ```text
-    /// GreenTrivia (owned)
-    ///       ↓ ManuallyDrop (prevent cleanup)
-    /// GreenTrivia (wrapped)
-    ///       ↓ Deref
-    /// &GreenTriviaData
-    ///       ↓ Extract pointer
-    /// NonNull<GreenTriviaData>
-    /// ```
     ///
     /// Caller must eventually free the returned pointer.
     #[inline]
@@ -328,22 +220,6 @@ impl GreenTriviaChild {
 
 impl Borrow<GreenTriviaChildData> for GreenTriviaChild {
     /// Borrows trivia data for collections and generic operations.
-    ///
-    /// Enables using `GreenTrivia` in hash maps/sets with `GreenTriviaData` keys,
-    /// supporting efficient lookups without ownership transfer.
-    ///
-    /// ```text
-    /// Use Cases:
-    /// HashMap<GreenTriviaData, T>
-    ///     ↓ .get(&green_trivia)
-    /// Uses this Borrow impl automatically
-    ///
-    /// Collection Operations:
-    /// set.contains(&trivia)  ──► Borrow::borrow() ──► &GreenTriviaData
-    /// map.get(&trivia)       ──► Borrow::borrow() ──► &GreenTriviaData
-    /// ```
-    ///
-    /// Implementation leverages `Deref` coercion for zero-cost conversion.
     #[inline]
     fn borrow(&self) -> &GreenTriviaChildData {
         self
@@ -354,36 +230,21 @@ impl ops::Deref for GreenTriviaChild {
     type Target = GreenTriviaChildData;
 
     /// Zero-cost conversion via memory layout reinterpretation.
-    ///
-    /// ```text
-    /// Memory Transformation Chain:
-    ///
-    /// ThinArc<Head,u8>
-    ///        ↓ &self.ptr
-    /// GreenTriviaChildRepr ──────────────┐ Full Childrepresentation
-    ///        ↓ pointer cast         │ (with metadata)
-    /// GreenTriviaChildReprThin ──────────┤ Normalized layout  
-    ///        ↓ transmute            │ (clean structure)
-    /// GreenTriviaData ──────────────┘ API interface
-    ///
-    /// Same bytes, different type views
-    /// ```
     #[inline]
     fn deref(&self) -> &GreenTriviaChildData {
         unsafe {
-            // Step 1: Get full memory Childrepresentation
+            // Zero-cost memory layout reinterpretation for efficient access
             let repr: &ChildRepr = &self.ptr;
-
-            // Step 2: Normalize layout (remove metadata)
-            //   &*(ptr as *const A as *const B) pattern:
-            //   - Convert to raw pointer
-            //   - Reinterpret type
-            //   - Dereference and re-borrow
             let repr: &ChildReprThin = &*(repr as *const ChildRepr as *const ChildReprThin);
-
-            // Step 3: Final API view (same bytes, API methods)
             mem::transmute::<&ChildReprThin, &GreenTriviaChildData>(repr)
         }
+    }
+}
+
+impl fmt::Display for GreenTriviaChild {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTriviaChildData = self;
+        fmt::Display::fmt(data, f)
     }
 }
 
@@ -396,65 +257,12 @@ impl std::fmt::Debug for GreenTriviaChild {
 
 impl GreenTriviaChildData {
     /// Returns the semantic kind of this trivia element.
-    ///
-    /// Accesses the **header** portion of the trivia to determine its PDF-specific
-    /// classification (whitespace, newline, comment).
-    ///
-    /// ## Header Access Pattern
-    ///
-    /// ```text
-    /// Memory Access:
-    /// GreenTriviaData
-    ///        ↓ .data
-    /// GreenTriviaChildReprThin  
-    ///        ↓ .header
-    /// GreenTriviaHead
-    ///        ↓ .kind
-    /// SyntaxKind (enum value)
-    /// ```
-    ///
-    /// ## PDF Significance
-    ///
-    /// The kind determines semantic meaning in PDF processing:
-    /// - `Newline`: Line breaks with potential semantic significance
-    /// - `Whitespace`: Spaces and tabs for formatting and separation
-    /// - `Comment`: PDF comments starting with '%' character
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
     }
 
     /// Returns the raw byte content of this trivia element.
-    ///
-    /// Accesses the **body** portion containing the actual trivia text.
-    /// Essential for PDF round-trip fidelity where exact bytes matter.
-    ///
-    /// ## Body Access Pattern
-    ///
-    /// ```text
-    /// Memory Access:
-    /// GreenTriviaData
-    ///        ↓ .data
-    /// GreenTriviaChildReprThin
-    ///        ↓ .slice()
-    /// Raw slice pointer + length
-    ///        ↓ from_raw_parts
-    /// &[u8] (safe slice view)
-    /// ```
-    ///
-    /// ## PDF Examples
-    ///
-    /// ```text
-    /// Newline:       text() → b"\n"
-    /// Whitespace:    text() → b" "
-    /// Whitespace:    text() → b"     " (5 spaces)
-    /// Comment:       text() → b"%PDF-1.7"
-    /// ```
-    ///
-    /// ## Safety
-    ///
-    /// Safe because the slice is created from valid memory managed by `ThinArc`.
-    /// The length is stored in the header and guaranteed to match allocated space.
     #[inline]
     pub fn text(&self) -> &[u8] {
         let slice = self.data.slice();
@@ -462,23 +270,6 @@ impl GreenTriviaChildData {
     }
 
     /// Returns the byte width (length) of this trivia element.
-    ///
-    /// Computed from the **body** length for consistency with actual content.
-    /// Useful for PDF layout calculations and memory usage tracking.
-    ///
-    /// ## Usage in PDF Processing
-    ///
-    /// ```text
-    /// Layout calculations:
-    /// - Fixed-width formatting: width() for alignment verification
-    /// - Trivia parsing: width() for boundary detection  
-    /// - Memory management: width() for allocation size planning
-    /// ```
-    ///
-    /// ## Implementation Note
-    ///
-    /// Could alternatively read from `header.len`, but using `text().len()`
-    /// ensures consistency between header metadata and actual body content.
     #[inline]
     pub fn width(&self) -> u32 {
         self.text().len() as u32
@@ -487,28 +278,6 @@ impl GreenTriviaChildData {
 
 impl PartialEq for GreenTriviaChildData {
     /// Compares trivia for semantic equality (kind + content).
-    ///
-    /// Essential for PDF trivia deduplication, caching, and incremental updates.
-    /// Two trivia elements are equal if both kind and byte content match exactly.
-    ///
-    /// ```text
-    /// Equality Check:
-    ///
-    /// Step 1: Kind comparison    Step 2: Content comparison
-    /// ┌─────────────────┐       ┌─────────────────────┐
-    /// │ self.kind()     │  ==   │ self.text()         │
-    /// │ other.kind()    │       │ other.text()        │
-    /// └─────────────────┘       └─────────────────────┘
-    ///         │                           │
-    ///         └───────────┬───────────────┘
-    ///                     ▼
-    ///              true if both match
-    ///
-    /// Examples:
-    /// Equal:     Newline("\n") == Newline("\n")         ✓
-    /// Different: Newline("\n") != Whitespace("\n")     ✗ (kind differs)
-    /// Different: Whitespace(" ") != Whitespace("  ")   ✗ (content differs)
-    /// ```
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.text() == other.text()
     }
@@ -518,24 +287,6 @@ impl ToOwned for GreenTriviaChildData {
     type Owned = GreenTriviaChild;
 
     /// Converts borrowed trivia to owned with reference counting (zero-copy).
-    ///
-    /// Creates a new `GreenTrivia` sharing the same memory via `ThinArc`,
-    /// enabling safe ownership transfer without duplicating trivia bytes.
-    ///
-    /// ```text
-    /// Borrowed → Owned Conversion:
-    ///
-    /// &GreenTriviaData           GreenTrivia
-    /// ┌──────────────────┐      ┌──────────────────┐
-    /// │ Borrowed view    │ ──►  │ Owned reference  │
-    /// │ of shared memory │      │ with ref count   │
-    /// └──────────────────┘      └──────────────────┘
-    ///         │                           │
-    ///         └─────── Same bytes ────────┘
-    ///                 (zero copy)
-    /// ```
-    ///
-    /// Implementation: Reconstruct from raw pointer → wrap in `ManuallyDrop` → clone reference count.
     #[inline]
     fn to_owned(&self) -> GreenTriviaChild {
         let green = unsafe { GreenTriviaChild::from_raw(ptr::NonNull::from(self)) };
@@ -555,7 +306,10 @@ impl fmt::Debug for GreenTriviaChildData {
 
 impl fmt::Display for GreenTriviaChildData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.text())
+        match std::str::from_utf8(self.text()) {
+            Ok(text) => write!(f, "{}", text),
+            Err(_) => write!(f, "{:?}", self.text()),
+        }
     }
 }
 

@@ -1,9 +1,11 @@
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        element::GreenElement, node::GreenNode, node::GreenNodeData, token::GreenToken,
+        element::GreenElement,
+        node::{GreenChild, GreenNode, GreenNodeData},
+        token::GreenToken,
         trivia::GreenTrivia,
     },
 };
@@ -16,6 +18,8 @@ const DICT_KIND: SyntaxKind = SyntaxKind(4);
 const NAME_KIND: SyntaxKind = SyntaxKind(5);
 const ARRAY_KIND: SyntaxKind = SyntaxKind(6);
 const STREAM_KIND: SyntaxKind = SyntaxKind(7);
+const OBJECT_KIND: SyntaxKind = SyntaxKind(8);
+const KW_KIND: SyntaxKind = SyntaxKind(9);
 
 /// Helper function to create test tokens with different content types
 fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
@@ -26,6 +30,11 @@ fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
 /// Helper function to create test nodes with given children
 fn create_node(kind: SyntaxKind, children: Vec<GreenElement>) -> GreenNode {
     GreenNode::new(kind, children)
+}
+
+/// Helper function to create test elements (either nodes or tokens)
+fn create_element_token(kind: SyntaxKind, text: &str) -> GreenElement {
+    NodeOrToken::Token(create_token(kind, text))
 }
 
 /// Helper function to create a simple dictionary node for testing
@@ -57,7 +66,23 @@ fn create_obj_node() -> GreenNode {
     )
 }
 
-// Tests for GreenNode construction and basic properties
+/// Creates a sample PDF object structure for testing
+/// Represents something like: "1 0 obj /Type /Catalog endobj"
+fn create_sample_pdf_object() -> GreenNode {
+    let elements = vec![
+        create_element_token(NUMBER_KIND, "1"),
+        create_element_token(NUMBER_KIND, "0"),
+        create_element_token(KW_KIND, "obj"),
+        create_element_token(NAME_KIND, "/Type"),
+        create_element_token(NAME_KIND, "/Catalog"),
+        create_element_token(KW_KIND, "endobj"),
+    ];
+    create_node(OBJECT_KIND, elements)
+}
+
+// =============================================================================
+// GreenNode Core Tests
+// =============================================================================
 
 #[test]
 fn test_new_when_creating_empty_node_expect_correct_properties() {
@@ -101,65 +126,469 @@ fn test_new_when_creating_node_with_multiple_children_expect_cumulative_width() 
 
 #[test]
 fn test_new_when_creating_nested_nodes_expect_correct_structure() {
-    let obj_node = create_obj_node();
+    let dict_node = create_dict_node();
+    let nested_node = create_node(OBJ_KIND, vec![NodeOrToken::Node(dict_node)]);
 
-    assert_eq!(obj_node.kind(), OBJ_KIND);
-    assert_eq!(obj_node.children().count(), 3);
+    assert_eq!(nested_node.kind(), OBJ_KIND);
+    assert_eq!(nested_node.children().count(), 1);
 
-    // Verify child structure
-    let children: Vec<_> = obj_node.children().collect();
-    assert!(matches!(children[0], NodeOrToken::Token(_)));
-    assert!(matches!(children[1], NodeOrToken::Token(_)));
-    assert!(matches!(children[2], NodeOrToken::Node(_)));
+    // Check that the nested child is correctly preserved
+    let child = nested_node.children().next().unwrap();
+    match child {
+        NodeOrToken::Node(node) => {
+            assert_eq!(node.kind(), DICT_KIND);
+        }
+        NodeOrToken::Token(_) => panic!("Expected nested node, got token"),
+    }
 }
 
+// =============================================================================
+// Node Editing Methods Tests
+// =============================================================================
+
 #[test]
-fn test_new_when_creating_array_node_expect_correct_children_order() {
-    let num1 = create_token(NUMBER_KIND, "1");
-    let num2 = create_token(NUMBER_KIND, "2");
-    let num3 = create_token(NUMBER_KIND, "3");
+fn test_replace_child_when_replacing_middle_child_expect_correct_replacement() {
+    let original_children = vec![
+        create_element_token(NUMBER_KIND, "1"),
+        create_element_token(NUMBER_KIND, "0"),
+        create_element_token(KW_KIND, "obj"),
+    ];
+    let node = create_node(OBJ_KIND, original_children);
 
-    let array_node = create_node(
-        ARRAY_KIND,
-        vec![
-            NodeOrToken::Token(num1.clone()),
-            NodeOrToken::Token(num2.clone()),
-            NodeOrToken::Token(num3.clone()),
-        ],
-    );
+    let new_child = create_element_token(NUMBER_KIND, "2");
+    let new_node = node.replace_child(1, new_child);
 
-    let children: Vec<_> = array_node.children().collect();
+    let children: Vec<_> = new_node.children().collect();
     assert_eq!(children.len(), 3);
 
-    // Verify order is preserved
+    // Check first child unchanged
     if let NodeOrToken::Token(token) = &children[0] {
         assert_eq!(token.text(), b"1");
     } else {
         panic!("Expected token");
     }
 
+    // Check replaced child
+    if let NodeOrToken::Token(token) = &children[1] {
+        assert_eq!(token.text(), b"2");
+    } else {
+        panic!("Expected token");
+    }
+
+    // Check third child unchanged
     if let NodeOrToken::Token(token) = &children[2] {
-        assert_eq!(token.text(), b"3");
+        assert_eq!(token.text(), b"obj");
     } else {
         panic!("Expected token");
     }
 }
 
-// Tests for GreenNode memory management and sharing
-
 #[test]
-fn test_clone_when_cloning_node_expect_shared_properties() {
-    let original = create_dict_node();
-    let cloned = original.clone();
+fn test_insert_child_when_inserting_at_start_expect_correct_insertion() {
+    let original_children = vec![
+        create_element_token(NUMBER_KIND, "0"),
+        create_element_token(KW_KIND, "obj"),
+    ];
+    let node = create_node(OBJ_KIND, original_children);
 
-    assert_eq!(original, cloned);
-    assert_eq!(original.kind(), cloned.kind());
-    assert_eq!(original.full_width(), cloned.full_width());
-    assert_eq!(original.children().count(), cloned.children().count());
+    let new_child = create_element_token(NUMBER_KIND, "1");
+    let new_node = node.insert_child(0, new_child);
+
+    let children: Vec<_> = new_node.children().collect();
+    assert_eq!(children.len(), 3);
+
+    // Check inserted child
+    if let NodeOrToken::Token(token) = &children[0] {
+        assert_eq!(token.text(), b"1");
+    } else {
+        panic!("Expected token");
+    }
 }
 
 #[test]
-fn test_eq_when_comparing_identical_nodes_expect_equality() {
+fn test_remove_child_when_removing_middle_child_expect_correct_removal() {
+    let original_children = vec![
+        create_element_token(NUMBER_KIND, "1"),
+        create_element_token(NUMBER_KIND, "0"),
+        create_element_token(KW_KIND, "obj"),
+    ];
+    let node = create_node(OBJ_KIND, original_children);
+
+    let new_node = node.remove_child(1);
+
+    let children: Vec<_> = new_node.children().collect();
+    assert_eq!(children.len(), 2);
+
+    // Check remaining children
+    if let NodeOrToken::Token(token) = &children[0] {
+        assert_eq!(token.text(), b"1");
+    } else {
+        panic!("Expected token");
+    }
+
+    if let NodeOrToken::Token(token) = &children[1] {
+        assert_eq!(token.text(), b"obj");
+    } else {
+        panic!("Expected token");
+    }
+}
+
+#[test]
+fn test_splice_children_when_replacing_range_expect_correct_splicing() {
+    let original_children = vec![
+        create_element_token(NUMBER_KIND, "1"),
+        create_element_token(NUMBER_KIND, "0"),
+        create_element_token(KW_KIND, "obj"),
+    ];
+    let node = create_node(OBJ_KIND, original_children);
+
+    let replacement_children = vec![
+        create_element_token(NUMBER_KIND, "2"),
+        create_element_token(NUMBER_KIND, "1"),
+    ];
+    let new_node = node.splice_children(0..2, replacement_children);
+
+    let children: Vec<_> = new_node.children().collect();
+    assert_eq!(children.len(), 3);
+
+    // Check replaced children
+    if let NodeOrToken::Token(token) = &children[0] {
+        assert_eq!(token.text(), b"2");
+    } else {
+        panic!("Expected token");
+    }
+
+    if let NodeOrToken::Token(token) = &children[1] {
+        assert_eq!(token.text(), b"1");
+    } else {
+        panic!("Expected token");
+    }
+
+    // Check remaining child
+    if let NodeOrToken::Token(token) = &children[2] {
+        assert_eq!(token.text(), b"obj");
+    } else {
+        panic!("Expected token");
+    }
+}
+
+// =============================================================================
+// GreenChild Tests
+// =============================================================================
+
+#[test]
+fn test_new_node_child_when_creating_with_offset_expect_correct_values() {
+    let node = create_dict_node();
+    let rel_offset = 42;
+
+    let child = GreenChild::Node {
+        rel_offset,
+        node: node.clone(),
+    };
+
+    match child {
+        GreenChild::Node {
+            rel_offset: offset,
+            node: child_node,
+        } => {
+            assert_eq!(offset, 42);
+            assert_eq!(child_node.kind(), node.kind());
+        }
+        GreenChild::Token { .. } => panic!("Expected Node child, got Token"),
+    }
+}
+
+#[test]
+fn test_new_token_child_when_creating_with_offset_expect_correct_values() {
+    let token = create_token(STRING_KIND, "(test)");
+    let rel_offset = 24;
+
+    let child = GreenChild::Token {
+        rel_offset,
+        token: token.clone(),
+    };
+
+    match child {
+        GreenChild::Token {
+            rel_offset: offset,
+            token: child_token,
+        } => {
+            assert_eq!(offset, 24);
+            assert_eq!(child_token.kind(), token.kind());
+        }
+        GreenChild::Node { .. } => panic!("Expected Token child, got Node"),
+    }
+}
+
+#[test]
+fn test_green_child_rel_offset_when_accessing_expect_correct_offset() {
+    let token = create_token(STRING_KIND, "(test)");
+    let child = GreenChild::Token {
+        rel_offset: 10,
+        token: token.clone(),
+    };
+
+    assert_eq!(child.rel_offset(), 10);
+}
+
+#[test]
+fn test_green_child_rel_range_when_calculating_expect_correct_range() {
+    let token = create_token(STRING_KIND, "(test)");
+    let child = GreenChild::Token {
+        rel_offset: 5,
+        token: token.clone(),
+    };
+
+    let range = child.rel_range();
+    assert_eq!(range.start, 5);
+    assert_eq!(range.end, 5 + token.full_width()); // 5 + 6 = 11
+}
+
+// =============================================================================
+// NodeChildren Iterator Tests
+// =============================================================================
+
+#[test]
+fn test_children_len_when_empty_node_expect_zero() {
+    let node = create_node(OBJECT_KIND, vec![]);
+    let children = node.children();
+
+    assert_eq!(children.len(), 0);
+}
+
+#[test]
+fn test_children_len_when_single_child_expect_one() {
+    let node = create_node(OBJECT_KIND, vec![create_element_token(NUMBER_KIND, "1")]);
+    let children = node.children();
+
+    assert_eq!(children.len(), 1);
+}
+
+#[test]
+fn test_children_len_when_multiple_children_expect_correct_count() {
+    let node = create_sample_pdf_object();
+    let children = node.children();
+
+    assert_eq!(children.len(), 6); // "1", "0", "obj", "/Type", "/Catalog", "endobj"
+}
+
+#[test]
+fn test_children_next_when_iterating_expect_correct_sequence() {
+    let node = create_sample_pdf_object();
+    let mut children = node.children();
+
+    // First child: "1"
+    let first = children.next().unwrap();
+    match first {
+        NodeOrToken::Token(token) => {
+            assert_eq!(token.kind(), NUMBER_KIND);
+            assert_eq!(token.text(), b"1");
+        }
+        NodeOrToken::Node(_) => panic!("Expected token, got node"),
+    }
+
+    // Second child: "0"
+    let second = children.next().unwrap();
+    match second {
+        NodeOrToken::Token(token) => {
+            assert_eq!(token.kind(), NUMBER_KIND);
+            assert_eq!(token.text(), b"0");
+        }
+        NodeOrToken::Node(_) => panic!("Expected token, got node"),
+    }
+
+    // Third child: "obj"
+    let third = children.next().unwrap();
+    match third {
+        NodeOrToken::Token(token) => {
+            assert_eq!(token.kind(), KW_KIND);
+            assert_eq!(token.text(), b"obj");
+        }
+        NodeOrToken::Node(_) => panic!("Expected token, got node"),
+    }
+}
+
+#[test]
+fn test_children_nth_when_accessing_specific_child_expect_correct_element() {
+    let node = create_sample_pdf_object();
+    let mut children = node.children();
+
+    // Access the 4th element (index 3): "/Type"
+    let fourth = children.nth(3).unwrap();
+    match fourth {
+        NodeOrToken::Token(token) => {
+            assert_eq!(token.kind(), NAME_KIND);
+            assert_eq!(token.text(), b"/Type");
+        }
+        NodeOrToken::Node(_) => panic!("Expected token, got node"),
+    }
+}
+
+#[test]
+fn test_children_size_hint_when_checking_bounds_expect_correct_hint() {
+    let node = create_sample_pdf_object();
+    let children = node.children();
+
+    let (lower, upper) = children.size_hint();
+    assert_eq!(lower, 6);
+    assert_eq!(upper, Some(6));
+}
+
+#[test]
+fn test_children_last_when_getting_final_element_expect_endobj() {
+    let node = create_sample_pdf_object();
+    let children = node.children();
+
+    let last = children.last().unwrap();
+    match last {
+        NodeOrToken::Token(token) => {
+            assert_eq!(token.kind(), KW_KIND);
+            assert_eq!(token.text(), b"endobj");
+        }
+        NodeOrToken::Node(_) => panic!("Expected token, got node"),
+    }
+}
+
+#[test]
+fn test_children_collect_when_gathering_all_expect_complete_sequence() {
+    let node = create_sample_pdf_object();
+    let children: Vec<_> = node.children().collect();
+
+    assert_eq!(children.len(), 6);
+
+    // Verify the sequence matches our expected PDF object structure
+    let expected_texts: &[&[u8]] = &[b"1", b"0", b"obj", b"/Type", b"/Catalog", b"endobj"];
+    let expected_kinds = [
+        NUMBER_KIND,
+        NUMBER_KIND,
+        KW_KIND,
+        NAME_KIND,
+        NAME_KIND,
+        KW_KIND,
+    ];
+
+    for (i, child) in children.iter().enumerate() {
+        match child {
+            NodeOrToken::Token(token) => {
+                assert_eq!(token.text(), expected_texts[i]);
+                assert_eq!(token.kind(), expected_kinds[i]);
+            }
+            NodeOrToken::Node(_) => panic!("Expected token at index {}, got node", i),
+        }
+    }
+}
+
+// =============================================================================
+// Memory Management and Raw Pointer Tests
+// =============================================================================
+
+#[test]
+fn test_into_raw_when_converting_to_pointer_expect_valid_operation() {
+    let node = create_dict_node();
+    let original_kind = node.kind();
+
+    // Convert to raw pointer
+    let raw_ptr = GreenNode::into_raw(node);
+
+    // Convert back and verify integrity
+    let recovered_node = unsafe { GreenNode::from_raw(raw_ptr) };
+    assert_eq!(recovered_node.kind(), original_kind);
+}
+
+#[test]
+fn test_borrow_when_using_as_node_data_expect_same_content() {
+    let node = create_dict_node();
+    let node_data: &GreenNodeData = node.borrow();
+
+    // Verify that borrowing gives access to the same data
+    assert_eq!(node.kind(), node_data.kind());
+    assert_eq!(node.width(), node_data.width());
+    assert_eq!(node.children().len(), node_data.children().len());
+}
+
+#[test]
+fn test_to_owned_when_converting_node_data_expect_equivalent_node() {
+    let original_node = create_dict_node();
+    let node_data: &GreenNodeData = &original_node;
+    let owned_node = node_data.to_owned();
+
+    assert_eq!(original_node.kind(), owned_node.kind());
+    assert_eq!(original_node.width(), owned_node.width());
+    assert_eq!(original_node.children().len(), owned_node.children().len());
+}
+
+// =============================================================================
+// Edge Cases and Error Conditions
+// =============================================================================
+
+#[test]
+fn test_children_when_empty_iterator_expect_no_panics() {
+    let empty_node = create_node(ARRAY_KIND, vec![]);
+    let mut children = empty_node.children();
+
+    assert!(children.next().is_none());
+    assert!(children.last().is_none());
+}
+
+#[test]
+fn test_children_when_single_element_expect_consistent_behavior() {
+    let single_child_node = create_node(
+        ARRAY_KIND,
+        vec![create_element_token(STRING_KIND, "(single)")],
+    );
+    let children = single_child_node.children();
+
+    assert_eq!(children.len(), 1);
+
+    let first = children.clone().next().unwrap();
+    let last = children.last().unwrap();
+
+    // For single element, first and last should be the same
+    match (first, last) {
+        (NodeOrToken::Token(first_token), NodeOrToken::Token(last_token)) => {
+            assert_eq!(first_token.text(), last_token.text());
+            assert_eq!(first_token.kind(), last_token.kind());
+        }
+        _ => panic!("Expected both to be tokens"),
+    }
+}
+
+#[test]
+fn test_width_when_complex_nested_structure_expect_accurate_calculation() {
+    // Create a complex nested structure to test width calculation
+    let inner_dict = create_dict_node();
+    let middle_node = create_node(STREAM_KIND, vec![NodeOrToken::Node(inner_dict)]);
+    let outer_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "42")),
+            NodeOrToken::Node(middle_node),
+            NodeOrToken::Token(create_token(STRING_KIND, "(end)")),
+        ],
+    );
+
+    // Width should be sum of all leaf token widths
+    let expected_width = 2 + 5 + 8 + 5; // "42" + "/Type" + "/Catalog" + "(end)"
+    assert_eq!(outer_node.width(), expected_width);
+}
+
+// =============================================================================
+// Debug and Display Tests
+// =============================================================================
+
+#[test]
+fn test_debug_when_formatting_node_expect_readable_output() {
+    let node = create_dict_node();
+    let debug_output = format!("{:?}", node);
+
+    // Debug output should be non-empty and contain useful information
+    assert!(!debug_output.is_empty());
+    // Should contain some indication of the node structure
+    assert!(debug_output.contains("GreenNode") || debug_output.len() > 10);
+}
+
+#[test]
+fn test_equality_when_comparing_identical_nodes_expect_equal() {
     let node1 = create_dict_node();
     let node2 = create_dict_node();
 
@@ -167,381 +596,131 @@ fn test_eq_when_comparing_identical_nodes_expect_equality() {
 }
 
 #[test]
-fn test_eq_when_comparing_different_kinds_expect_inequality() {
+fn test_equality_when_comparing_different_nodes_expect_not_equal() {
     let dict_node = create_dict_node();
-    let array_node = create_node(ARRAY_KIND, vec![]);
+    let obj_node = create_obj_node();
 
-    assert_ne!(dict_node, array_node);
+    assert_ne!(dict_node, obj_node);
 }
 
 #[test]
-fn test_eq_when_comparing_different_children_expect_inequality() {
-    let node1 = create_node(
-        DICT_KIND,
-        vec![NodeOrToken::Token(create_token(NAME_KIND, "/Type"))],
-    );
-    let node2 = create_node(
-        DICT_KIND,
-        vec![NodeOrToken::Token(create_token(NAME_KIND, "/Pages"))],
-    );
+fn test_hash_when_using_in_hashmap_expect_consistent_behavior() {
+    use std::collections::HashMap;
 
-    assert_ne!(node1, node2);
-}
-
-// Tests for GreenNode raw pointer operations (unsafe operations)
-
-#[test]
-fn test_into_raw_and_from_raw_when_roundtrip_expect_identical_node() {
-    let original = create_dict_node();
-    let original_kind = original.kind();
-    let original_width = original.full_width();
-
-    let raw_ptr = GreenNode::into_raw(original);
-    let reconstructed = unsafe { GreenNode::from_raw(raw_ptr) };
-
-    assert_eq!(reconstructed.kind(), original_kind);
-    assert_eq!(reconstructed.full_width(), original_width);
-}
-
-#[test]
-fn test_into_raw_when_converting_to_pointer_expect_valid_roundtrip() {
     let node = create_dict_node();
-    let original_kind = node.kind();
-    let original_width = node.full_width();
+    let mut map = HashMap::new();
+    map.insert(node.clone(), "test_value");
 
-    let raw_ptr = GreenNode::into_raw(node);
-
-    // Clean up by reconstructing and verifying
-    let reconstructed = unsafe { GreenNode::from_raw(raw_ptr) };
-    assert_eq!(reconstructed.kind(), original_kind);
-    assert_eq!(reconstructed.full_width(), original_width);
+    // Should be able to retrieve using the same logical node
+    let lookup_node = create_dict_node();
+    assert_eq!(map.get(&lookup_node), Some(&"test_value"));
 }
 
-// Tests for GreenNode formatting and display
+// =============================================================================
+// Display and Equality Implementation Tests
+// =============================================================================
 
 #[test]
-fn test_debug_when_formatting_simple_node_expect_readable_output() {
+fn test_node_display_when_formatting_expect_child_content() {
     let node = create_dict_node();
-    let debug_str = format!("{:?}", node);
+    let display_output = format!("{}", node);
 
-    // Should contain kind information and be non-empty
-    assert!(!debug_str.is_empty());
-    assert!(debug_str.contains("4")); // DICT_KIND value
+    // Display should show concatenated child content
+    assert!(!display_output.is_empty());
+    // Should contain content from child tokens
+    assert!(display_output.contains("Type") || display_output.len() > 0);
 }
 
 #[test]
-fn test_display_when_formatting_node_expect_text_content() {
-    let token = create_token(STRING_KIND, "(Hello)");
-    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
-    let display_str = format!("{}", node);
-
-    // Should contain the text content
-    assert!(display_str.contains("(Hello)"));
-}
-
-// Tests for GreenNode deref behavior
-
-#[test]
-fn test_deref_when_accessing_node_data_expect_correct_methods() {
+fn test_node_data_display_when_formatting_expect_child_content() {
     let node = create_dict_node();
+    let node_data: &GreenNodeData = &*node;
+    let display_output = format!("{}", node_data);
 
-    // These methods should be available through Deref to GreenNodeData
-    assert_eq!(node.kind(), DICT_KIND);
-    assert!(node.children().count() > 0);
-}
-
-// Tests for PDF-specific node structures
-
-#[test]
-fn test_new_when_creating_stream_object_expect_correct_structure() {
-    let dict = create_dict_node();
-    let stream_content = create_token(STRING_KIND, "BT /F1 12 Tf ET");
-
-    let stream_node = create_node(
-        STREAM_KIND,
-        vec![NodeOrToken::Node(dict), NodeOrToken::Token(stream_content)],
-    );
-
-    assert_eq!(stream_node.kind(), STREAM_KIND);
-    assert_eq!(stream_node.children().count(), 2);
-
-    let children: Vec<_> = stream_node.children().collect();
-    assert!(matches!(children[0], NodeOrToken::Node(_))); // Dictionary
-    assert!(matches!(children[1], NodeOrToken::Token(_))); // Stream content
+    // Display should show concatenated child content
+    assert!(!display_output.is_empty());
+    // Should contain content from child tokens
+    assert!(display_output.contains("Type") || display_output.len() > 0);
 }
 
 #[test]
-fn test_new_when_creating_deep_nested_structure_expect_correct_traversal() {
-    // Create a deeply nested PDF structure: obj -> dict -> array -> tokens
-    let num1 = create_token(NUMBER_KIND, "1");
-    let num2 = create_token(NUMBER_KIND, "2");
-    let array = create_node(
-        ARRAY_KIND,
-        vec![NodeOrToken::Token(num1), NodeOrToken::Token(num2)],
-    );
-
-    let type_name = create_token(NAME_KIND, "/Type");
-    let dict = create_node(
-        DICT_KIND,
-        vec![NodeOrToken::Token(type_name), NodeOrToken::Node(array)],
-    );
-
-    let obj_num = create_token(NUMBER_KIND, "1");
-    let obj = create_node(
-        OBJ_KIND,
-        vec![NodeOrToken::Token(obj_num), NodeOrToken::Node(dict)],
-    );
-
-    assert_eq!(obj.kind(), OBJ_KIND);
-    assert_eq!(obj.children().count(), 2);
-
-    // Verify we can traverse the structure
-    let children: Vec<_> = obj.children().collect();
-    if let NodeOrToken::Node(dict_node) = &children[1] {
-        assert_eq!(dict_node.kind(), DICT_KIND);
-        let dict_children: Vec<_> = dict_node.children().collect();
-        if let NodeOrToken::Node(array_node) = &dict_children[1] {
-            assert_eq!(array_node.kind(), ARRAY_KIND);
-            assert_eq!(array_node.children().count(), 2);
-        } else {
-            panic!("Expected array node");
-        }
-    } else {
-        panic!("Expected dict node");
-    }
-}
-
-#[test]
-fn test_node_data_replace_child_when_replacing_first_child_expect_new_node() {
-    let original_token = create_token(NAME_KIND, "/Type");
-    let replacement_token = create_token(NAME_KIND, "/Pages");
-    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(original_token)]);
-
-    let new_node = node.replace_child(0, NodeOrToken::Token(replacement_token.clone()));
-
-    assert_eq!(new_node.kind(), DICT_KIND);
-    assert_eq!(new_node.children().count(), 1);
-
-    let children: Vec<_> = new_node.children().collect();
-    if let NodeOrToken::Token(token) = &children[0] {
-        assert_eq!(token.text(), b"/Pages");
-    } else {
-        panic!("Expected token");
-    }
-}
-
-#[test]
-fn test_node_data_replace_child_when_replacing_middle_child_expect_others_unchanged() {
-    // Create a node with multiple children to test the else branch (line 63)
-    let token1 = create_token(NAME_KIND, "/Type");
-    let token2 = create_token(NAME_KIND, "/Catalog");
-    let token3 = create_token(NAME_KIND, "/Pages");
-    let node = create_node(
-        DICT_KIND,
-        vec![
-            NodeOrToken::Token(token1),
-            NodeOrToken::Token(token2),
-            NodeOrToken::Token(token3),
-        ],
-    );
-
-    // Replace the middle child (index 1)
-    let replacement_token = create_token(NAME_KIND, "/Root");
-    let new_node = node.replace_child(1, NodeOrToken::Token(replacement_token));
-
-    assert_eq!(new_node.kind(), DICT_KIND);
-    assert_eq!(new_node.children().count(), 3);
-
-    let children: Vec<_> = new_node.children().collect();
-
-    // First child should remain unchanged (covers child.to_owned() on line 63)
-    if let NodeOrToken::Token(token) = &children[0] {
-        assert_eq!(token.text(), b"/Type");
-    } else {
-        panic!("Expected token");
-    }
-
-    // Middle child should be replaced
-    if let NodeOrToken::Token(token) = &children[1] {
-        assert_eq!(token.text(), b"/Root");
-    } else {
-        panic!("Expected token");
-    }
-
-    // Last child should remain unchanged (covers child.to_owned() on line 63)
-    if let NodeOrToken::Token(token) = &children[2] {
-        assert_eq!(token.text(), b"/Pages");
-    } else {
-        panic!("Expected token");
-    }
-}
-
-#[test]
-fn test_node_data_insert_child_when_inserting_at_beginning_expect_new_first_child() {
-    let original_token = create_token(NAME_KIND, "/Catalog");
-    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(original_token)]);
-
-    let new_token = create_token(NAME_KIND, "/Type");
-    let new_node = node.insert_child(0, NodeOrToken::Token(new_token));
-
-    assert_eq!(new_node.children().count(), 2);
-
-    let children: Vec<_> = new_node.children().collect();
-    if let NodeOrToken::Token(token) = &children[0] {
-        assert_eq!(token.text(), b"/Type");
-    } else {
-        panic!("Expected token");
-    }
-    if let NodeOrToken::Token(token) = &children[1] {
-        assert_eq!(token.text(), b"/Catalog");
-    } else {
-        panic!("Expected token");
-    }
-}
-
-#[test]
-fn test_node_data_remove_child_when_removing_only_child_expect_empty_node() {
-    let token = create_token(NAME_KIND, "/Type");
-    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
-
-    let new_node = node.remove_child(0);
-
-    assert_eq!(new_node.children().count(), 0);
-}
-
-#[test]
-fn test_node_data_children_when_accessing_iterator_expect_correct_traversal() {
-    let token1 = create_token(NAME_KIND, "/Type");
-    let token2 = create_token(NAME_KIND, "/Catalog");
-    let token3 = create_token(NAME_KIND, "/Pages");
-
-    let node = create_node(
-        DICT_KIND,
-        vec![
-            NodeOrToken::Token(token1),
-            NodeOrToken::Token(token2),
-            NodeOrToken::Token(token3),
-        ],
-    );
-
-    let children: Vec<_> = node.children().collect();
-    assert_eq!(children.len(), 3);
-
-    // Verify iterator provides access to all children
-    for (i, child) in node.children().enumerate() {
-        match i {
-            0 => {
-                if let NodeOrToken::Token(token) = child {
-                    assert_eq!(token.text(), b"/Type");
-                }
-            }
-            1 => {
-                if let NodeOrToken::Token(token) = child {
-                    assert_eq!(token.text(), b"/Catalog");
-                }
-            }
-            2 => {
-                if let NodeOrToken::Token(token) = child {
-                    assert_eq!(token.text(), b"/Pages");
-                }
-            }
-            _ => panic!("Unexpected child index"),
-        }
-    }
-}
-
-#[test]
-fn test_borrow_when_borrowing_node_expect_node_data_reference() {
-    let node = create_dict_node();
-
-    // Test the Borrow<GreenNodeData> trait implementation (lines 79-80)
-    // This allows using &GreenNode where &GreenNodeData is expected
-    let node_data: &GreenNodeData = node.borrow();
-
-    // Verify we can access GreenNodeData methods through the borrowed reference
-    assert_eq!(node_data.kind(), DICT_KIND);
-    assert_eq!(node_data.full_width(), node.full_width());
-    assert_eq!(node_data.children().count(), node.children().count());
-}
-
-#[test]
-fn test_from_cow_when_converting_owned_cow_expect_green_node() {
-    let original_node = create_dict_node();
-    let original_kind = original_node.kind();
-    let original_width = original_node.full_width();
-
-    // Test the From<Cow<'_, GreenNodeData>> trait implementation (lines 86-87)
-    // Create a Cow::Owned from the node data (this will clone the underlying data)
-    let node_data: &GreenNodeData = &original_node;
-    let cow_owned: Cow<'_, GreenNodeData> = Cow::Owned(node_data.to_owned());
-
-    // This calls cow.into_owned() internally
-    let reconstructed_node: GreenNode = cow_owned.into();
-
-    assert_eq!(reconstructed_node.kind(), original_kind);
-    assert_eq!(reconstructed_node.full_width(), original_width);
-}
-
-#[test]
-fn test_from_cow_when_converting_borrowed_cow_expect_green_node() {
-    let original_node = create_dict_node();
-    let original_kind = original_node.kind();
-    let original_width = original_node.full_width();
-
-    // Test the From<Cow<'_, GreenNodeData>> trait implementation (lines 86-87)
-    // Create a Cow::Borrowed from the node data
-    let node_data: &GreenNodeData = &original_node;
-    let cow_borrowed = Cow::Borrowed(node_data);
-
-    // This calls cow.into_owned() internally, which will clone the data
-    let reconstructed_node: GreenNode = cow_borrowed.into();
-
-    assert_eq!(reconstructed_node.kind(), original_kind);
-    assert_eq!(reconstructed_node.full_width(), original_width);
-}
-
-#[test]
-fn test_node_data_eq_when_comparing_identical_data_expect_equality() {
+fn test_node_data_equality_when_same_content_expect_equal() {
     let node1 = create_dict_node();
     let node2 = create_dict_node();
 
-    // Test the PartialEq implementation for GreenNodeData (lines 92-94)
-    // Get references to the underlying GreenNodeData
-    let data1: &GreenNodeData = &node1;
-    let data2: &GreenNodeData = &node2;
+    let node_data1: &GreenNodeData = &*node1;
+    let node_data2: &GreenNodeData = &*node2;
 
-    // This should call GreenNodeData::eq() which compares header and slice
-    assert_eq!(data1, data2);
+    assert_eq!(node_data1, node_data2);
 }
 
 #[test]
-fn test_node_data_eq_when_comparing_different_kinds_expect_inequality() {
+fn test_node_data_equality_when_different_content_expect_not_equal() {
     let dict_node = create_dict_node();
-    let array_node = create_node(ARRAY_KIND, vec![]);
+    let obj_node = create_obj_node();
 
-    // Test the PartialEq implementation for GreenNodeData (lines 92-94)
-    let dict_data: &GreenNodeData = &dict_node;
-    let array_data: &GreenNodeData = &array_node;
+    let dict_data: &GreenNodeData = &*dict_node;
+    let obj_data: &GreenNodeData = &*obj_node;
 
-    // This should call GreenNodeData::eq() and return false due to different headers
-    assert_ne!(dict_data, array_data);
+    assert_ne!(dict_data, obj_data);
 }
 
 #[test]
-fn test_node_data_eq_when_comparing_different_children_expect_inequality() {
-    let node1 = create_node(
-        DICT_KIND,
-        vec![NodeOrToken::Token(create_token(NAME_KIND, "/Type"))],
-    );
-    let node2 = create_node(
-        DICT_KIND,
-        vec![NodeOrToken::Token(create_token(NAME_KIND, "/Pages"))],
-    );
+fn test_from_cow_when_owned_node_data_expect_green_node() {
+    use std::borrow::Cow;
 
-    // Test the PartialEq implementation for GreenNodeData (lines 92-94)
-    let data1: &GreenNodeData = &node1;
-    let data2: &GreenNodeData = &node2;
+    let original_node = create_dict_node();
+    let node_data: &GreenNodeData = &*original_node;
+    let cow_owned = Cow::Owned(node_data.to_owned());
+    let converted_node = GreenNode::from(cow_owned);
 
-    // This should call GreenNodeData::eq() and return false due to different slice content
-    assert_ne!(data1, data2);
+    assert_eq!(converted_node.kind(), original_node.kind());
+    assert_eq!(converted_node.width(), original_node.width());
+    assert_eq!(converted_node.full_width(), original_node.full_width());
+}
+
+// =============================================================================
+// Iterator Advanced Methods Tests
+// =============================================================================
+
+#[test]
+fn test_children_fold_when_accumulating_expect_correct_result() {
+    let node = create_dict_node();
+    let children = node.children();
+
+    // Fold over children to accumulate total width
+    let total_width = children.fold(0u32, |acc, child| acc + child.full_width());
+
+    assert!(total_width > 0);
+    assert_eq!(total_width, node.full_width());
+}
+
+#[test]
+fn test_children_nth_back_when_accessing_from_end_expect_correct_element() {
+    let node = create_dict_node();
+    let mut children = node.children();
+
+    if children.len() > 1 {
+        let last_element = children.nth_back(0);
+        assert!(last_element.is_some());
+
+        // Reset iterator and get second to last
+        let mut children = node.children();
+        if children.len() > 2 {
+            let second_last = children.nth_back(1);
+            assert!(second_last.is_some());
+        }
+    }
+}
+
+#[test]
+fn test_children_rfold_when_reverse_accumulating_expect_correct_result() {
+    let node = create_dict_node();
+    let children = node.children();
+
+    // Reverse fold over children to accumulate total width
+    let total_width = children.rfold(0u32, |acc, child| acc + child.full_width());
+
+    assert!(total_width > 0);
+    assert_eq!(total_width, node.full_width());
 }

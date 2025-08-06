@@ -62,24 +62,28 @@ applyTo: "**/*.rs,**/Cargo.toml"
 
 ## Documentation Standards
 
-- When adding code documentation, provide concise explanations that are accessible to developers without compiler design or PDF specification experience.
-- Include clear descriptions of:
-  - What each module, function, or field does in plain language
-  - Why specific design decisions were made
-  - How components relate to PDF specification sections (with ISO references)
-  - Examples of the data structures or operations being handled
-  - Context about how the component fits into the overall compiler pipeline
+- When adding code documentation, provide short and concise explanations that are accessible to developers without compiler design or PDF specification experience.
 - Use analogies and real-world examples where appropriate to explain complex concepts.
 - Document edge cases, error conditions, and their implications for PDF processing.
 - When the code changes, ensure that the documentation is updated to reflect the new state of the codebase.
 - When the function or module is complex, consider using diagrams or flowcharts to illustrate the logic and data flow.
+- The documentation should be a few lines, focusing on the "why" rather than the "how" of the implementation.
+- The documentation is not applied to tests.
+- The documentation is applied to all public functions, structs, and modules.
+
+## Rust module internal organization
+
+When having multiple structs in a single file, organize them as follows:
+- Place the most important struct first, followed by less important ones.
+- Structs are placed at the top of the file, followed by their implementations.
+- The implementations related to one struct should be grouped together.
 
 ## Testing and Validation
 
 - When asked to write tests, ensure they cover:
   - Normal cases as per the PDF specification
   - Edge cases, including malformed PDFs and error conditions
-- Check the code coverage by using `llvm-cov --lcov --output-path target/lcov.info`
+- Check the code coverage by using `cargo llvm-cov --lcov --output-path target/lcov.info`
 - Test cases naming convention should follow the pattern `test_<function>_when_<condition>_expect_<expected_result>`, where:
   - `<function>` is the name of the function being tested
   - `<condition>` describes the specific scenario being tested, optional

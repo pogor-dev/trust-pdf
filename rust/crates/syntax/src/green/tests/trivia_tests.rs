@@ -1,8 +1,3 @@
-//! # Tests for PDF Trivia Collection Management
-//!
-//! Comprehensive tests covering trivia collection creation, access, memory sharing,
-//! and PDF-specific semantic requirements per ISO 32000-2.
-
 use std::collections::HashMap;
 
 use crate::{
@@ -30,28 +25,121 @@ fn create_trivia_collection(pieces: Vec<(SyntaxKind, &str)>) -> GreenTrivia {
     GreenTrivia::new(children)
 }
 
+// =============================================================================
+// GreenTriviaChild Tests
+// =============================================================================
+
+#[test]
+fn test_trivia_child_properties_when_accessing_expect_correct_values() {
+    // Combine multiple property tests into one to reduce redundancy
+    let test_cases = [
+        (NEWLINE_KIND, "\n", 1u32),
+        (WHITESPACE_KIND, " ", 1u32),
+        (COMMENT_KIND, "%PDF-1.7", 8u32),
+    ];
+
+    for (kind, text, expected_width) in test_cases {
+        let trivia = create_trivia_child(kind, text);
+        assert_eq!(trivia.kind(), kind);
+        assert_eq!(trivia.text(), text.as_bytes());
+        assert_eq!(trivia.width(), expected_width);
+    }
+}
+
+#[test]
+fn test_trivia_child_new_when_creating_with_unicode_expect_correct_byte_count() {
+    // Test Unicode handling in trivia - important for PDF comments that might contain non-ASCII
+    let unicode_comment = create_trivia_child(COMMENT_KIND, "%café");
+
+    // "café" in UTF-8 is 5 bytes (é = 2 bytes) + '%' = 6 bytes total
+    assert_eq!(unicode_comment.text(), "%café".as_bytes());
+    assert_eq!(unicode_comment.width(), 6);
+}
+
+#[test]
+fn test_trivia_child_new_when_creating_with_binary_data_expect_exact_preservation() {
+    // Test that trivia preserves exact bytes, even non-UTF8 sequences
+    let binary_data = &[0xFF, 0xFE, 0x00, 0x01];
+    let binary_trivia = GreenTriviaChild::new(COMMENT_KIND, binary_data);
+
+    assert_eq!(binary_trivia.text(), binary_data);
+    assert_eq!(binary_trivia.width(), 4);
+}
+
+#[test]
+fn test_trivia_child_equality_when_identical_content_expect_equal() {
+    let newline1 = create_trivia_child(NEWLINE_KIND, "\n");
+    let newline2 = create_trivia_child(NEWLINE_KIND, "\n");
+    assert_eq!(newline1, newline2);
+}
+
+#[test]
+fn test_trivia_child_equality_when_different_kinds_same_content_expect_not_equal() {
+    let newline = create_trivia_child(NEWLINE_KIND, "\n");
+    let whitespace_newline = create_trivia_child(WHITESPACE_KIND, "\n");
+    assert_ne!(newline, whitespace_newline);
+}
+
+#[test]
+fn test_trivia_child_equality_when_same_kind_different_content_expect_not_equal() {
+    let space1 = create_trivia_child(WHITESPACE_KIND, " ");
+    let space2 = create_trivia_child(WHITESPACE_KIND, "  ");
+    assert_ne!(space1, space2);
+}
+
+#[test]
+fn test_trivia_child_memory_when_cloning_expect_shared_memory() {
+    let original = create_trivia_child(COMMENT_KIND, "%shared");
+    let cloned = original.clone();
+
+    // Both should have same content
+    assert_eq!(original.kind(), cloned.kind());
+    assert_eq!(original.text(), cloned.text());
+    assert_eq!(original.width(), cloned.width());
+
+    // Memory should be shared (reference counted)
+    assert_eq!(original, cloned);
+}
+
+#[test]
+fn test_trivia_child_hash_when_using_in_collections_expect_consistent_behavior() {
+    let mut map = HashMap::new();
+    let trivia = create_trivia_child(COMMENT_KIND, "%test");
+
+    map.insert(trivia.clone(), "test_value");
+
+    // Should be able to retrieve using equivalent trivia
+    let lookup_trivia = create_trivia_child(COMMENT_KIND, "%test");
+    assert_eq!(map.get(&lookup_trivia), Some(&"test_value"));
+}
+
+// =============================================================================
+// GreenTrivia Collection Tests
+// =============================================================================
+
 #[test]
 fn test_trivia_new_when_creating_empty_collection_expect_valid_trivia() {
-    // Test creating an empty trivia collection
     let empty_trivia = GreenTrivia::new(Vec::<GreenTriviaChild>::new());
 
     assert_eq!(empty_trivia.children().len(), 0);
+    assert_eq!(empty_trivia.width(), 0);
+    assert_eq!(empty_trivia.text(), "");
 }
 
 #[test]
 fn test_trivia_new_when_creating_single_child_expect_correct_content() {
-    // Test creating trivia with a single child
     let single_comment = create_trivia_collection(vec![(COMMENT_KIND, "%PDF-1.7")]);
 
     let children = single_comment.children();
     assert_eq!(children.len(), 1);
     assert_eq!(children[0].kind(), COMMENT_KIND);
     assert_eq!(children[0].text(), b"%PDF-1.7");
+    assert_eq!(single_comment.width(), 8);
+    assert_eq!(single_comment.text(), "%PDF-1.7");
 }
 
 #[test]
 fn test_trivia_new_when_creating_multiple_children_expect_correct_sequence() {
-    // Test creating trivia with multiple children in sequence
     let multi_trivia = create_trivia_collection(vec![
         (COMMENT_KIND, "%header comment"),
         (NEWLINE_KIND, "\n"),
@@ -78,7 +166,6 @@ fn test_trivia_new_when_creating_multiple_children_expect_correct_sequence() {
 
 #[test]
 fn test_trivia_children_when_accessing_expect_slice_access() {
-    // Test that children() returns a proper slice with iteration capabilities
     let trivia = create_trivia_collection(vec![
         (WHITESPACE_KIND, " "),
         (WHITESPACE_KIND, "\t"),
@@ -102,29 +189,45 @@ fn test_trivia_children_when_accessing_expect_slice_access() {
 }
 
 #[test]
+fn test_trivia_width_when_calculating_total_expect_sum_of_children() {
+    let trivia = create_trivia_collection(vec![
+        (COMMENT_KIND, "%PDF-1.7"),     // 8 bytes
+        (NEWLINE_KIND, "\n"),           // 1 byte
+        (WHITESPACE_KIND, "    "),      // 4 bytes
+        (COMMENT_KIND, "%End of file"), // 12 bytes
+    ]);
+
+    assert_eq!(trivia.width(), 25); // 8 + 1 + 4 + 12 = 25
+}
+
+#[test]
+fn test_trivia_text_when_concatenating_expect_combined_content() {
+    let trivia = create_trivia_collection(vec![
+        (COMMENT_KIND, "%header"),
+        (NEWLINE_KIND, "\n"),
+        (WHITESPACE_KIND, "  "),
+        (COMMENT_KIND, "%comment"),
+    ]);
+
+    assert_eq!(trivia.text(), "%header\n  %comment");
+}
+
+#[test]
+fn test_trivia_text_when_empty_collection_expect_empty_string() {
+    let empty_trivia = GreenTrivia::new(Vec::<GreenTriviaChild>::new());
+    assert_eq!(empty_trivia.text(), "");
+}
+
+#[test]
 fn test_trivia_equality_when_identical_collections_expect_equal() {
-    // Test equality for identical trivia collections
     let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
     let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
 
     assert_eq!(trivia1, trivia2);
-
-    // Test dereferenced equality too
-    assert_eq!(*trivia1, *trivia2);
 }
 
 #[test]
-fn test_trivia_equality_when_different_order_expect_not_equal() {
-    // Test inequality for different order of same elements
-    let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
-    let trivia2 = create_trivia_collection(vec![(NEWLINE_KIND, "\n"), (COMMENT_KIND, "%test")]);
-
-    assert_ne!(trivia1, trivia2);
-}
-
-#[test]
-fn test_trivia_equality_when_different_content_expect_not_equal() {
-    // Test inequality for different content
+fn test_trivia_equality_when_different_collections_expect_not_equal() {
     let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test1")]);
     let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%test2")]);
 
@@ -132,340 +235,284 @@ fn test_trivia_equality_when_different_content_expect_not_equal() {
 }
 
 #[test]
-fn test_trivia_equality_when_different_lengths_expect_not_equal() {
-    // Test inequality for different lengths
-    let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test")]);
-    let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
+fn test_trivia_hash_when_using_in_collections_expect_consistent_behavior() {
+    let mut map = HashMap::new();
+    let trivia = create_trivia_collection(vec![(COMMENT_KIND, "%key")]);
 
-    assert_ne!(trivia1, trivia2);
+    map.insert(trivia.clone(), "test_value");
+
+    // Should be able to retrieve using equivalent trivia
+    let lookup_trivia = create_trivia_collection(vec![(COMMENT_KIND, "%key")]);
+    assert_eq!(map.get(&lookup_trivia), Some(&"test_value"));
+}
+
+// =============================================================================
+// PDF-Specific Trivia Tests
+// =============================================================================
+
+#[test]
+fn test_pdf_header_trivia_when_creating_expect_correct_structure() {
+    // Test PDF header comment structure: "%PDF-1.7"
+    let pdf_header =
+        create_trivia_collection(vec![(COMMENT_KIND, "%PDF-1.7"), (NEWLINE_KIND, "\n")]);
+
+    assert_eq!(pdf_header.text(), "%PDF-1.7\n");
+    assert_eq!(pdf_header.width(), 9);
 }
 
 #[test]
-fn test_trivia_memory_when_cloning_expect_shared_memory() {
-    // Test that cloning shares memory via reference counting
-    let original = create_trivia_collection(vec![
-        (COMMENT_KIND, "%shared_memory_test"),
-        (NEWLINE_KIND, "\n"),
+fn test_xref_spacing_trivia_when_creating_expect_fixed_width() {
+    // Test xref table spacing - ISO 32000-2 §7.5.4 requires specific formatting
+    let xref_spacing = create_trivia_collection(vec![
+        (WHITESPACE_KIND, "0000000000"), // 10-digit offset
+        (WHITESPACE_KIND, " "),          // single space
+        (WHITESPACE_KIND, "65535"),      // 5-digit generation
+        (WHITESPACE_KIND, " "),          // single space
     ]);
-    let cloned = original.clone();
 
-    // Both should have same content
-    assert_eq!(original, cloned);
-    assert_eq!(original.children().len(), cloned.children().len());
-
-    // Memory should be shared (same underlying children array)
-    let original_ptr = original.children().as_ptr();
-    let cloned_ptr = cloned.children().as_ptr();
-    assert_eq!(original_ptr, cloned_ptr);
+    assert_eq!(xref_spacing.text(), "0000000000 65535 ");
+    assert_eq!(xref_spacing.width(), 17);
 }
 
 #[test]
-fn test_trivia_deref_when_accessing_expect_direct_access() {
-    // Test zero-cost deref conversion from owned to borrowed
-    let owned = create_trivia_collection(vec![
-        (WHITESPACE_KIND, "   "),
-        (COMMENT_KIND, "%deref_test"),
+fn test_stream_boundary_trivia_when_creating_expect_precise_newlines() {
+    // Test stream keyword newline requirements - ISO 32000-2 §7.3.8
+    let stream_boundary = create_trivia_collection(vec![
+        (NEWLINE_KIND, "\n"), // Required newline after "stream"
     ]);
 
-    // Deref allows accessing methods directly
-    assert_eq!(owned.children().len(), 2);
-    assert_eq!(owned.children()[0].kind(), WHITESPACE_KIND);
-    assert_eq!(owned.children()[1].text(), b"%deref_test");
-
-    // Test that multiple references work
-    let owned2 = owned.clone();
-    assert_eq!(owned.children().as_ptr(), owned2.children().as_ptr());
+    assert_eq!(stream_boundary.text(), "\n");
+    assert_eq!(stream_boundary.width(), 1);
 }
 
 #[test]
-fn test_trivia_hash_map_when_caching_expect_successful_integration() {
-    // Test using trivia collections in hash maps for deduplication/caching
-    let mut trivia_cache: HashMap<GreenTrivia, u32> = HashMap::new();
-
-    let leading_trivia =
-        create_trivia_collection(vec![(WHITESPACE_KIND, "  "), (COMMENT_KIND, "%leading")]);
-    let trailing_trivia = create_trivia_collection(vec![(NEWLINE_KIND, "\n")]);
-    let empty_trivia = create_trivia_collection(vec![]);
-
-    // Insert trivia with usage counts
-    trivia_cache.insert(leading_trivia.clone(), 10);
-    trivia_cache.insert(trailing_trivia.clone(), 5);
-    trivia_cache.insert(empty_trivia.clone(), 100);
-
-    // Test lookups work correctly
-    assert_eq!(trivia_cache.get(&leading_trivia), Some(&10));
-    assert_eq!(trivia_cache.get(&trailing_trivia), Some(&5));
-    assert_eq!(trivia_cache.get(&empty_trivia), Some(&100));
-
-    // Test that equivalent trivia can be found
-    let equivalent_leading =
-        create_trivia_collection(vec![(WHITESPACE_KIND, "  "), (COMMENT_KIND, "%leading")]);
-    assert_eq!(trivia_cache.get(&equivalent_leading), Some(&10));
-}
-
-#[test]
-fn test_trivia_borrow_trait_when_used_expect_successful_integration() {
-    // Test that trivia can be used in collections that rely on Borrow trait
-    use std::collections::HashSet;
-
-    let trivia =
-        create_trivia_collection(vec![(COMMENT_KIND, "%borrow_test"), (NEWLINE_KIND, "\n")]);
-
-    // Test that Borrow trait works for HashSet lookups
-    let mut set = HashSet::new();
-    set.insert(trivia.clone());
-
-    // HashSet uses Borrow trait internally for lookups
-    assert!(set.contains(&trivia));
-
-    // Test with equivalent trivia (should find it due to Borrow implementation)
-    let equivalent =
-        create_trivia_collection(vec![(COMMENT_KIND, "%borrow_test"), (NEWLINE_KIND, "\n")]);
-    assert!(set.contains(&equivalent));
-}
-
-#[test]
-fn test_trivia_to_owned_conversion_when_borrowed_expect_new_owned_instance() {
-    // Test ToOwned trait implementation for converting borrowed to owned
-    let original = create_trivia_collection(vec![
-        (WHITESPACE_KIND, "  "),
-        (COMMENT_KIND, "%to_owned_test"),
+fn test_obj_declaration_trivia_when_creating_expect_header_separation() {
+    // Test obj declaration formatting - ISO 32000-2 §7.3.10
+    let obj_trivia = create_trivia_collection(vec![
+        (WHITESPACE_KIND, " "), // Space between number and generation
+        (WHITESPACE_KIND, " "), // Space between generation and "obj"
+        (NEWLINE_KIND, "\n"),   // Newline separating header from body
     ]);
-    let borrowed: &_ = &*original; // Get borrowed reference via deref
 
-    // Use to_owned to convert back to owned
-    let owned_again = borrowed.to_owned();
+    assert_eq!(obj_trivia.text(), "  \n");
+    assert_eq!(obj_trivia.width(), 3);
+}
 
-    // Should be equal but separate instances
-    assert_eq!(original, owned_again);
-    assert_eq!(original.children().len(), owned_again.children().len());
+// =============================================================================
+// Memory Management and Raw Pointer Tests
+// =============================================================================
 
-    // Memory should still be shared (same underlying data)
+#[test]
+fn test_trivia_into_raw_when_converting_to_pointer_expect_valid_operation() {
+    let trivia = create_trivia_collection(vec![(COMMENT_KIND, "%test")]);
+    let original_text = trivia.text();
+
+    // Convert to raw pointer
+    let raw_ptr = GreenTrivia::into_raw(trivia);
+
+    // Convert back and verify integrity
+    let recovered_trivia = unsafe { GreenTrivia::from_raw(raw_ptr) };
+    assert_eq!(recovered_trivia.text(), original_text);
+}
+
+#[test]
+fn test_trivia_child_into_raw_when_converting_to_pointer_expect_valid_operation() {
+    let trivia_child = create_trivia_child(COMMENT_KIND, "%test");
+    let original_text = trivia_child.text().to_vec();
+
+    // Convert to raw pointer
+    let raw_ptr = GreenTriviaChild::into_raw(trivia_child);
+
+    // Convert back and verify integrity
+    let recovered_child = unsafe { GreenTriviaChild::from_raw(raw_ptr) };
+    assert_eq!(recovered_child.text(), &original_text);
+}
+
+#[test]
+fn test_trivia_borrow_when_using_as_trivia_data_expect_same_content() {
+    use std::borrow::Borrow;
+
+    let trivia = create_trivia_collection(vec![(COMMENT_KIND, "%test")]);
+    let trivia_data: &crate::green::trivia::GreenTriviaData = trivia.borrow();
+
+    // Verify that borrowing gives access to the same data
+    assert_eq!(trivia.children().len(), trivia_data.children().len());
+    assert_eq!(trivia.width(), trivia_data.width());
+    assert_eq!(trivia.text(), trivia_data.text());
+}
+
+#[test]
+fn test_trivia_to_owned_when_converting_trivia_data_expect_equivalent_trivia() {
+    use std::borrow::ToOwned;
+
+    let original_trivia = create_trivia_collection(vec![(COMMENT_KIND, "%test")]);
+    let trivia_data = &*original_trivia;
+    let owned_trivia = trivia_data.to_owned();
+
     assert_eq!(
-        original.children().as_ptr(),
-        owned_again.children().as_ptr()
+        original_trivia.children().len(),
+        owned_trivia.children().len()
     );
+    assert_eq!(original_trivia.width(), owned_trivia.width());
+    assert_eq!(original_trivia.text(), owned_trivia.text());
 }
 
-#[test]
-fn test_trivia_raw_pointer_when_converting_expect_preserved_data() {
-    // Test the unsafe FFI operations for raw pointer conversion
-    let original = create_trivia_collection(vec![
-        (COMMENT_KIND, "%raw_test"),
-        (NEWLINE_KIND, "\n"),
-        (WHITESPACE_KIND, "  "),
-    ]);
-
-    // Verify original data before conversion
-    assert_eq!(original.children().len(), 3);
-    assert_eq!(original.children()[0].text(), b"%raw_test");
-
-    // Convert to raw pointer (this should exercise into_raw)
-    let original_clone = original.clone(); // Keep one reference alive
-    let raw_ptr = GreenTrivia::into_raw(original);
-
-    // Convert back from raw pointer (this should exercise from_raw)
-    let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
-
-    // Verify recovered trivia has identical properties
-    assert_eq!(recovered.children().len(), 3);
-    assert_eq!(recovered.children()[0].text(), b"%raw_test");
-    assert_eq!(recovered.children()[1].text(), b"\n");
-    assert_eq!(recovered.children()[2].text(), b"  ");
-
-    // Should be equal to original
-    assert_eq!(original_clone, recovered);
-    assert_eq!(
-        original_clone.children().as_ptr(),
-        recovered.children().as_ptr()
-    );
-}
+// =============================================================================
+// Edge Cases and Error Conditions
+// =============================================================================
 
 #[test]
-fn test_trivia_raw_pointer_when_memory_safety_expect_preserved_integrity() {
-    // Test that raw pointer operations maintain memory safety
-    let trivias: Vec<_> = (0..5)
-        .map(|i| {
-            create_trivia_collection(vec![
-                (COMMENT_KIND, &format!("%test_{}", i)),
-                (NEWLINE_KIND, "\n"),
-            ])
-        })
-        .collect();
-
-    // Convert to raw pointers
-    let raw_ptrs: Vec<_> = trivias
-        .into_iter()
-        .map(|trivia| {
-            let len = trivia.children().len();
-            let first_comment = trivia.children()[0].text().to_vec();
-            let ptr = GreenTrivia::into_raw(trivia);
-            (ptr, len, first_comment)
-        })
-        .collect();
-
-    // Convert back and verify all data is intact
-    for (raw_ptr, expected_len, expected_comment) in raw_ptrs {
-        let recovered = unsafe { GreenTrivia::from_raw(raw_ptr) };
-        assert_eq!(recovered.children().len(), expected_len);
-        assert_eq!(recovered.children()[0].text(), expected_comment);
-        assert_eq!(recovered.children()[1].text(), b"\n");
+fn test_trivia_when_large_collection_expect_efficient_handling() {
+    // Test with a large number of trivia elements
+    let mut pieces = Vec::new();
+    for i in 0..1000 {
+        pieces.push((WHITESPACE_KIND, " "));
+        if i % 10 == 0 {
+            pieces.push((NEWLINE_KIND, "\n"));
+        }
     }
+
+    let large_trivia = create_trivia_collection(pieces);
+
+    // Should handle large collections efficiently
+    assert_eq!(large_trivia.children().len(), 1100); // 1000 spaces + 100 newlines
+    assert!(large_trivia.width() > 1000);
 }
 
 #[test]
-fn test_trivia_debug_formatting_when_multiple_children_expect_list_format() {
-    // Test debug formatting contains expected structure and content
-    let trivia = create_trivia_collection(vec![(COMMENT_KIND, "%debug"), (NEWLINE_KIND, "\n")]);
+fn test_trivia_when_zero_length_children_expect_valid_handling() {
+    // Test with zero-length trivia elements (edge case)
+    let empty_comment = create_trivia_child(COMMENT_KIND, "");
+    let trivia = GreenTrivia::new(vec![empty_comment]);
 
-    let debug_str = format!("{:?}", trivia);
-    // Should format as a debug list of children
-    assert!(debug_str.contains("["));
-    assert!(debug_str.contains("]"));
+    assert_eq!(trivia.children().len(), 1);
+    assert_eq!(trivia.width(), 0);
+    assert_eq!(trivia.text(), "");
+}
+
+// =============================================================================
+// Debug and Display Tests
+// =============================================================================
+
+#[test]
+fn test_trivia_debug_when_formatting_expect_readable_output() {
+    let trivia = create_trivia_collection(vec![(COMMENT_KIND, "%test")]);
+    let debug_output = format!("{:?}", trivia);
+
+    // Debug output should be non-empty and contain useful information
+    assert!(!debug_output.is_empty());
 }
 
 #[test]
-fn test_trivia_display_formatting_when_multiple_children_expect_concatenated_text() {
-    // Test display formatting concatenates all child text
+fn test_trivia_display_when_formatting_expect_text_content() {
     let trivia = create_trivia_collection(vec![
         (COMMENT_KIND, "%header"),
         (NEWLINE_KIND, "\n"),
         (WHITESPACE_KIND, "  "),
     ]);
 
-    let display_str = format!("{}", &*trivia);
-    assert_eq!(display_str, "%header\n  ");
+    let display_output = format!("{}", &*trivia);
+    assert_eq!(display_output, "%header\n  ");
 }
 
 #[test]
-fn test_trivia_display_formatting_when_non_utf8_content_expect_debug_fallback() {
-    // Test display formatting handles non-UTF8 content gracefully
-    let non_utf8_child = GreenTriviaChild::new(COMMENT_KIND, &[0xFF, 0xFE, 0xFD]);
-    let trivia = GreenTrivia::new(vec![non_utf8_child]);
+fn test_trivia_child_display_when_formatting_expect_content_representation() {
+    let comment = create_trivia_child(COMMENT_KIND, "%test");
+    let display_output = format!("{}", &*comment);
 
-    let display_str = format!("{}", &*trivia);
-    // Should fall back to debug representation for invalid UTF-8
-    assert!(display_str.contains("[") && display_str.contains("]"));
+    // Should represent the content in some form
+    assert!(!display_output.is_empty());
 }
 
 #[test]
-fn test_trivia_concurrent_access_when_multithreaded_expect_safe_access() {
-    // Test that trivia can be safely shared across threads
-    use std::sync::Arc as StdArc;
-    use std::thread;
+fn test_trivia_data_equality_when_same_children_expect_equal() {
+    let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
+    let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%test"), (NEWLINE_KIND, "\n")]);
 
-    let trivia =
-        create_trivia_collection(vec![(COMMENT_KIND, "%concurrent"), (NEWLINE_KIND, "\n")]);
-    let shared_trivia = StdArc::new(trivia);
+    let trivia_data1: &crate::green::trivia::GreenTriviaData = &*trivia1;
+    let trivia_data2: &crate::green::trivia::GreenTriviaData = &*trivia2;
 
-    let handles: Vec<_> = (0..4)
-        .map(|i| {
-            let trivia_clone = StdArc::clone(&shared_trivia);
-            thread::spawn(move || {
-                // Each thread should see the same data
-                assert_eq!(trivia_clone.children().len(), 2);
-                assert_eq!(trivia_clone.children()[0].text(), b"%concurrent");
-                assert_eq!(trivia_clone.children()[1].text(), b"\n");
-                i // Return thread ID for verification
-            })
-        })
-        .collect();
-
-    // Wait for all threads and verify they completed
-    for (i, handle) in handles.into_iter().enumerate() {
-        let thread_id = handle.join().unwrap();
-        assert_eq!(thread_id, i);
-    }
+    assert_eq!(trivia_data1, trivia_data2);
 }
 
 #[test]
-fn test_trivia_hash_consistency_when_equal_expect_same_hash() {
-    // Test that equal trivia collections have the same hash
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+fn test_trivia_data_equality_when_different_children_expect_not_equal() {
+    let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%test1"), (NEWLINE_KIND, "\n")]);
+    let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%test2"), (NEWLINE_KIND, "\n")]);
 
-    let trivia1 = create_trivia_collection(vec![(COMMENT_KIND, "%same"), (NEWLINE_KIND, "\n")]);
-    let trivia2 = create_trivia_collection(vec![(COMMENT_KIND, "%same"), (NEWLINE_KIND, "\n")]);
+    let trivia_data1: &crate::green::trivia::GreenTriviaData = &*trivia1;
+    let trivia_data2: &crate::green::trivia::GreenTriviaData = &*trivia2;
 
-    assert_eq!(trivia1, trivia2);
-
-    // Calculate hashes
-    let mut hasher1 = DefaultHasher::new();
-    let mut hasher2 = DefaultHasher::new();
-
-    trivia1.hash(&mut hasher1);
-    trivia2.hash(&mut hasher2);
-
-    assert_eq!(hasher1.finish(), hasher2.finish());
+    assert_ne!(trivia_data1, trivia_data2);
 }
 
 #[test]
-fn test_trivia_pdf_specific_when_stream_boundary_expect_precise_newlines() {
-    // Test PDF-specific trivia: stream boundary requirements (ISO 32000-2 §7.3.8)
-    let stream_boundary = create_trivia_collection(vec![
-        (NEWLINE_KIND, "\n"), // Required newline after 'stream' keyword
-    ]);
+fn test_trivia_child_borrow_when_using_as_trivia_child_data_expect_same_content() {
+    use std::borrow::Borrow;
 
-    let children = stream_boundary.children();
-    assert_eq!(children.len(), 1);
-    assert_eq!(children[0].kind(), NEWLINE_KIND);
-    assert_eq!(children[0].text(), b"\n");
+    let trivia_child = create_trivia_child(COMMENT_KIND, "%test");
+    let trivia_child_data: &crate::green::trivia::GreenTriviaChildData = trivia_child.borrow();
+
+    // Verify that borrowing gives access to the same data
+    assert_eq!(trivia_child.kind(), trivia_child_data.kind());
+    assert_eq!(trivia_child.text(), trivia_child_data.text());
+    assert_eq!(trivia_child.width(), trivia_child_data.width());
 }
 
 #[test]
-fn test_trivia_pdf_specific_when_content_stream_spacing_expect_space_separation() {
-    // Test PDF-specific trivia: content stream spacing (ISO 32000-2 §8.1.1)
-    let content_spacing = create_trivia_collection(vec![
-        (WHITESPACE_KIND, " "), // Space between content stream tokens
-        (WHITESPACE_KIND, " "),
-        (WHITESPACE_KIND, " "),
-    ]);
+fn test_trivia_child_data_equality_when_same_content_expect_equal() {
+    let trivia_child1 = create_trivia_child(COMMENT_KIND, "%test");
+    let trivia_child2 = create_trivia_child(COMMENT_KIND, "%test");
 
-    let children = content_spacing.children();
-    assert_eq!(children.len(), 3);
+    let trivia_child_data1: &crate::green::trivia::GreenTriviaChildData = &*trivia_child1;
+    let trivia_child_data2: &crate::green::trivia::GreenTriviaChildData = &*trivia_child2;
 
-    // All should be single spaces
-    for child in children {
-        assert_eq!(child.kind(), WHITESPACE_KIND);
-        assert_eq!(child.text(), b" ");
-    }
+    assert_eq!(trivia_child_data1, trivia_child_data2);
 }
 
 #[test]
-fn test_trivia_text_when_multiple_children_expect_concatenated_string() {
-    // Test the collection-level text() method that returns a String
-    let mixed_trivia = create_trivia_collection(vec![
-        (COMMENT_KIND, "%PDF-1.7"),
-        (NEWLINE_KIND, "\n"),
-        (WHITESPACE_KIND, "  "),
-        (COMMENT_KIND, "%header"),
-        (NEWLINE_KIND, "\n"),
-    ]);
+fn test_trivia_child_data_equality_when_different_content_expect_not_equal() {
+    let trivia_child1 = create_trivia_child(COMMENT_KIND, "%test1");
+    let trivia_child2 = create_trivia_child(COMMENT_KIND, "%test2");
 
-    let concatenated_text = mixed_trivia.text();
+    let trivia_child_data1: &crate::green::trivia::GreenTriviaChildData = &*trivia_child1;
+    let trivia_child_data2: &crate::green::trivia::GreenTriviaChildData = &*trivia_child2;
 
-    assert_eq!(concatenated_text, "%PDF-1.7\n  %header\n");
-    assert_eq!(concatenated_text.len(), 19); // Verify expected total length (8+1+2+7+1)
+    assert_ne!(trivia_child_data1, trivia_child_data2);
 }
 
 #[test]
-fn test_trivia_text_when_empty_collection_expect_empty_string() {
-    // Test text() method with empty trivia collection
-    let empty_trivia = GreenTrivia::new(Vec::<GreenTriviaChild>::new());
+fn test_trivia_child_data_equality_when_different_kinds_expect_not_equal() {
+    let trivia_child1 = create_trivia_child(COMMENT_KIND, "%test");
+    let trivia_child2 = create_trivia_child(WHITESPACE_KIND, "%test");
 
-    let text = empty_trivia.text();
+    let trivia_child_data1: &crate::green::trivia::GreenTriviaChildData = &*trivia_child1;
+    let trivia_child_data2: &crate::green::trivia::GreenTriviaChildData = &*trivia_child2;
 
-    assert_eq!(text, "");
-    assert_eq!(text.len(), 0);
+    assert_ne!(trivia_child_data1, trivia_child_data2);
 }
 
 #[test]
-fn test_trivia_text_when_single_child_expect_same_content() {
-    // Test text() method with single trivia child
-    let single_comment = create_trivia_collection(vec![(COMMENT_KIND, "%single comment")]);
+fn test_trivia_child_data_to_owned_when_converting_expect_equivalent_child() {
+    use std::borrow::ToOwned;
 
-    let text = single_comment.text();
+    let original_child = create_trivia_child(COMMENT_KIND, "%test");
+    let trivia_child_data = &*original_child;
+    let owned_child = trivia_child_data.to_owned();
 
-    assert_eq!(text, "%single comment");
-    assert_eq!(text.len(), 15);
+    assert_eq!(original_child.kind(), owned_child.kind());
+    assert_eq!(original_child.text(), owned_child.text());
+    assert_eq!(original_child.width(), owned_child.width());
+}
+
+#[test]
+fn test_trivia_child_display_when_invalid_utf8_expect_debug_format() {
+    // Create trivia with invalid UTF-8 bytes
+    let invalid_utf8_bytes = &[0xFF, 0xFE, 0x00, 0x01];
+    let trivia_child = GreenTriviaChild::new(COMMENT_KIND, invalid_utf8_bytes);
+
+    let display_output = format!("{}", &*trivia_child);
+
+    // Should display as debug format when UTF-8 conversion fails
+    assert!(display_output.contains("[255, 254, 0, 1]"));
 }

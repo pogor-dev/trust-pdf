@@ -1,3 +1,7 @@
+//! # Green Element - Unified PDF Syntax Tree Element
+//!
+//! Polymorphic wrapper for PDF syntax tree nodes and tokens with unified operations.
+
 use std::borrow::Cow;
 
 use crate::{
@@ -7,23 +11,26 @@ use crate::{
         token::{GreenToken, GreenTokenData},
     },
 };
-
+/// Unified interface for PDF syntax tree nodes and tokens.
 pub(super) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
+
+/// Borrowed reference to a PDF syntax tree element.
 pub(crate) type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
 
 impl GreenElement {
-    /// Returns kind of this element.
+    /// Returns the semantic kind of this syntax element.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.as_deref().kind()
     }
 
-    /// Returns the length of the text covered by this element.
+    /// Returns the byte length of text content within this element.
     #[inline]
     pub fn width(&self) -> u32 {
         self.as_deref().width()
     }
 
+    /// Returns the total byte span including leading and trailing trivia.
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.as_deref().full_width()
@@ -52,7 +59,7 @@ impl From<Cow<'_, GreenNodeData>> for GreenElement {
 }
 
 impl GreenElementRef<'_> {
-    /// Returns kind of this element.
+    /// Returns the semantic kind of this borrowed syntax element.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match self {
@@ -61,7 +68,7 @@ impl GreenElementRef<'_> {
         }
     }
 
-    /// Returns the length of the text covered by this element.
+    /// Returns the byte length of text content for borrowed elements.
     #[inline]
     pub fn width(self) -> u32 {
         match self {
@@ -70,6 +77,7 @@ impl GreenElementRef<'_> {
         }
     }
 
+    /// Returns total byte span including trivia for borrowed elements.
     #[inline]
     pub fn full_width(self) -> u32 {
         match self {
@@ -94,6 +102,7 @@ impl<'a> From<&'a GreenToken> for GreenElementRef<'a> {
 }
 
 impl GreenElementRef<'_> {
+    /// Converts borrowed element reference to owned element.
     pub fn to_owned(self) -> GreenElement {
         match self {
             NodeOrToken::Node(it) => NodeOrToken::Node(it.to_owned()),
