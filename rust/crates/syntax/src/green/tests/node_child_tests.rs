@@ -1,7 +1,9 @@
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        element::GreenElement, node::GreenNode, node_child::GreenChild, token::GreenToken,
+        element::GreenElement,
+        node::{GreenChild, GreenNode},
+        token::GreenToken,
         trivia::GreenTrivia,
     },
 };

@@ -409,7 +409,7 @@ fn test_green_token_display_when_formatting_expect_delegated_output() {
 
 #[test]
 fn test_full_width_when_token_with_trivia_expect_combined_width() {
-    use crate::green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild};
+    use crate::green::{trivia::GreenTrivia, trivia::GreenTriviaChild};
 
     // Create trivia elements
     let leading_comment = GreenTriviaChild::new(SyntaxKind(1), b"%leading comment");

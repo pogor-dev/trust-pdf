@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::{
     SyntaxKind,
-    green::{trivia::GreenTrivia, trivia_child::GreenTriviaChild},
+    green::{trivia::GreenTrivia, trivia::GreenTriviaChild},
 };
 
 // Test constants for different PDF trivia types

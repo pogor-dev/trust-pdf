@@ -1,10 +1,7 @@
 mod element;
 mod node;
-mod node_child;
-mod node_children;
 mod token;
 mod trivia;
-mod trivia_child;
 
 #[cfg(test)]
 mod tests;

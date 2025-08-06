@@ -1,8 +1,10 @@
 use std::{
     borrow::{Borrow, Cow},
-    fmt, iter,
+    fmt,
+    iter::{self, FusedIterator},
     mem::{self, ManuallyDrop},
-    ops, ptr,
+    ops::{self, Range},
+    ptr, slice,
 };
 
 use countme::Count;
@@ -10,8 +12,18 @@ use countme::Count;
 use crate::{
     NodeOrToken, SyntaxKind,
     arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc},
-    green::{element::GreenElement, node_child::GreenChild, node_children::NodeChildren},
+    green::{
+        element::{GreenElement, GreenElementRef},
+        token::GreenToken,
+    },
 };
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub(crate) enum GreenChild {
+    Node { rel_offset: u32, node: GreenNode },
+    Token { rel_offset: u32, token: GreenToken },
+}
 
 type Repr = HeaderSlice<GreenNodeHead, [GreenChild]>;
 type ReprThin = HeaderSlice<GreenNodeHead, [GreenChild; 0]>;
@@ -137,12 +149,12 @@ pub struct GreenNodeData {
 
 impl GreenNodeData {
     #[inline]
-    pub fn header(&self) -> &GreenNodeHead {
+    fn header(&self) -> &GreenNodeHead {
         &self.data.header
     }
 
     #[inline]
-    pub fn slice(&self) -> &[GreenChild] {
+    fn slice(&self) -> &[GreenChild] {
         self.data.slice()
     }
 
@@ -240,3 +252,114 @@ impl fmt::Display for GreenNodeData {
         Ok(())
     }
 }
+
+impl GreenChild {
+    #[inline]
+    pub(crate) fn as_ref(&self) -> GreenElementRef {
+        match self {
+            GreenChild::Node { node, .. } => NodeOrToken::Node(node),
+            GreenChild::Token { token, .. } => NodeOrToken::Token(token),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn rel_offset(&self) -> u32 {
+        match self {
+            GreenChild::Node { rel_offset, .. } | GreenChild::Token { rel_offset, .. } => {
+                *rel_offset
+            }
+        }
+    }
+
+    #[inline]
+    pub(crate) fn rel_range(&self) -> Range<u32> {
+        let len = self.as_ref().full_width();
+        let rel_offset = self.rel_offset();
+        rel_offset..(rel_offset + len)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NodeChildren<'a> {
+    pub(crate) raw: slice::Iter<'a, GreenChild>,
+}
+
+impl ExactSizeIterator for NodeChildren<'_> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.raw.len()
+    }
+}
+
+impl<'a> Iterator for NodeChildren<'a> {
+    type Item = GreenElementRef<'a>;
+
+    #[inline]
+    fn next(&mut self) -> Option<GreenElementRef<'a>> {
+        self.raw.next().map(GreenChild::as_ref)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.raw.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.raw.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.raw.nth(n).map(GreenChild::as_ref)
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.next_back()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, mut f: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        for x in self {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl DoubleEndedIterator for NodeChildren<'_> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.raw.next_back().map(GreenChild::as_ref)
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.raw.nth_back(n).map(GreenChild::as_ref)
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl FusedIterator for NodeChildren<'_> {}

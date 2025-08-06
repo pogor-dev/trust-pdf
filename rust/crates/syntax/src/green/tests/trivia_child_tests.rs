@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::{SyntaxKind, green::trivia_child::GreenTriviaChild};
+use crate::{SyntaxKind, green::trivia::GreenTriviaChild};
 
 // Test constants for different PDF trivia types
 const NEWLINE_KIND: SyntaxKind = SyntaxKind(1);
