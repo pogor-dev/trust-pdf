@@ -123,7 +123,7 @@ fn test_trivia_new_when_creating_empty_collection_expect_valid_trivia() {
 
     assert_eq!(empty_trivia.children().len(), 0);
     assert_eq!(empty_trivia.width(), 0);
-    assert_eq!(empty_trivia.text(), "");
+    assert_eq!(empty_trivia.text(), b"");
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn test_trivia_new_when_creating_single_child_expect_correct_content() {
     assert_eq!(children[0].kind(), COMMENT_KIND);
     assert_eq!(children[0].text(), b"%PDF-1.7");
     assert_eq!(single_comment.width(), 8);
-    assert_eq!(single_comment.text(), "%PDF-1.7");
+    assert_eq!(single_comment.text(), b"%PDF-1.7");
 }
 
 #[test]
@@ -209,13 +209,13 @@ fn test_trivia_text_when_concatenating_expect_combined_content() {
         (COMMENT_KIND, "%comment"),
     ]);
 
-    assert_eq!(trivia.text(), "%header\n  %comment");
+    assert_eq!(trivia.text(), b"%header\n  %comment");
 }
 
 #[test]
 fn test_trivia_text_when_empty_collection_expect_empty_string() {
     let empty_trivia = GreenTrivia::new(Vec::<GreenTriviaChild>::new());
-    assert_eq!(empty_trivia.text(), "");
+    assert_eq!(empty_trivia.text(), b"");
 }
 
 #[test]
@@ -256,7 +256,7 @@ fn test_pdf_header_trivia_when_creating_expect_correct_structure() {
     let pdf_header =
         create_trivia_collection(vec![(COMMENT_KIND, "%PDF-1.7"), (NEWLINE_KIND, "\n")]);
 
-    assert_eq!(pdf_header.text(), "%PDF-1.7\n");
+    assert_eq!(pdf_header.text(), b"%PDF-1.7\n");
     assert_eq!(pdf_header.width(), 9);
 }
 
@@ -270,7 +270,7 @@ fn test_xref_spacing_trivia_when_creating_expect_fixed_width() {
         (WHITESPACE_KIND, " "),          // single space
     ]);
 
-    assert_eq!(xref_spacing.text(), "0000000000 65535 ");
+    assert_eq!(xref_spacing.text(), b"0000000000 65535 ");
     assert_eq!(xref_spacing.width(), 17);
 }
 
@@ -281,7 +281,7 @@ fn test_stream_boundary_trivia_when_creating_expect_precise_newlines() {
         (NEWLINE_KIND, "\n"), // Required newline after "stream"
     ]);
 
-    assert_eq!(stream_boundary.text(), "\n");
+    assert_eq!(stream_boundary.text(), b"\n");
     assert_eq!(stream_boundary.width(), 1);
 }
 
@@ -294,7 +294,7 @@ fn test_obj_declaration_trivia_when_creating_expect_header_separation() {
         (NEWLINE_KIND, "\n"),   // Newline separating header from body
     ]);
 
-    assert_eq!(obj_trivia.text(), "  \n");
+    assert_eq!(obj_trivia.text(), b"  \n");
     assert_eq!(obj_trivia.width(), 3);
 }
 
@@ -387,7 +387,7 @@ fn test_trivia_when_zero_length_children_expect_valid_handling() {
 
     assert_eq!(trivia.children().len(), 1);
     assert_eq!(trivia.width(), 0);
-    assert_eq!(trivia.text(), "");
+    assert_eq!(trivia.text(), b"");
 }
 
 // =============================================================================

@@ -118,17 +118,14 @@ impl GreenTriviaData {
         self.children().iter().map(|c| c.width()).sum()
     }
 
-    /// Returns the concatenated text content of all trivia children as a String.
+    /// Returns the concatenated text content of all trivia children as a Vec<u8>.
     #[inline]
-    pub fn text(&self) -> String {
+    pub fn text(&self) -> Vec<u8> {
         let total_width = self.width() as usize;
-        let mut result = String::with_capacity(total_width);
+        let mut result = Vec::with_capacity(total_width);
 
         for child in self.children() {
-            // SAFETY: We know the total width, so this won't reallocate
-            unsafe {
-                result.as_mut_vec().extend_from_slice(child.text());
-            }
+            result.extend_from_slice(child.text());
         }
         result
     }

@@ -152,7 +152,7 @@ fn test_leading_trivia_when_accessing_expect_correct_content() {
 
     let retrieved_leading = token.leading_trivia();
     assert_eq!(retrieved_leading.children().len(), 1);
-    assert_eq!(retrieved_leading.text(), "%leading comment");
+    assert_eq!(retrieved_leading.text(), b"%leading comment");
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn test_trailing_trivia_when_accessing_expect_correct_content() {
 
     let retrieved_trailing = token.trailing_trivia();
     assert_eq!(retrieved_trailing.children().len(), 1);
-    assert_eq!(retrieved_trailing.text(), " %trailing comment");
+    assert_eq!(retrieved_trailing.text(), b" %trailing comment");
 }
 
 // =============================================================================
