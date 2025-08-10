@@ -13,6 +13,7 @@
 //! endobj                 │  └─ GreenNode(Dictionary)
 //! ```
 
+pub(crate) mod builder;
 pub(crate) mod element;
 pub(crate) mod node;
 pub(crate) mod node_cache;
@@ -22,9 +23,11 @@ pub(crate) mod trivia;
 pub(crate) use self::{element::GreenElementRef, node::GreenChild};
 
 pub use self::{
+    builder::{Checkpoint, GreenNodeBuilder},
     node::{GreenNode, GreenNodeData, NodeChildren},
     node_cache::NodeCache,
     token::{GreenToken, GreenTokenData},
+    trivia::{GreenTrivia, GreenTriviaData},
 };
 
 #[cfg(test)]

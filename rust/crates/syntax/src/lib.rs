@@ -1,6 +1,5 @@
-// pub mod api;
 mod arc;
-// mod cursor;
+mod cow_mut;
 mod green;
 mod utility_types;
 
@@ -9,10 +8,8 @@ mod utility_types_tests;
 
 pub use crate::{
     green::{
-        SyntaxKind,
-        node::{GreenNode, GreenNodeData, NodeChildren},
-        token::{GreenToken, GreenTokenData},
-        trivia::{GreenTrivia, GreenTriviaData},
+        Checkpoint, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
+        GreenTrivia, GreenTriviaData, NodeCache, NodeChildren, SyntaxKind,
     },
     utility_types::NodeOrToken,
 };

@@ -12,7 +12,7 @@ use crate::{
     },
 };
 /// Unified interface for PDF syntax tree nodes and tokens.
-pub(super) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
+pub(crate) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
 
 /// Borrowed reference to a PDF syntax tree element.
 pub(crate) type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
