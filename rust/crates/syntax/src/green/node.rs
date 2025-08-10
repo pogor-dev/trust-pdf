@@ -429,10 +429,27 @@ impl ToOwned for GreenNodeData {
     }
 }
 
+/// Maximum length for debug text output
+const DEBUG_TEXT_MAX_LEN: usize = 255;
+/// Length of truncation indicator "..."
+const TRUNCATION_SUFFIX_LEN: usize = 3;
+
 impl fmt::Debug for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let full_text_bytes = self.full_text();
+        let full_text = String::from_utf8_lossy(&full_text_bytes);
+        let capped_text = if full_text.len() > DEBUG_TEXT_MAX_LEN {
+            let max_content_len = DEBUG_TEXT_MAX_LEN - TRUNCATION_SUFFIX_LEN;
+            let mut truncated = full_text.chars().take(max_content_len).collect::<String>();
+            truncated.push_str("...");
+            truncated
+        } else {
+            full_text.to_string()
+        };
+
         f.debug_struct("GreenNode")
             .field("kind", &self.kind())
+            .field("full_text", &capped_text)
             .field("full_width", &self.full_width())
             .field("n_children", &self.children().len())
             .finish()

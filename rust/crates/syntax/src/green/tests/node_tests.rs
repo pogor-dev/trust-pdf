@@ -1552,3 +1552,167 @@ fn test_text_when_only_internal_nodes_expect_recursive_processing() {
     // full_text() should include all trivia
     assert_eq!(parent.full_text(), b" /First/Second ");
 }
+
+#[test]
+fn test_get_leading_trivia_width_when_empty_node_expect_zero() {
+    // Test the fallback case where get_first_terminal returns None
+    let empty_node = create_node(DICT_KIND, vec![]);
+
+    assert_eq!(empty_node.get_leading_trivia_width(), 0);
+}
+
+#[test]
+fn test_get_trailing_trivia_width_when_empty_node_expect_zero() {
+    // Test the fallback case where get_last_terminal returns None
+    let empty_node = create_node(DICT_KIND, vec![]);
+
+    assert_eq!(empty_node.get_trailing_trivia_width(), 0);
+}
+
+#[test]
+fn test_get_leading_trivia_width_when_only_empty_child_nodes_expect_zero() {
+    // Test with a node that contains only empty child nodes (no terminals)
+    let empty_child1 = create_node(ARRAY_KIND, vec![]);
+    let empty_child2 = create_node(DICT_KIND, vec![]);
+
+    let parent_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(empty_child1),
+            NodeOrToken::Node(empty_child2),
+        ],
+    );
+
+    // Since no terminals exist, should return 0
+    assert_eq!(parent_node.get_leading_trivia_width(), 0);
+}
+
+#[test]
+fn test_get_trailing_trivia_width_when_only_empty_child_nodes_expect_zero() {
+    // Test with a node that contains only empty child nodes (no terminals)
+    let empty_child1 = create_node(ARRAY_KIND, vec![]);
+    let empty_child2 = create_node(DICT_KIND, vec![]);
+
+    let parent_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(empty_child1),
+            NodeOrToken::Node(empty_child2),
+        ],
+    );
+
+    // Since no terminals exist, should return 0
+    assert_eq!(parent_node.get_trailing_trivia_width(), 0);
+}
+
+#[test]
+fn test_get_first_terminal_when_only_empty_child_nodes_expect_none() {
+    // Test that get_first_terminal returns None when only empty child nodes exist
+    let empty_child1 = create_node(ARRAY_KIND, vec![]);
+    let empty_child2 = create_node(DICT_KIND, vec![]);
+
+    let parent_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(empty_child1),
+            NodeOrToken::Node(empty_child2),
+        ],
+    );
+
+    assert!(parent_node.get_first_terminal().is_none());
+}
+
+#[test]
+fn test_get_last_terminal_when_only_empty_child_nodes_expect_none() {
+    // Test that get_last_terminal returns None when only empty child nodes exist
+    let empty_child1 = create_node(ARRAY_KIND, vec![]);
+    let empty_child2 = create_node(DICT_KIND, vec![]);
+
+    let parent_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(empty_child1),
+            NodeOrToken::Node(empty_child2),
+        ],
+    );
+
+    assert!(parent_node.get_last_terminal().is_none());
+}
+
+#[test]
+fn test_get_leading_trivia_width_when_deeply_nested_empty_nodes_expect_zero() {
+    // Test deeply nested structure with no terminals
+    let leaf_empty = create_node(NAME_KIND, vec![]);
+    let middle_empty = create_node(DICT_KIND, vec![NodeOrToken::Node(leaf_empty)]);
+    let root_empty = create_node(OBJ_KIND, vec![NodeOrToken::Node(middle_empty)]);
+
+    assert_eq!(root_empty.get_leading_trivia_width(), 0);
+    assert_eq!(root_empty.get_trailing_trivia_width(), 0);
+    assert!(root_empty.get_first_terminal().is_none());
+    assert!(root_empty.get_last_terminal().is_none());
+}
+
+#[test]
+fn test_debug_when_text_exceeds_max_length_expect_truncation() {
+    // Create a very long text token that exceeds DEBUG_TEXT_MAX_LEN (255 chars)
+    // We need text longer than 255 characters to trigger the truncation logic
+    let long_text = "a".repeat(300); // 300 characters, well over the 255 limit
+    let long_token = create_token(STRING_KIND, &long_text);
+    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(long_token)]);
+
+    let debug_output = format!("{:?}", node);
+
+    // Verify that the original text is 300 characters
+    assert_eq!(long_text.len(), 300);
+
+    // The debug output should contain the truncation indicator "..."
+    assert!(debug_output.contains("..."));
+
+    // The debug output should be shorter than the original text
+    // It should contain at most DEBUG_TEXT_MAX_LEN characters for the text field
+    // (252 content chars + 3 "..." = 255 total)
+    assert!(debug_output.len() < long_text.len() + 100); // +100 for other debug fields
+
+    // Should still contain the basic debug structure
+    assert!(debug_output.contains("GreenNode"));
+    assert!(debug_output.contains("kind"));
+    assert!(debug_output.contains("full_text"));
+    assert!(debug_output.contains("full_width"));
+    assert!(debug_output.contains("n_children"));
+
+    // The truncated text in the debug output should be exactly 255 characters
+    // Find the full_text field value in the debug output
+    if let Some(start) = debug_output.find("full_text: \"") {
+        let start_pos = start + "full_text: \"".len();
+        if let Some(end) = debug_output[start_pos..].find("\"") {
+            let text_content = &debug_output[start_pos..start_pos + end];
+            // The text should be truncated to 252 chars + "..." = 255 total
+            assert_eq!(text_content.len(), 255);
+            assert!(text_content.ends_with("..."));
+        }
+    }
+}
+
+#[test]
+fn test_debug_when_text_at_max_length_expect_no_truncation() {
+    // Create text that is exactly at the DEBUG_TEXT_MAX_LEN limit (255 chars)
+    let exact_limit_text = "a".repeat(255); // Exactly 255 characters
+    let token = create_token(STRING_KIND, &exact_limit_text);
+    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
+
+    let debug_output = format!("{:?}", node);
+
+    // Verify that the original text is exactly 255 characters
+    assert_eq!(exact_limit_text.len(), 255);
+
+    // The debug output should NOT contain the truncation indicator "..."
+    // since the text is exactly at the limit, not over it
+    assert!(!debug_output.contains("..."));
+
+    // Should contain the basic debug structure
+    assert!(debug_output.contains("GreenNode"));
+    assert!(debug_output.contains("kind"));
+    assert!(debug_output.contains("full_text"));
+    assert!(debug_output.contains("full_width"));
+    assert!(debug_output.contains("n_children"));
+}
