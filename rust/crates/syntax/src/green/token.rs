@@ -167,10 +167,12 @@ impl GreenTokenData {
 }
 
 impl PartialEq for GreenTokenData {
-    /// Compares tokens for semantic equality (kind + content).
+    /// Compares tokens for semantic equality (kind + content + trivia).
     fn eq(&self, other: &Self) -> bool {
-        // TODO: trivia equality?
-        self.kind() == other.kind() && self.text() == other.text()
+        self.kind() == other.kind()
+            && self.text() == other.text()
+            && self.leading_trivia() == other.leading_trivia()
+            && self.trailing_trivia() == other.trailing_trivia()
     }
 }
 

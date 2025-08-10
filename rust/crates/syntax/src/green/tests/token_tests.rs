@@ -427,3 +427,111 @@ fn test_token_data_equality_when_different_kinds_expect_not_equal() {
 
     assert_ne!(token_data1, token_data2);
 }
+
+#[test]
+fn test_green_token_data_equality_with_trivia_when_same_content_expect_equal() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(100), b"  "), // 2 spaces
+    ]);
+    let trailing = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(101), b"\n"), // newline
+    ]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test", leading.clone(), trailing.clone());
+    let token2 = GreenToken::new(STRING_KIND, b"test", leading, trailing);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_eq!(data1, data2);
+}
+
+#[test]
+fn test_green_token_data_equality_with_trivia_when_different_kind_expect_not_equal() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(100), b"  ")]);
+    let trailing = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(101), b"\n")]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test", leading.clone(), trailing.clone());
+    let token2 = GreenToken::new(NUMBER_KIND, b"test", leading, trailing);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_ne!(data1, data2);
+}
+
+#[test]
+fn test_green_token_data_equality_with_trivia_when_different_text_expect_not_equal() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(100), b"  ")]);
+    let trailing = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(101), b"\n")]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test1", leading.clone(), trailing.clone());
+    let token2 = GreenToken::new(STRING_KIND, b"test2", leading, trailing);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_ne!(data1, data2);
+}
+
+#[test]
+fn test_green_token_data_equality_with_trivia_when_different_leading_trivia_expect_not_equal() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading1 = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(100), b"  "), // 2 spaces
+    ]);
+    let leading2 = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(100), b"    "), // 4 spaces - different content
+    ]);
+    let trailing = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(101), b"\n")]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test", leading1, trailing.clone());
+    let token2 = GreenToken::new(STRING_KIND, b"test", leading2, trailing);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_ne!(data1, data2);
+}
+
+#[test]
+fn test_green_token_data_equality_with_trivia_when_different_trailing_trivia_expect_not_equal() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(100), b"  ")]);
+    let trailing1 = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(101), b"\n"), // newline
+    ]);
+    let trailing2 = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(101), b" "), // space - different content
+    ]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test", leading.clone(), trailing1);
+    let token2 = GreenToken::new(STRING_KIND, b"test", leading, trailing2);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_ne!(data1, data2);
+}
+
+#[test]
+fn test_green_token_data_equality_with_empty_trivia_when_same_expect_equal() {
+    let leading = GreenTrivia::new([]);
+    let trailing = GreenTrivia::new([]);
+
+    let token1 = GreenToken::new(STRING_KIND, b"test", leading.clone(), trailing.clone());
+    let token2 = GreenToken::new(STRING_KIND, b"test", leading, trailing);
+
+    let data1: &GreenTokenData = &token1;
+    let data2: &GreenTokenData = &token2;
+
+    assert_eq!(data1, data2);
+}
