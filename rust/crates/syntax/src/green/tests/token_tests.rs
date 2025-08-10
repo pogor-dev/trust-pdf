@@ -20,10 +20,6 @@ fn create_token(kind: SyntaxKind, text: &str) -> GreenToken {
     GreenToken::new(kind, text.as_bytes(), leading, trailing)
 }
 
-// =============================================================================
-// GreenToken Core Tests
-// =============================================================================
-
 #[test]
 fn test_new_when_creating_token_expect_correct_kind() {
     let string_token = create_token(STRING_KIND, "(Hello)");
@@ -79,10 +75,6 @@ fn test_width_when_calculating_expect_text_byte_length() {
         );
     }
 }
-
-// =============================================================================
-// Trivia Handling Tests
-// =============================================================================
 
 #[test]
 fn test_new_with_trivia_when_adding_leading_trivia_expect_correct_full_width() {
@@ -172,10 +164,6 @@ fn test_trailing_trivia_when_accessing_expect_correct_content() {
     assert_eq!(retrieved_trailing.text(), b" %trailing comment");
 }
 
-// =============================================================================
-// PDF-Specific Token Tests
-// =============================================================================
-
 #[test]
 fn test_pdf_tokens_when_creating_expect_correct_handling() {
     // Test various PDF token formats in one test to reduce redundancy
@@ -204,9 +192,138 @@ fn test_pdf_tokens_when_creating_expect_correct_handling() {
     }
 }
 
-// =============================================================================
-// Memory Management and Raw Pointer Tests
-// =============================================================================
+#[test]
+fn test_full_text_when_no_trivia_expect_only_token_text() {
+    let token = create_token(STRING_KIND, "(Hello)");
+    let full_text = token.full_text();
+
+    assert_eq!(full_text, b"(Hello)");
+    assert_eq!(full_text.len(), 7);
+}
+
+#[test]
+fn test_full_text_when_leading_trivia_expect_concatenated_content() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(10), b"  "), // 2 spaces
+        GreenTriviaChild::new(SyntaxKind(11), b"%comment\n"), // comment + newline
+    ]);
+    let trailing_trivia = GreenTrivia::new([]);
+
+    let token = GreenToken::new(NUMBER_KIND, b"123", leading_trivia, trailing_trivia);
+    let full_text = token.full_text();
+
+    // Expected: "  " + "%comment\n" + "123" = "  %comment\n123"
+    let expected = b"  %comment\n123";
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 14);
+}
+
+#[test]
+fn test_full_text_when_trailing_trivia_expect_concatenated_content() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new([]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(12), b" "),  // 1 space
+        GreenTriviaChild::new(SyntaxKind(13), b"\n"), // 1 newline
+    ]);
+
+    let token = GreenToken::new(STRING_KIND, b"(test)", leading_trivia, trailing_trivia);
+    let full_text = token.full_text();
+
+    // Expected: "" + "(test)" + " " + "\n" = "(test) \n"
+    let expected = b"(test) \n";
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 8);
+}
+
+#[test]
+fn test_full_text_when_both_trivia_expect_complete_concatenation() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(14), b"    "), // 4 spaces
+        GreenTriviaChild::new(SyntaxKind(15), b"%pre\n"), // comment
+    ]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(16), b"  "), // 2 spaces
+        GreenTriviaChild::new(SyntaxKind(17), b"%post"), // comment
+    ]);
+
+    let token = GreenToken::new(NAME_KIND, b"/Type", leading_trivia, trailing_trivia);
+    let full_text = token.full_text();
+
+    // Expected: "    " + "%pre\n" + "/Type" + "  " + "%post" = "    %pre\n/Type  %post"
+    // Breaking down: 4 + 5 + 5 + 2 + 5 = 21 bytes
+    let expected = b"    %pre\n/Type  %post";
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 21);
+}
+
+#[test]
+fn test_full_text_when_empty_token_expect_only_trivia() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(18), b"lead")]);
+    let trailing_trivia = GreenTrivia::new(vec![GreenTriviaChild::new(SyntaxKind(19), b"trail")]);
+
+    let token = GreenToken::new(STRING_KIND, b"", leading_trivia, trailing_trivia);
+    let full_text = token.full_text();
+
+    // Expected: "lead" + "" + "trail" = "leadtrail"
+    let expected = b"leadtrail";
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 9);
+}
+
+#[test]
+fn test_full_text_when_binary_content_with_trivia_expect_exact_bytes() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(20), &[0xFF, 0xFE]), // binary leading
+    ]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(21), &[0x00, 0x01]), // binary trailing
+    ]);
+
+    let binary_token_data = &[0x80, 0x7F];
+    let token = GreenToken::new(
+        STRING_KIND,
+        binary_token_data,
+        leading_trivia,
+        trailing_trivia,
+    );
+    let full_text = token.full_text();
+
+    // Expected: [0xFF, 0xFE] + [0x80, 0x7F] + [0x00, 0x01]
+    let expected = vec![0xFF, 0xFE, 0x80, 0x7F, 0x00, 0x01];
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 6);
+}
+
+#[test]
+fn test_full_text_when_pdf_object_with_trivia_expect_realistic_concatenation() {
+    use crate::green::trivia::GreenTriviaChild;
+
+    // Simulate realistic PDF object formatting: "  123 0 obj\n"
+    let leading_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(22), b"  "), // indentation
+    ]);
+    let trailing_trivia = GreenTrivia::new(vec![
+        GreenTriviaChild::new(SyntaxKind(23), b" 0 obj\n"), // object suffix
+    ]);
+
+    let token = GreenToken::new(NUMBER_KIND, b"123", leading_trivia, trailing_trivia);
+    let full_text = token.full_text();
+
+    // Expected: "  " + "123" + " 0 obj\n" = "  123 0 obj\n"
+    let expected = b"  123 0 obj\n";
+    assert_eq!(full_text, expected);
+    assert_eq!(full_text.len(), 12);
+}
 
 #[test]
 fn test_into_raw_when_converting_to_pointer_expect_valid_operation() {
@@ -247,10 +364,6 @@ fn test_to_owned_when_converting_token_data_expect_equivalent_token() {
     assert_eq!(original_token.width(), owned_token.width());
 }
 
-// =============================================================================
-// Equality and Hashing Tests
-// =============================================================================
-
 #[test]
 fn test_equality_when_identical_tokens_expect_equal() {
     let token1 = create_token(STRING_KIND, "(Hello)");
@@ -288,10 +401,6 @@ fn test_hash_when_using_in_collections_expect_consistent_behavior() {
     assert_eq!(map.get(&lookup_token), Some(&"test_value"));
 }
 
-// =============================================================================
-// Edge Cases and Error Conditions
-// =============================================================================
-
 #[test]
 fn test_token_when_empty_content_expect_valid_handling() {
     let empty_token = create_token(STRING_KIND, "");
@@ -325,10 +434,6 @@ fn test_token_when_binary_content_expect_exact_preservation() {
     assert_eq!(binary_token.width(), 6);
 }
 
-// =============================================================================
-// Debug and Display Tests
-// =============================================================================
-
 #[test]
 fn test_debug_when_formatting_token_expect_readable_output() {
     let token = create_token(STRING_KIND, "(test)");
@@ -351,10 +456,6 @@ fn test_clone_when_copying_token_expect_shared_memory() {
     // Memory should be shared (reference counted)
     assert_eq!(original, cloned);
 }
-
-// =============================================================================
-// Token Display and Equality Tests
-// =============================================================================
 
 #[test]
 fn test_token_display_when_formatting_expect_text_content() {

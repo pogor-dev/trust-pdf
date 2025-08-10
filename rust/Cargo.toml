@@ -19,8 +19,10 @@ semantic = { path = "./crates/semantic", version = "0.1.0" }
 # Non-local crates
 cargo-deny = "0.18.3"
 countme = "3.0.1"
-iai-callgrind = "0.15.2"
-iai-callgrind-macros = "0.6.0"
+hashbrown = "0.15.5"
+iai-callgrind = "0.16.1"
+iai-callgrind-macros = "0.6.1"
+rustc-hash = "2.1.1"
 
 # Optimized profiles for faster builds
 [profile.dev]

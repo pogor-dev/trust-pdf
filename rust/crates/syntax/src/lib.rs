@@ -8,7 +8,11 @@ mod utility_types;
 mod utility_types_tests;
 
 pub use crate::{
-    // api::{language::Language, trivia::SyntaxTrivia},
-    green::SyntaxKind,
+    green::{
+        SyntaxKind,
+        node::{GreenNode, GreenNodeData, NodeChildren},
+        token::{GreenToken, GreenTokenData},
+        trivia::{GreenTrivia, GreenTriviaData},
+    },
     utility_types::NodeOrToken,
 };

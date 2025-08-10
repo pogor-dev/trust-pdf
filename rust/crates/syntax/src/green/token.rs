@@ -12,9 +12,8 @@ use std::{
 use countme::Count;
 
 use crate::{
-    SyntaxKind,
+    GreenTrivia, SyntaxKind,
     arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc},
-    green::trivia::GreenTrivia,
 };
 
 type Repr = HeaderSlice<GreenTokenHead, [u8]>;
@@ -137,6 +136,19 @@ impl GreenTokenData {
     pub fn text(&self) -> &[u8] {
         let slice = self.data.slice();
         unsafe { std::slice::from_raw_parts(slice.as_ptr(), slice.len()) }
+    }
+
+    /// Returns the complete text content including leading trivia, token text, and trailing trivia.
+    #[inline]
+    pub fn full_text(&self) -> Vec<u8> {
+        let mut result = Vec::with_capacity(self.full_width() as usize);
+
+        // Concatenate leading trivia + token text + trailing trivia
+        result.extend_from_slice(&self.leading_trivia().text());
+        result.extend_from_slice(self.text());
+        result.extend_from_slice(&self.trailing_trivia().text());
+
+        result
     }
 
     /// Returns the byte width (length) of this token element.

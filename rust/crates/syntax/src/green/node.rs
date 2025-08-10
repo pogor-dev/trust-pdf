@@ -14,12 +14,9 @@ use std::{
 use countme::Count;
 
 use crate::{
-    NodeOrToken, SyntaxKind,
+    GreenToken, GreenTokenData, NodeOrToken, SyntaxKind,
     arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc},
-    green::{
-        element::{GreenElement, GreenElementRef},
-        token::{GreenToken, GreenTokenData},
-    },
+    green::{GreenElementRef, element::GreenElement},
 };
 
 /// Internal representation of child nodes with positional metadata.

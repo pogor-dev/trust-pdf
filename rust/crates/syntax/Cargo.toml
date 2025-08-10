@@ -12,10 +12,10 @@ repository.workspace = true
 
 # Non-local crates
 countme.workspace = true
-
-# Conditional benchmark dependencies (only when bench feature is enabled)
+hashbrown.workspace = true
 iai-callgrind = { workspace = true, optional = true }
 iai-callgrind-macros = { workspace = true, optional = true }
+rustc-hash.workspace = true
 
 [dev-dependencies]
 # Unit test dependencies go here (lightweight only)
