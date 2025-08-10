@@ -18,7 +18,7 @@ use crate::{
     arc::{arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc},
     green::{
         element::{GreenElement, GreenElementRef},
-        token::GreenToken,
+        token::{GreenToken, GreenTokenData},
     },
 };
 
@@ -50,8 +50,6 @@ pub struct GreenNode {
 struct GreenNodeHead {
     /// PDF syntax kind (Object, Dictionary, Array, etc.)
     kind: SyntaxKind,
-    /// Text width excluding trivia (whitespace, comments)
-    width: u32,
     /// Total width including all trivia elements
     full_width: u32,
     /// Reference counting for memory management
@@ -68,11 +66,9 @@ impl GreenNode {
         I: IntoIterator<Item = GreenElement>,
         I::IntoIter: ExactSizeIterator,
     {
-        let mut width: u32 = 0;
         let mut full_width: u32 = 0;
         let children = children.into_iter().map(|el| {
             let rel_offset = full_width;
-            width += el.width();
             full_width += el.full_width();
             match el {
                 NodeOrToken::Node(node) => GreenChild::Node { rel_offset, node },
@@ -82,7 +78,6 @@ impl GreenNode {
 
         let head = GreenNodeHead {
             kind,
-            width: 0,
             full_width: 0,
             _c: Count::new(),
         };
@@ -92,7 +87,6 @@ impl GreenNode {
         // `children` twice.
         let data = {
             let mut data = Arc::from_thin(data);
-            Arc::get_mut(&mut data).unwrap().header.width = width;
             Arc::get_mut(&mut data).unwrap().header.full_width = full_width;
             Arc::into_thin(data)
         };
@@ -182,15 +176,59 @@ impl GreenNodeData {
     }
 
     /// Returns the byte length of text content excluding trivia.
+    ///
+    /// Calculated as total width minus leading and trailing trivia, similar to Roslyn's approach.
     #[inline]
     pub fn width(&self) -> u32 {
-        self.header().width
+        if self.full_width() == 0 {
+            return 0;
+        }
+
+        let leading_width = self.get_leading_trivia_width();
+        let trailing_width = self.get_trailing_trivia_width();
+
+        self.full_width()
+            .saturating_sub(leading_width + trailing_width)
     }
 
     /// Returns the total byte span including all child trivia.
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
+    }
+
+    /// Returns the width of leading trivia from the first terminal node.
+    ///
+    /// Similar to Roslyn's GetLeadingTriviaWidth, finds the leftmost terminal
+    /// and returns its leading trivia width.
+    #[inline]
+    pub fn get_leading_trivia_width(&self) -> u32 {
+        if self.full_width() == 0 {
+            return 0;
+        }
+
+        if let Some(first_terminal) = self.get_first_terminal() {
+            return first_terminal.leading_trivia().width();
+        }
+
+        0
+    }
+
+    /// Returns the width of trailing trivia from the last terminal node.
+    ///
+    /// Similar to Roslyn's GetTrailingTriviaWidth, finds the rightmost terminal
+    /// and returns its trailing trivia width.
+    #[inline]
+    pub fn get_trailing_trivia_width(&self) -> u32 {
+        if self.full_width() == 0 {
+            return 0;
+        }
+
+        if let Some(last_terminal) = self.get_last_terminal() {
+            return last_terminal.trailing_trivia().width();
+        }
+
+        0
     }
 
     /// Returns an iterator over all immediate child elements.
@@ -237,6 +275,66 @@ impl GreenNodeData {
         let mut children: Vec<_> = self.children().map(|it| it.to_owned()).collect();
         children.splice(range, replace_with);
         GreenNode::new(self.kind(), children)
+    }
+
+    /// Finds the first terminal (leaf token) in the subtree rooted at this node.
+    ///
+    /// Traverses the tree depth-first, always taking the leftmost child,
+    /// until reaching a terminal token. Returns the first token found.
+    pub fn get_first_terminal(&self) -> Option<&GreenTokenData> {
+        let mut current = self;
+
+        loop {
+            // Look for the first child
+            for child in current.children() {
+                match child {
+                    NodeOrToken::Token(token) => {
+                        // Found a token - this is our terminal
+                        return Some(token);
+                    }
+                    NodeOrToken::Node(node) => {
+                        // Found a node - continue traversing into it
+                        current = node;
+                        break;
+                    }
+                }
+            }
+
+            // If we get here and didn't find any children, there are no tokens
+            if current.children().len() == 0 {
+                return None;
+            }
+        }
+    }
+
+    /// Finds the last terminal (leaf token) in the subtree rooted at this node.
+    ///
+    /// Traverses the tree depth-first, always taking the rightmost child,
+    /// until reaching a terminal token. Returns the last token found.
+    pub fn get_last_terminal(&self) -> Option<&GreenTokenData> {
+        let mut current = self;
+
+        loop {
+            // Look for the last child (iterate backwards)
+            for child in current.children().rev() {
+                match child {
+                    NodeOrToken::Token(token) => {
+                        // Found a token - this is our terminal
+                        return Some(token);
+                    }
+                    NodeOrToken::Node(node) => {
+                        // Found a node - continue traversing into it
+                        current = node;
+                        break;
+                    }
+                }
+            }
+
+            // If we get here and didn't find any children, there are no tokens
+            if current.children().len() == 0 {
+                return None;
+            }
+        }
     }
 }
 

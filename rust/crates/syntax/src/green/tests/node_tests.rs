@@ -50,34 +50,47 @@ fn create_dict_node() -> GreenNode {
     )
 }
 
-/// Helper function to create a complex PDF object node
-fn create_obj_node() -> GreenNode {
-    let obj_num = create_token(NUMBER_KIND, "1");
-    let gen_num = create_token(NUMBER_KIND, "0");
-    let dict = create_dict_node();
+/// Helper function to create a complex PDF object node or simple structure
+/// When `simple` is true, creates a flat structure like create_sample_pdf_object
+/// When `simple` is false, creates a nested structure with dictionary child
+fn create_pdf_object_node(simple: bool) -> GreenNode {
+    if simple {
+        // Creates: "1 0 obj /Type /Catalog endobj"
+        let elements = vec![
+            create_element_token(NUMBER_KIND, "1"),
+            create_element_token(NUMBER_KIND, "0"),
+            create_element_token(KW_KIND, "obj"),
+            create_element_token(NAME_KIND, "/Type"),
+            create_element_token(NAME_KIND, "/Catalog"),
+            create_element_token(KW_KIND, "endobj"),
+        ];
+        create_node(OBJECT_KIND, elements)
+    } else {
+        // Creates: "1 0 [dict]" with nested dictionary
+        let obj_num = create_token(NUMBER_KIND, "1");
+        let gen_num = create_token(NUMBER_KIND, "0");
+        let dict = create_dict_node();
 
-    create_node(
-        OBJ_KIND,
-        vec![
-            NodeOrToken::Token(obj_num),
-            NodeOrToken::Token(gen_num),
-            NodeOrToken::Node(dict),
-        ],
-    )
+        create_node(
+            OBJ_KIND,
+            vec![
+                NodeOrToken::Token(obj_num),
+                NodeOrToken::Token(gen_num),
+                NodeOrToken::Node(dict),
+            ],
+        )
+    }
 }
 
-/// Creates a sample PDF object structure for testing
+/// Creates a sample PDF object structure for testing (backwards compatibility)
 /// Represents something like: "1 0 obj /Type /Catalog endobj"
 fn create_sample_pdf_object() -> GreenNode {
-    let elements = vec![
-        create_element_token(NUMBER_KIND, "1"),
-        create_element_token(NUMBER_KIND, "0"),
-        create_element_token(KW_KIND, "obj"),
-        create_element_token(NAME_KIND, "/Type"),
-        create_element_token(NAME_KIND, "/Catalog"),
-        create_element_token(KW_KIND, "endobj"),
-    ];
-    create_node(OBJECT_KIND, elements)
+    create_pdf_object_node(true)
+}
+
+/// Helper function to create a complex PDF object node (backwards compatibility)
+fn create_obj_node() -> GreenNode {
+    create_pdf_object_node(false)
 }
 
 // =============================================================================
@@ -723,4 +736,626 @@ fn test_children_rfold_when_reverse_accumulating_expect_correct_result() {
 
     assert!(total_width > 0);
     assert_eq!(total_width, node.full_width());
+}
+
+#[test]
+fn test_get_first_terminal_when_leaf_node_expect_first_token() {
+    // Create a leaf node (only contains tokens)
+    let leaf_node = create_dict_node();
+
+    let first_terminal = leaf_node.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NAME_KIND); // Should be the "/Type" token
+    assert_eq!(terminal.text(), b"/Type");
+}
+
+#[test]
+fn test_get_last_terminal_when_leaf_node_expect_last_token() {
+    // Create a leaf node (only contains tokens)
+    let leaf_node = create_dict_node();
+
+    let last_terminal = leaf_node.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), NAME_KIND); // Should be the "/Catalog" token
+    assert_eq!(terminal.text(), b"/Catalog");
+}
+
+#[test]
+fn test_get_first_terminal_when_nested_structure_expect_leftmost_token() {
+    // Create a nested structure: OBJ -> DICT (with tokens)
+    let inner_dict = create_dict_node(); // Contains "/Type" and "/Catalog" tokens
+    let stream_node = create_node(STREAM_KIND, vec![NodeOrToken::Node(inner_dict.clone())]);
+    let outer_obj = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(stream_node),
+            NodeOrToken::Token(create_token(KW_KIND, "endobj")),
+        ],
+    );
+
+    let first_terminal = outer_obj.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NAME_KIND); // Should be the "/Type" token from inner dict
+    assert_eq!(terminal.text(), b"/Type");
+}
+
+#[test]
+fn test_get_last_terminal_when_nested_structure_expect_rightmost_token() {
+    // Create a nested structure with multiple child nodes
+    let inner_dict1 = create_dict_node();
+    let inner_dict2 = create_node(
+        ARRAY_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "42")),
+            NodeOrToken::Token(create_token(STRING_KIND, "(test)")),
+        ],
+    );
+
+    let outer_obj = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(inner_dict1),
+            NodeOrToken::Node(inner_dict2.clone()), // This contains the last terminal token
+        ],
+    );
+
+    let last_terminal = outer_obj.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), STRING_KIND); // Should be the "(test)" token (rightmost)
+    assert_eq!(terminal.text(), b"(test)");
+}
+
+#[test]
+fn test_get_first_terminal_when_deep_nesting_expect_deepest_leftmost_token() {
+    // Create deeply nested structure: OBJ -> STREAM -> DICT -> ARRAY (leaf)
+    let leaf_array = create_node(
+        ARRAY_KIND,
+        vec![NodeOrToken::Token(create_token(NUMBER_KIND, "1"))],
+    );
+    let dict_node = create_node(DICT_KIND, vec![NodeOrToken::Node(leaf_array.clone())]);
+    let stream_node = create_node(STREAM_KIND, vec![NodeOrToken::Node(dict_node)]);
+    let obj_node = create_node(OBJ_KIND, vec![NodeOrToken::Node(stream_node)]);
+
+    let first_terminal = obj_node.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NUMBER_KIND); // Should reach the deepest leftmost token "1"
+    assert_eq!(terminal.text(), b"1");
+}
+
+#[test]
+fn test_get_last_terminal_when_deep_nesting_expect_deepest_rightmost_token() {
+    // Create deeply nested structure with multiple branches
+    let left_leaf = create_node(
+        ARRAY_KIND,
+        vec![NodeOrToken::Token(create_token(NUMBER_KIND, "1"))],
+    );
+    let right_leaf = create_node(
+        NAME_KIND,
+        vec![NodeOrToken::Token(create_token(NAME_KIND, "/Name"))],
+    );
+
+    let dict_node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Node(left_leaf),
+            NodeOrToken::Node(right_leaf.clone()), // This contains the last terminal token
+        ],
+    );
+    let obj_node = create_node(OBJ_KIND, vec![NodeOrToken::Node(dict_node)]);
+
+    let last_terminal = obj_node.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), NAME_KIND); // Should reach the rightmost token "/Name"
+    assert_eq!(terminal.text(), b"/Name");
+}
+
+#[test]
+fn test_get_first_terminal_when_mixed_children_expect_first_token() {
+    // Create node with mixed tokens and nodes - should find the very first token
+    let leaf_node = create_dict_node();
+    let mixed_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "1")), // Should find this (first token)
+            NodeOrToken::Token(create_token(NUMBER_KIND, "0")),
+            NodeOrToken::Node(leaf_node.clone()),
+            NodeOrToken::Token(create_token(KW_KIND, "endobj")),
+        ],
+    );
+
+    let first_terminal = mixed_node.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NUMBER_KIND); // Should find the first token "1"
+    assert_eq!(terminal.text(), b"1");
+}
+
+#[test]
+fn test_get_last_terminal_when_mixed_children_expect_last_token() {
+    // Create node with mixed tokens and nodes - should find the very last token
+    let first_leaf = create_dict_node();
+    let last_leaf = create_node(
+        ARRAY_KIND,
+        vec![NodeOrToken::Token(create_token(STRING_KIND, "(array)"))],
+    );
+
+    let mixed_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "1")),
+            NodeOrToken::Node(first_leaf),
+            NodeOrToken::Node(last_leaf.clone()),
+            NodeOrToken::Token(create_token(KW_KIND, "endobj")), // Should find this (last token)
+        ],
+    );
+
+    let last_terminal = mixed_node.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), KW_KIND); // Should find the last token "endobj"
+    assert_eq!(terminal.text(), b"endobj");
+}
+
+#[test]
+fn test_get_first_terminal_when_only_tokens_expect_first_token() {
+    // Create node with only token children (no child nodes)
+    let token_only_node = create_node(
+        OBJECT_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "1")),
+            NodeOrToken::Token(create_token(NUMBER_KIND, "0")),
+            NodeOrToken::Token(create_token(KW_KIND, "obj")),
+        ],
+    );
+
+    let first_terminal = token_only_node.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NUMBER_KIND); // Should return first token "1"
+    assert_eq!(terminal.text(), b"1");
+
+    // Also test last terminal in the same test to avoid redundancy
+    let last_terminal = token_only_node.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), KW_KIND); // Should return last token "obj"
+    assert_eq!(terminal.text(), b"obj");
+}
+
+#[test]
+fn test_empty_node_comprehensive_expect_correct_behavior() {
+    // Create completely empty node
+    let empty_node = create_node(DICT_KIND, vec![]);
+
+    // Test terminal navigation
+    let first_terminal = empty_node.get_first_terminal();
+    let last_terminal = empty_node.get_last_terminal();
+
+    assert!(first_terminal.is_none()); // Should return None as there are no tokens
+    assert!(last_terminal.is_none()); // Should return None as there are no tokens
+
+    // Test trivia width calculations
+    assert_eq!(empty_node.full_width(), 0);
+    assert_eq!(empty_node.get_leading_trivia_width(), 0);
+    assert_eq!(empty_node.get_trailing_trivia_width(), 0);
+    assert_eq!(empty_node.width(), 0);
+
+    // Test basic properties
+    assert_eq!(empty_node.kind(), DICT_KIND);
+    assert_eq!(empty_node.children().count(), 0);
+}
+
+#[test]
+fn test_get_first_terminal_when_complex_pdf_structure_expect_correct_navigation() {
+    // Create a more realistic PDF structure
+    let page_dict = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NAME_KIND, "/Type")),
+            NodeOrToken::Token(create_token(NAME_KIND, "/Page")),
+        ],
+    );
+
+    let pages_array = create_node(
+        ARRAY_KIND,
+        vec![NodeOrToken::Node(page_dict.clone())], // page_dict should be the terminal
+    );
+
+    let catalog_dict = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NAME_KIND, "/Type")),
+            NodeOrToken::Token(create_token(NAME_KIND, "/Catalog")),
+            NodeOrToken::Node(pages_array),
+        ],
+    );
+
+    let pdf_obj = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NUMBER_KIND, "1")),
+            NodeOrToken::Token(create_token(NUMBER_KIND, "0")),
+            NodeOrToken::Token(create_token(KW_KIND, "obj")),
+            NodeOrToken::Node(catalog_dict),
+            NodeOrToken::Token(create_token(KW_KIND, "endobj")),
+        ],
+    );
+
+    let first_terminal = pdf_obj.get_first_terminal();
+
+    assert!(first_terminal.is_some());
+    let terminal = first_terminal.unwrap();
+    assert_eq!(terminal.kind(), NUMBER_KIND); // Should find the first token "1"
+    assert_eq!(terminal.text(), b"1");
+}
+
+#[test]
+fn test_get_last_terminal_when_complex_pdf_structure_expect_correct_navigation() {
+    // Create structure where we can verify last terminal selection
+    let first_page = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NAME_KIND, "/Type")),
+            NodeOrToken::Token(create_token(NAME_KIND, "/Page")),
+        ],
+    );
+
+    let second_page = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(create_token(NAME_KIND, "/Type")),
+            NodeOrToken::Token(create_token(NAME_KIND, "/Page")),
+            NodeOrToken::Token(create_token(NUMBER_KIND, "2")),
+        ],
+    );
+
+    let pages_array = create_node(
+        ARRAY_KIND,
+        vec![
+            NodeOrToken::Node(first_page),
+            NodeOrToken::Node(second_page.clone()), // This should be the last terminal
+        ],
+    );
+
+    let catalog_dict = create_node(DICT_KIND, vec![NodeOrToken::Node(pages_array)]);
+
+    let pdf_obj = create_node(OBJ_KIND, vec![NodeOrToken::Node(catalog_dict)]);
+
+    let last_terminal = pdf_obj.get_last_terminal();
+
+    assert!(last_terminal.is_some());
+    let terminal = last_terminal.unwrap();
+    assert_eq!(terminal.kind(), NUMBER_KIND); // Should find the last token "2" from second page
+    assert_eq!(terminal.text(), b"2");
+}
+
+/// Helper function to create trivia for testing
+fn create_trivia(content: &str) -> GreenTrivia {
+    use crate::green::trivia::GreenTriviaChild;
+    let trivia_child = GreenTriviaChild::new(SyntaxKind(999), content.as_bytes());
+    GreenTrivia::new([trivia_child])
+}
+
+/// Helper function to create token with specific trivia
+fn create_token_with_trivia(
+    kind: SyntaxKind,
+    text: &str,
+    leading: &str,
+    trailing: &str,
+) -> GreenToken {
+    let leading_trivia = create_trivia(leading);
+    let trailing_trivia = create_trivia(trailing);
+    GreenToken::new(kind, text.as_bytes(), leading_trivia, trailing_trivia)
+}
+
+#[test]
+fn test_width_when_no_trivia_expect_full_width() {
+    // Create node with tokens that have no trivia
+    let token1 = create_token(NAME_KIND, "/Type"); // 5 bytes
+    let token2 = create_token(NAME_KIND, "/Catalog"); // 8 bytes
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // Width should equal full_width when there's no trivia
+    assert_eq!(node.width(), node.full_width());
+    assert_eq!(node.width(), 13); // 5 + 8 = 13
+}
+
+#[test]
+fn test_width_when_has_leading_trivia_expect_reduced_width() {
+    // Create tokens with leading trivia
+    let token1 = create_token_with_trivia(NAME_KIND, "/Type", "  ", ""); // 2 leading, 0 trailing
+    let token2 = create_token_with_trivia(NAME_KIND, "/Catalog", "", ""); // 0 leading, 0 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // full_width = 5 + 8 + 2 = 15, leading_trivia = 2, trailing_trivia = 0
+    // width = 15 - 2 - 0 = 13
+    assert_eq!(node.full_width(), 15);
+    assert_eq!(node.get_leading_trivia_width(), 2);
+    assert_eq!(node.get_trailing_trivia_width(), 0);
+    assert_eq!(node.width(), 13);
+}
+
+#[test]
+fn test_width_when_has_trailing_trivia_expect_reduced_width() {
+    // Create tokens with trailing trivia on the last token
+    let token1 = create_token_with_trivia(NAME_KIND, "/Type", "", ""); // 0 leading, 0 trailing
+    let token2 = create_token_with_trivia(NAME_KIND, "/Catalog", "", "\n"); // 0 leading, 1 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // full_width = 5 + 8 + 1 = 14, leading_trivia = 0, trailing_trivia = 1
+    // width = 14 - 0 - 1 = 13
+    assert_eq!(node.full_width(), 14);
+    assert_eq!(node.get_leading_trivia_width(), 0);
+    assert_eq!(node.get_trailing_trivia_width(), 1);
+    assert_eq!(node.width(), 13);
+}
+
+#[test]
+fn test_width_when_has_both_trivias_expect_double_reduced_width() {
+    // Create tokens with both leading and trailing trivia
+    let token1 = create_token_with_trivia(NAME_KIND, "/Type", "  ", ""); // 2 leading, 0 trailing
+    let token2 = create_token_with_trivia(NAME_KIND, "/Catalog", "", " \n"); // 0 leading, 2 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // full_width = 5 + 8 + 2 + 2 = 17, leading_trivia = 2, trailing_trivia = 2
+    // width = 17 - 2 - 2 = 13
+    assert_eq!(node.full_width(), 17);
+    assert_eq!(node.get_leading_trivia_width(), 2);
+    assert_eq!(node.get_trailing_trivia_width(), 2);
+    assert_eq!(node.width(), 13);
+}
+
+#[test]
+fn test_get_leading_trivia_width_when_nested_structure_expect_first_terminal_leading() {
+    // Create nested structure where first terminal has leading trivia
+    let inner_token = create_token_with_trivia(NAME_KIND, "/Page", "    ", ""); // 4 leading spaces
+    let leaf_node = create_node(DICT_KIND, vec![NodeOrToken::Token(inner_token)]);
+    let parent_node = create_node(ARRAY_KIND, vec![NodeOrToken::Node(leaf_node)]);
+
+    // Leading trivia should come from the first terminal's first token
+    assert_eq!(parent_node.get_leading_trivia_width(), 4);
+}
+
+#[test]
+fn test_get_trailing_trivia_width_when_nested_structure_expect_last_terminal_trailing() {
+    // Create nested structure where last terminal has trailing trivia
+    let token1 = create_token_with_trivia(NAME_KIND, "/Type", "", "");
+    let token2 = create_token_with_trivia(NAME_KIND, "/Page", "", "\n\n"); // 2 trailing newlines
+    let leaf_node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+    let parent_node = create_node(ARRAY_KIND, vec![NodeOrToken::Node(leaf_node)]);
+
+    // Trailing trivia should come from the last terminal's last token
+    assert_eq!(parent_node.get_trailing_trivia_width(), 2);
+}
+
+#[test]
+fn test_trivia_width_when_complex_pdf_structure_expect_correct_calculation() {
+    // Create a realistic PDF structure with various trivia
+    let obj_num = create_token_with_trivia(NUMBER_KIND, "1", "", " "); // 0 leading, 1 trailing
+    let gen_num = create_token_with_trivia(NUMBER_KIND, "0", "", " "); // 0 leading, 1 trailing
+    let obj_kw = create_token_with_trivia(KW_KIND, "obj", "", "\n"); // 0 leading, 1 trailing
+
+    let type_name = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing (first in dict)
+    let catalog_name = create_token_with_trivia(NAME_KIND, "/Catalog", "", "\n"); // 0 leading, 1 trailing (last in dict)
+
+    let dict_node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(type_name),
+            NodeOrToken::Token(catalog_name),
+        ],
+    );
+
+    let endobj_kw = create_token_with_trivia(KW_KIND, "endobj", "", ""); // 0 leading, 0 trailing
+
+    let pdf_obj = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(obj_num),
+            NodeOrToken::Token(gen_num),
+            NodeOrToken::Token(obj_kw),
+            NodeOrToken::Node(dict_node),
+            NodeOrToken::Token(endobj_kw),
+        ],
+    );
+
+    // Leading trivia should come from first terminal token (obj_num "1" with no leading trivia)
+    assert_eq!(pdf_obj.get_leading_trivia_width(), 0);
+
+    // Trailing trivia should come from last terminal token (endobj_kw "endobj" with no trailing trivia)
+    assert_eq!(pdf_obj.get_trailing_trivia_width(), 0);
+
+    // Calculate expected values:
+    // Full content: "1" + " " + "0" + " " + "obj" + "\n" + "  " + "/Type" + " " + "/Catalog" + "\n" + "endobj"
+    // = 1 + 1 + 1 + 1 + 3 + 1 + 2 + 5 + 1 + 8 + 1 + 6 = 31
+    assert_eq!(pdf_obj.full_width(), 31);
+
+    // Width = full_width - leading_trivia - trailing_trivia = 31 - 0 - 0 = 31
+    assert_eq!(pdf_obj.width(), 31);
+}
+
+#[test]
+fn test_trivia_width_when_only_tokens_no_child_nodes_expect_direct_trivia() {
+    // Test with node that has tokens but no child nodes (terminal node)
+    let first_token = create_token_with_trivia(NUMBER_KIND, "42", "   ", ""); // 3 leading
+    let last_token = create_token_with_trivia(KW_KIND, "obj", "", "  "); // 2 trailing
+
+    let terminal_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(first_token),
+            NodeOrToken::Token(last_token),
+        ],
+    );
+
+    // Since this is a terminal node, it should use its own first/last tokens
+    assert_eq!(terminal_node.get_leading_trivia_width(), 3);
+    assert_eq!(terminal_node.get_trailing_trivia_width(), 2);
+
+    // full_width = 2 + 3 + 3 + 2 = 10, width = 10 - 3 - 2 = 5
+    assert_eq!(terminal_node.full_width(), 10);
+    assert_eq!(terminal_node.width(), 5);
+}
+
+#[test]
+fn test_trivia_width_when_multiple_tokens_expect_only_boundary_exclusion() {
+    // Test that only the first token's leading and last token's trailing trivia are excluded
+    // All other trivia (between tokens) should be included in width calculation
+    let first_token = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing
+    let middle_token = create_token_with_trivia(NAME_KIND, "/Page", " ", " "); // 1 leading, 1 trailing
+    let last_token = create_token_with_trivia(STRING_KIND, "(test)", " ", "\n"); // 1 leading, 1 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(first_token),
+            NodeOrToken::Token(middle_token),
+            NodeOrToken::Token(last_token),
+        ],
+    );
+
+    // Should only exclude first token's leading (2) and last token's trailing (1)
+    assert_eq!(node.get_leading_trivia_width(), 2);
+    assert_eq!(node.get_trailing_trivia_width(), 1);
+
+    // full_width = 5+2+1 + 5+1+1 + 6+1+1 = 8+7+8 = 23
+    // width = 23 - 2 - 1 = 20 (preserves middle token's trivia + last token's leading)
+    assert_eq!(node.full_width(), 23);
+    assert_eq!(node.width(), 20);
+}
+
+#[test]
+fn test_width_calculation_when_large_trivia_expect_no_underflow() {
+    // Test edge case where trivia might be larger than content
+    let token = create_token_with_trivia(NAME_KIND, "x", "     ", "     "); // 1 content, 10 trivia
+    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
+
+    // full_width = 1 + 5 + 5 = 11
+    // leading = 5, trailing = 5, total trivia = 10
+    // width should be 11 - 10 = 1 (using saturating_sub to prevent underflow)
+    assert_eq!(node.full_width(), 11);
+    assert_eq!(node.get_leading_trivia_width(), 5);
+    assert_eq!(node.get_trailing_trivia_width(), 5);
+    assert_eq!(node.width(), 1);
+}
+
+#[test]
+fn test_width_calculation_when_trivia_equals_content_expect_zero() {
+    // Test edge case where trivia equals full content
+    let token = create_token_with_trivia(NAME_KIND, "", "  ", "  "); // 0 content, 4 trivia
+    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
+
+    // full_width = 0 + 2 + 2 = 4
+    // width = 4 - 2 - 2 = 0
+    assert_eq!(node.full_width(), 4);
+    assert_eq!(node.width(), 0);
+}
+
+#[test]
+fn test_width_when_internal_trivia_expect_preservation() {
+    // Test that internal trivia (between tokens) is PRESERVED in width calculation
+    // Only the first token's leading and last token's trailing trivia should be excluded
+    let first_token = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing
+    let middle_token = create_token_with_trivia(NAME_KIND, "/Page", " ", " "); // 1 leading, 1 trailing (BOTH should be preserved)
+    let last_token = create_token_with_trivia(STRING_KIND, "(test)", " ", "\n"); // 1 leading, 1 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(first_token),
+            NodeOrToken::Token(middle_token),
+            NodeOrToken::Token(last_token),
+        ],
+    );
+
+    // Content breakdown:
+    // first_token: "  " + "/Type" + " " = 2 + 5 + 1 = 8
+    // middle_token: " " + "/Page" + " " = 1 + 5 + 1 = 7 (ALL preserved in width)
+    // last_token: " " + "(test)" + "\n" = 1 + 6 + 1 = 8
+    // total full_width = 8 + 7 + 8 = 23
+
+    // Boundary trivia to exclude:
+    // - First token leading: 2 bytes ("  ")
+    // - Last token trailing: 1 byte ("\n")
+    // Internal trivia preserved: middle_token (1+1) + last_token leading (1) = 3 bytes
+
+    assert_eq!(node.full_width(), 23);
+    assert_eq!(node.get_leading_trivia_width(), 2);
+    assert_eq!(node.get_trailing_trivia_width(), 1);
+
+    // width = full_width - boundary_trivia = 23 - 2 - 1 = 20
+    // This includes: "/Type" + " " + " " + "/Page" + " " + " " + "(test)" = 5+1+1+5+1+1+6 = 20
+    assert_eq!(node.width(), 20);
+}
+
+#[test]
+fn test_width_when_nested_internal_trivia_expect_preservation() {
+    // Test nested structure where internal trivia between child nodes is preserved
+
+    // Create child nodes with boundary trivia
+    let child1 = {
+        let token = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing
+        create_node(DICT_KIND, vec![NodeOrToken::Token(token)])
+    };
+
+    let child2 = {
+        let token = create_token_with_trivia(NAME_KIND, "/Page", " ", "  "); // 1 leading, 2 trailing
+        create_node(ARRAY_KIND, vec![NodeOrToken::Token(token)])
+    };
+
+    // Parent node contains both child nodes
+    let parent = create_node(
+        OBJ_KIND,
+        vec![NodeOrToken::Node(child1), NodeOrToken::Node(child2)],
+    );
+
+    // First terminal should be child1's token with "  " leading
+    // Last terminal should be child2's token with "  " trailing
+    // The trivia between child nodes should be preserved in width
+
+    // child1: "  " + "/Type" + " " = 8 bytes
+    // child2: " " + "/Page" + "  " = 8 bytes
+    // total = 16 bytes
+
+    assert_eq!(parent.full_width(), 16);
+    assert_eq!(parent.get_leading_trivia_width(), 2); // From first terminal (child1)
+    assert_eq!(parent.get_trailing_trivia_width(), 2); // From last terminal (child2)
+
+    // width = 16 - 2 - 2 = 12
+    // This preserves: "/Type" + " " + " " + "/Page" = 5+1+1+5 = 12
+    assert_eq!(parent.width(), 12);
 }
