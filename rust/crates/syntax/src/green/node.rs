@@ -336,6 +336,80 @@ impl GreenNodeData {
             }
         }
     }
+
+    /// Returns the text content without leading and trailing trivia.
+    ///
+    /// Similar to Roslyn's ToString(), this excludes boundary trivia but preserves
+    /// internal whitespace and formatting between tokens.
+    pub fn text(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        self.write_text_to(&mut result, false, false);
+        result
+    }
+
+    /// Returns the full text content including all trivia.
+    ///
+    /// Similar to Roslyn's ToFullString(), this includes all leading and trailing
+    /// trivia, providing the complete textual representation of the node.
+    pub fn full_text(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        self.write_text_to(&mut result, true, true);
+        result
+    }
+
+    /// Writes text content to a byte vector with trivia control.
+    ///
+    /// This is the core text generation function that handles the recursive
+    /// traversal of the syntax tree and trivia inclusion logic.
+    ///
+    /// Parameters:
+    /// - `include_leading`: Whether to include leading trivia from the first terminal token
+    /// - `include_trailing`: Whether to include trailing trivia from the last terminal token
+    fn write_text_to(&self, writer: &mut Vec<u8>, include_leading: bool, include_trailing: bool) {
+        let children: Vec<_> = self.children().collect();
+
+        if children.is_empty() {
+            return;
+        }
+
+        let first_index = 0;
+        let last_index = children.len() - 1;
+
+        for (i, child) in children.iter().enumerate() {
+            let is_first = i == first_index;
+            let is_last = i == last_index;
+
+            match child {
+                NodeOrToken::Token(token) => {
+                    // For tokens, write trivia based on position and flags
+                    // Leading trivia: include unless this is the first token and include_leading is false
+                    let write_leading = !(is_first && !include_leading);
+                    // Trailing trivia: include unless this is the last token and include_trailing is false
+                    let write_trailing = !(is_last && !include_trailing);
+
+                    if write_leading {
+                        let leading_text = token.leading_trivia().text();
+                        writer.extend_from_slice(&leading_text);
+                    }
+
+                    writer.extend_from_slice(token.text());
+
+                    if write_trailing {
+                        let trailing_text = token.trailing_trivia().text();
+                        writer.extend_from_slice(&trailing_text);
+                    }
+                }
+                NodeOrToken::Node(node) => {
+                    // For nodes, propagate trivia flags based on position
+                    // Only the first child should respect include_leading
+                    // Only the last child should respect include_trailing
+                    let node_leading = if is_first { include_leading } else { true };
+                    let node_trailing = if is_last { include_trailing } else { true };
+                    node.write_text_to(writer, node_leading, node_trailing);
+                }
+            }
+        }
+    }
 }
 
 impl PartialEq for GreenNodeData {

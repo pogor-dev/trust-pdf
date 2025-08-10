@@ -1359,3 +1359,196 @@ fn test_width_when_nested_internal_trivia_expect_preservation() {
     // This preserves: "/Type" + " " + " " + "/Page" = 5+1+1+5 = 12
     assert_eq!(parent.width(), 12);
 }
+
+// =============================================================================
+// Text and Full Text Tests
+// =============================================================================
+
+#[test]
+fn test_text_when_no_trivia_expect_content_only() {
+    // Create node with tokens that have no trivia
+    let token1 = create_token(NAME_KIND, "/Type");
+    let token2 = create_token(NAME_KIND, "/Catalog");
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // text() should return only token content, no trivia
+    assert_eq!(node.text(), b"/Type/Catalog");
+    assert_eq!(node.full_text(), b"/Type/Catalog");
+}
+
+#[test]
+fn test_text_when_has_boundary_trivia_expect_excluded() {
+    // Create tokens with boundary trivia that should be excluded from text()
+    let token1 = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing
+    let token2 = create_token_with_trivia(NAME_KIND, "/Catalog", "", "\n"); // 0 leading, 1 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![NodeOrToken::Token(token1), NodeOrToken::Token(token2)],
+    );
+
+    // text() should exclude boundary trivia but keep internal trivia
+    assert_eq!(node.text(), b"/Type /Catalog");
+    // full_text() should include all trivia
+    assert_eq!(node.full_text(), b"  /Type /Catalog\n");
+}
+
+#[test]
+fn test_text_when_internal_trivia_expect_preservation() {
+    // Test that internal trivia is preserved in text() but boundary trivia is excluded
+    let first_token = create_token_with_trivia(NAME_KIND, "/Type", "  ", " "); // 2 leading, 1 trailing
+    let middle_token = create_token_with_trivia(NAME_KIND, "/Page", " ", " "); // 1 leading, 1 trailing
+    let last_token = create_token_with_trivia(STRING_KIND, "(test)", " ", "\n"); // 1 leading, 1 trailing
+
+    let node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(first_token),
+            NodeOrToken::Token(middle_token),
+            NodeOrToken::Token(last_token),
+        ],
+    );
+
+    // text() should exclude first leading ("  ") and last trailing ("\n"), but preserve internal trivia
+    assert_eq!(node.text(), b"/Type  /Page  (test)");
+    // full_text() should include everything
+    assert_eq!(node.full_text(), b"  /Type  /Page  (test)\n");
+}
+
+#[test]
+fn test_text_when_nested_structure_expect_correct_trivia_handling() {
+    // Test nested structure with trivia at different levels
+    let inner_token1 = create_token_with_trivia(NAME_KIND, "/Type", "  ", " ");
+    let inner_token2 = create_token_with_trivia(NAME_KIND, "/Page", "", "  ");
+
+    let inner_node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(inner_token1),
+            NodeOrToken::Token(inner_token2),
+        ],
+    );
+
+    let outer_token = create_token_with_trivia(KW_KIND, "endobj", " ", "\n");
+
+    let outer_node = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Node(inner_node),
+            NodeOrToken::Token(outer_token),
+        ],
+    );
+
+    // text() should exclude outer boundary trivia (first inner leading, last outer trailing)
+    assert_eq!(outer_node.text(), b"/Type /Page   endobj");
+    // full_text() should include all trivia
+    assert_eq!(outer_node.full_text(), b"  /Type /Page   endobj\n");
+}
+
+#[test]
+fn test_text_when_deeply_nested_expect_recursive_processing() {
+    // Create deeply nested structure: OBJ -> ARRAY -> DICT -> tokens
+    let leaf_token1 = create_token_with_trivia(NUMBER_KIND, "1", "   ", " ");
+    let leaf_token2 = create_token_with_trivia(NUMBER_KIND, "2", "", "  ");
+
+    let dict_node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(leaf_token1),
+            NodeOrToken::Token(leaf_token2),
+        ],
+    );
+
+    let array_node = create_node(ARRAY_KIND, vec![NodeOrToken::Node(dict_node)]);
+
+    let obj_token = create_token_with_trivia(KW_KIND, "obj", " ", "\n");
+    let obj_node = create_node(
+        OBJ_KIND,
+        vec![NodeOrToken::Node(array_node), NodeOrToken::Token(obj_token)],
+    );
+
+    // text() should exclude outermost boundary trivia only
+    assert_eq!(obj_node.text(), b"1 2   obj");
+    // full_text() should include all trivia
+    assert_eq!(obj_node.full_text(), b"   1 2   obj\n");
+}
+
+#[test]
+fn test_text_when_empty_node_expect_empty_string() {
+    let empty_node = create_node(DICT_KIND, vec![]);
+
+    assert_eq!(empty_node.text(), b"");
+    assert_eq!(empty_node.full_text(), b"");
+}
+
+#[test]
+fn test_text_when_single_token_expect_correct_trivia_handling() {
+    let token = create_token_with_trivia(STRING_KIND, "(hello)", "  ", "\n");
+    let node = create_node(DICT_KIND, vec![NodeOrToken::Token(token)]);
+
+    // text() should exclude both boundary trivias since it's the only token
+    assert_eq!(node.text(), b"(hello)");
+    // full_text() should include all trivia
+    assert_eq!(node.full_text(), b"  (hello)\n");
+}
+
+#[test]
+fn test_text_when_complex_pdf_structure_expect_realistic_output() {
+    // Create a realistic PDF structure: "1 0 obj\n  /Type /Catalog\nendobj"
+    let obj_num = create_token_with_trivia(NUMBER_KIND, "1", "", " ");
+    let gen_num = create_token_with_trivia(NUMBER_KIND, "0", "", " ");
+    let obj_kw = create_token_with_trivia(KW_KIND, "obj", "", "\n");
+
+    let type_name = create_token_with_trivia(NAME_KIND, "/Type", "  ", " ");
+    let catalog_name = create_token_with_trivia(NAME_KIND, "/Catalog", "", "\n");
+
+    let dict_node = create_node(
+        DICT_KIND,
+        vec![
+            NodeOrToken::Token(type_name),
+            NodeOrToken::Token(catalog_name),
+        ],
+    );
+
+    let endobj_kw = create_token_with_trivia(KW_KIND, "endobj", "", "");
+
+    let pdf_obj = create_node(
+        OBJ_KIND,
+        vec![
+            NodeOrToken::Token(obj_num),
+            NodeOrToken::Token(gen_num),
+            NodeOrToken::Token(obj_kw),
+            NodeOrToken::Node(dict_node),
+            NodeOrToken::Token(endobj_kw),
+        ],
+    );
+
+    // text() should exclude no boundary trivia (first has no leading, last has no trailing)
+    // but preserve all internal formatting
+    assert_eq!(pdf_obj.text(), b"1 0 obj\n  /Type /Catalog\nendobj");
+    // full_text() should be identical since there's no boundary trivia
+    assert_eq!(pdf_obj.full_text(), b"1 0 obj\n  /Type /Catalog\nendobj");
+}
+
+#[test]
+fn test_text_when_only_internal_nodes_expect_recursive_processing() {
+    // Test node that contains only other nodes (no direct tokens)
+    let token1 = create_token_with_trivia(NAME_KIND, "/First", " ", "");
+    let token2 = create_token_with_trivia(NAME_KIND, "/Second", "", " ");
+
+    let child1 = create_node(DICT_KIND, vec![NodeOrToken::Token(token1)]);
+    let child2 = create_node(ARRAY_KIND, vec![NodeOrToken::Token(token2)]);
+
+    let parent = create_node(
+        OBJ_KIND,
+        vec![NodeOrToken::Node(child1), NodeOrToken::Node(child2)],
+    );
+
+    // text() should exclude boundary trivia from the terminals
+    assert_eq!(parent.text(), b"/First/Second");
+    // full_text() should include all trivia
+    assert_eq!(parent.full_text(), b" /First/Second ");
+}
