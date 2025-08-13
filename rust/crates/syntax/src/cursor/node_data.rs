@@ -2,7 +2,7 @@ use std::{cell::Cell, ptr};
 
 use countme::Count;
 
-use crate::{GreenNodeData, GreenTokenData};
+use crate::{GreenNodeData, GreenTokenData, cursor::Green};
 struct _SyntaxElement;
 
 pub(super) struct NodeData {

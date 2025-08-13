@@ -62,13 +62,7 @@ pub(crate) mod header_slice;
 pub(crate) mod thin_arc;
 
 #[cfg(test)]
-mod arc_inner_tests;
-#[cfg(test)]
-mod arc_main_tests;
-#[cfg(test)]
-mod header_slice_tests;
-#[cfg(test)]
-mod thin_arc_tests;
+mod tests;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
