@@ -236,6 +236,34 @@ impl GreenNodeData {
         }
     }
 
+    pub(crate) fn child_at_range(
+        &self,
+        rel_range: Range<u32>,
+    ) -> Option<(usize, u32, GreenElementRef<'_>)> {
+        let idx = self
+            .slice()
+            .binary_search_by(|it| {
+                let child_range = it.rel_range();
+                // Compare ranges: returns Less if child_range is before rel_range, Greater if after, Equal if overlapping
+                if child_range.end <= rel_range.start {
+                    std::cmp::Ordering::Less
+                } else if child_range.start >= rel_range.end {
+                    std::cmp::Ordering::Greater
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            // XXX: this handles empty ranges
+            .unwrap_or_else(|it| it.saturating_sub(1));
+
+        let child = &self.slice().get(idx).filter(|it| {
+            let child_range = it.rel_range();
+            child_range.start <= rel_range.start && child_range.end >= rel_range.end
+        })?;
+
+        Some((idx, child.rel_offset(), child.as_ref()))
+    }
+
     /// Creates a new node with one child replaced.
     #[must_use]
     pub fn replace_child(&self, index: usize, new_child: GreenElement) -> GreenNode {

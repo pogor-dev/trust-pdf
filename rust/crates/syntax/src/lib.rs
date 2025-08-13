@@ -2,6 +2,7 @@ mod arc;
 mod cow_mut;
 pub mod cursor;
 mod green;
+mod sll;
 mod utility_types;
 
 #[cfg(test)]

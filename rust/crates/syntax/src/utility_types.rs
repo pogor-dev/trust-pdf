@@ -1,4 +1,7 @@
-use std::{fmt, ops::Deref};
+use std::{
+    fmt,
+    ops::{AddAssign, Deref},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NodeOrToken<N, T> {
@@ -50,6 +53,119 @@ impl<N: fmt::Display, T: fmt::Display> fmt::Display for NodeOrToken<N, T> {
         match self {
             NodeOrToken::Node(node) => fmt::Display::fmt(node, f),
             NodeOrToken::Token(token) => fmt::Display::fmt(token, f),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum Delta<T> {
+    Add(T),
+    Sub(T),
+}
+
+// This won't be coherent :-(
+// impl<T: AddAssign + SubAssign> AddAssign<Delta<T>> for T
+macro_rules! impls {
+    ($($ty:ident)*) => {$(
+        impl AddAssign<Delta<$ty>> for $ty {
+            fn add_assign(&mut self, rhs: Delta<$ty>) {
+                match rhs {
+                    Delta::Add(amt) => *self += amt,
+                    Delta::Sub(amt) => *self -= amt,
+                }
+            }
+        }
+    )*};
+}
+impls!(u32);
+
+/// There might be zero, one or two leaves at a given offset.
+#[derive(Clone, Debug)]
+pub enum TokenAtOffset<T> {
+    /// No leaves at offset -- possible for the empty file.
+    None,
+    /// Only a single leaf at offset.
+    Single(T),
+    /// Offset is exactly between two leaves.
+    Between(T, T),
+}
+
+impl<T> TokenAtOffset<T> {
+    pub fn map<F: Fn(T) -> U, U>(self, f: F) -> TokenAtOffset<U> {
+        match self {
+            TokenAtOffset::None => TokenAtOffset::None,
+            TokenAtOffset::Single(it) => TokenAtOffset::Single(f(it)),
+            TokenAtOffset::Between(l, r) => TokenAtOffset::Between(f(l), f(r)),
+        }
+    }
+
+    /// Convert to option, preferring the right leaf in case of a tie.
+    pub fn right_biased(self) -> Option<T> {
+        match self {
+            TokenAtOffset::None => None,
+            TokenAtOffset::Single(node) => Some(node),
+            TokenAtOffset::Between(_, right) => Some(right),
+        }
+    }
+
+    /// Convert to option, preferring the left leaf in case of a tie.
+    pub fn left_biased(self) -> Option<T> {
+        match self {
+            TokenAtOffset::None => None,
+            TokenAtOffset::Single(node) => Some(node),
+            TokenAtOffset::Between(left, _) => Some(left),
+        }
+    }
+}
+
+impl<T> Iterator for TokenAtOffset<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        match std::mem::replace(self, TokenAtOffset::None) {
+            TokenAtOffset::None => None,
+            TokenAtOffset::Single(node) => {
+                *self = TokenAtOffset::None;
+                Some(node)
+            }
+            TokenAtOffset::Between(left, right) => {
+                *self = TokenAtOffset::Single(right);
+                Some(left)
+            }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            TokenAtOffset::None => (0, Some(0)),
+            TokenAtOffset::Single(_) => (1, Some(1)),
+            TokenAtOffset::Between(_, _) => (2, Some(2)),
+        }
+    }
+}
+
+impl<T> ExactSizeIterator for TokenAtOffset<T> {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Direction {
+    Next,
+    Prev,
+}
+
+/// `WalkEvent` describes tree walking process.
+#[derive(Debug, Copy, Clone)]
+pub enum WalkEvent<T> {
+    /// Fired before traversing the node.
+    Enter(T),
+    /// Fired after the node is traversed.
+    Leave(T),
+}
+
+impl<T> WalkEvent<T> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> WalkEvent<U> {
+        match self {
+            WalkEvent::Enter(it) => WalkEvent::Enter(f(it)),
+            WalkEvent::Leave(it) => WalkEvent::Leave(f(it)),
         }
     }
 }
