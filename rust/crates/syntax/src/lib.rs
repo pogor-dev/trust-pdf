@@ -1,5 +1,6 @@
 mod arc;
 mod cow_mut;
+pub mod cursor;
 mod green;
 mod utility_types;
 

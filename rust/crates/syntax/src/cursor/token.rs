@@ -1,5 +1,7 @@
 use std::{fmt, hash, ops::Range, ptr};
 
+use crate::{GreenTokenData, cursor::node_data::NodeData};
+
 #[derive(Debug)]
 pub struct SyntaxToken {
     ptr: ptr::NonNull<NodeData>,
@@ -21,9 +23,9 @@ impl SyntaxToken {
     #[inline]
     pub fn full_width(&self) -> usize {}
     #[inline]
-    pub fn span(&self) -> Range<isize> {}
+    pub fn span(&self) -> Range<usize> {}
     #[inline]
-    pub fn full_span(&self) -> Range<isize> {}
+    pub fn full_span(&self) -> Range<usize> {}
     #[inline]
     pub fn green(&self) -> &GreenTokenData {}
     #[inline]
