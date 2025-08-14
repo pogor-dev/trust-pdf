@@ -1555,7 +1555,6 @@ fn test_text_when_only_internal_nodes_expect_recursive_processing() {
 
 #[test]
 fn test_get_leading_trivia_width_when_empty_node_expect_zero() {
-    // Test the fallback case where get_first_terminal returns None
     let empty_node = create_node(DICT_KIND, vec![]);
 
     assert_eq!(empty_node.get_leading_trivia_width(), 0);
@@ -1563,7 +1562,6 @@ fn test_get_leading_trivia_width_when_empty_node_expect_zero() {
 
 #[test]
 fn test_get_trailing_trivia_width_when_empty_node_expect_zero() {
-    // Test the fallback case where get_last_terminal returns None
     let empty_node = create_node(DICT_KIND, vec![]);
 
     assert_eq!(empty_node.get_trailing_trivia_width(), 0);

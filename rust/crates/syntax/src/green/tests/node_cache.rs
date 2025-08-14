@@ -424,7 +424,7 @@ fn test_node_when_child_has_zero_hash_expect_no_caching() {
 }
 
 // =============================================================================
-// Nested Node Tests (for coverage of node_hash recursive case and element_id)
+// Nested Node Tests
 // =============================================================================
 
 #[test]
