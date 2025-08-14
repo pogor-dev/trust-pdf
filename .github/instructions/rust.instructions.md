@@ -77,6 +77,7 @@ When having multiple structs in a single file, organize them as follows:
 - Place the most important struct first, followed by less important ones.
 - Structs are placed at the top of the file, followed by their implementations.
 - The implementations related to one struct should be grouped together.
+- This project is using `lib.rs`, not `mod.rs`.
 
 ## Testing and Validation
 
