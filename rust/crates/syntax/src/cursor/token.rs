@@ -135,36 +135,6 @@ impl SyntaxToken {
         }
     }
 
-    // #[inline]
-    // pub fn span(&self) -> Range<u32> {
-    //     match self.data().green().as_token() {
-    //         Some(it) => it.span(),
-    //         None => {
-    //             debug_assert!(
-    //                 false,
-    //                 "corrupted tree: a node thinks it is a token: {:?}",
-    //                 self.data().green().as_node().unwrap().to_string()
-    //             );
-    //             0..0
-    //         }
-    //     }
-    // }
-
-    // #[inline]
-    // pub fn full_span(&self) -> Range<u32> {
-    //     match self.data().green().as_token() {
-    //         Some(it) => it.full_span(),
-    //         None => {
-    //             debug_assert!(
-    //                 false,
-    //                 "corrupted tree: a node thinks it is a token: {:?}",
-    //                 self.data().green().as_node().unwrap().to_string()
-    //             );
-    //             0..0
-    //         }
-    //     }
-    // }
-
     #[inline]
     pub fn green(&self) -> &GreenTokenData {
         self.data().green().into_token().unwrap()

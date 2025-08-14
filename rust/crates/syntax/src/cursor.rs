@@ -81,14 +81,15 @@
 //      when the tree is mutable.
 //    - TBD
 
-use std::{cell::Cell, ptr};
+use std::ptr;
 
 use crate::{
     GreenNode, GreenNodeData, GreenToken, GreenTokenData, NodeOrToken,
-    cursor::{node::SyntaxNode, node_data::NodeData, token::SyntaxToken},
+    cursor::{green::Green, node::SyntaxNode, node_data::NodeData, token::SyntaxToken},
     sll,
 };
 
+mod green;
 mod node;
 mod node_data;
 mod preorder;
@@ -97,15 +98,6 @@ mod syntax_element;
 mod syntax_element_children;
 mod syntax_node_children;
 mod token;
-
-enum Green {
-    Node {
-        ptr: Cell<ptr::NonNull<GreenNodeData>>,
-    },
-    Token {
-        ptr: ptr::NonNull<GreenTokenData>,
-    },
-}
 
 #[inline(never)]
 unsafe fn free(mut data: ptr::NonNull<NodeData>) {
