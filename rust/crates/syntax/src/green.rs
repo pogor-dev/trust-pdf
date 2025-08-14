@@ -31,6 +31,7 @@ pub use self::{
 };
 
 #[cfg(test)]
+#[path = "green/tests/lib.rs"]
 mod tests;
 
 /// Semantic classification for PDF syntax elements.

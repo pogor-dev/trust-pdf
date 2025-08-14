@@ -62,6 +62,7 @@ pub(crate) mod header_slice;
 pub(crate) mod thin_arc;
 
 #[cfg(test)]
+#[path = "arc/tests/lib.rs"]
 mod tests;
 
 /// A soft limit on the amount of references that may be made to an `Arc`.

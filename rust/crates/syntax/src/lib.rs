@@ -6,9 +6,6 @@ mod sll;
 mod utility_types;
 
 #[cfg(test)]
-mod utility_types_tests;
-
-#[cfg(test)]
 #[path = "tests/lib.rs"]
 mod tests;
 
