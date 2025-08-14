@@ -99,6 +99,10 @@ mod syntax_element_children;
 mod syntax_node_children;
 mod token;
 
+#[cfg(test)]
+#[path = "cursor/tests/lib.rs"]
+mod tests;
+
 #[inline(never)]
 unsafe fn free(mut data: ptr::NonNull<NodeData>) {
     unsafe {
