@@ -1,78 +1,28 @@
 use crate::{
-    SyntaxKind,
     cursor::node::SyntaxNode,
-    green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
     utility_types::{Direction, TokenAtOffset},
 };
 
-// Test constants for different PDF syntax kinds
-const STRING_KIND: SyntaxKind = SyntaxKind(1);
-const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
-const NAME_KIND: SyntaxKind = SyntaxKind(3);
-const DICT_KIND: SyntaxKind = SyntaxKind(4);
-const ARRAY_KIND: SyntaxKind = SyntaxKind(5);
-const OBJ_KIND: SyntaxKind = SyntaxKind(6);
-const COMMENT_KIND: SyntaxKind = SyntaxKind(7);
+use super::fixtures::{
+    // Common constants
+    STRING_KIND, NUMBER_KIND, NAME_KIND, DICT_KIND, ARRAY_KIND, OBJ_KIND, COMMENT_KIND,
+    // Common helper functions and tree creation functions
+    create_simple_tree,
+    create_empty_tree,
+    create_sibling_tree,
+    create_multi_token_tree as create_multi_child_tree,
+    create_green_token, create_green_node,
+};
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/// Creates a simple GreenToken for testing purposes
-fn create_green_token(kind: SyntaxKind, text: &str) -> GreenToken {
-    let empty_trivia = GreenTrivia::new([]);
-    GreenToken::new(kind, text.as_bytes(), empty_trivia.clone(), empty_trivia)
-}
-
-/// Creates a GreenNode with the given kind and children
-fn create_green_node(kind: SyntaxKind, children: Vec<GreenElement>) -> GreenNode {
-    GreenNode::new(kind, children)
-}
-
-/// Creates a simple tree: OBJ -> DICT -> STRING "(Hello)"
-fn create_simple_tree() -> SyntaxNode {
-    let string_token = create_green_token(STRING_KIND, "(Hello)");
-    let dict_node = create_green_node(DICT_KIND, vec![string_token.into()]);
-    let obj_node = create_green_node(OBJ_KIND, vec![dict_node.into()]);
-    SyntaxNode::new_root(obj_node)
-}
-
-/// Creates a tree with multiple children for testing navigation
-fn create_multi_child_tree() -> SyntaxNode {
-    let name_token = create_green_token(NAME_KIND, "/Type");
-    let number_token = create_green_token(NUMBER_KIND, "42");
-    let string_token = create_green_token(STRING_KIND, "(text)");
-    
-    let dict_children = vec![name_token.into(), number_token.into(), string_token.into()];
-    let dict_node = create_green_node(DICT_KIND, dict_children);
-    let obj_node = create_green_node(OBJ_KIND, vec![dict_node.into()]);
-    SyntaxNode::new_root(obj_node)
-}
-
-/// Creates a tree with siblings for testing sibling navigation
-fn create_sibling_tree() -> SyntaxNode {
-    // Create multiple child nodes at the same level
-    let dict1 = create_green_node(DICT_KIND, vec![create_green_token(NAME_KIND, "/Key1").into()]);
-    let array1 = create_green_node(ARRAY_KIND, vec![create_green_token(NUMBER_KIND, "123").into()]);
-    let dict2 = create_green_node(DICT_KIND, vec![create_green_token(NAME_KIND, "/Key2").into()]);
-    
-    let obj_node = create_green_node(OBJ_KIND, vec![dict1.into(), array1.into(), dict2.into()]);
-    SyntaxNode::new_root(obj_node)
-}
+// Local specialized fixtures for this test file
 
 /// Creates a deeply nested tree for testing recursive operations
-fn create_nested_tree() -> SyntaxNode {
+fn create_nested_tree_for_node_test() -> SyntaxNode {
     let innermost = create_green_token(STRING_KIND, "(deep)");
     let level2 = create_green_node(DICT_KIND, vec![innermost.into()]);
     let level1 = create_green_node(ARRAY_KIND, vec![level2.into()]);
     let root = create_green_node(OBJ_KIND, vec![level1.into()]);
     SyntaxNode::new_root(root)
-}
-
-/// Creates an empty node for testing edge cases
-fn create_empty_tree() -> SyntaxNode {
-    let empty_node = create_green_node(OBJ_KIND, vec![]);
-    SyntaxNode::new_root(empty_node)
 }
 
 // =============================================================================
@@ -178,7 +128,7 @@ fn test_parent_when_child_expect_correct_parent() {
 
 #[test]
 fn test_ancestors_when_deeply_nested_expect_correct_chain() {
-    let tree = create_nested_tree();
+    let tree = create_nested_tree_for_node_test();
     let deepest = tree.descendants().last().unwrap();
     
     let ancestors: Vec<_> = deepest.ancestors().collect();
@@ -461,7 +411,7 @@ fn test_siblings_with_tokens_when_iterating_expect_all_elements() {
 
 #[test]
 fn test_descendants_when_nested_tree_expect_all_descendant_nodes() {
-    let tree = create_nested_tree();
+    let tree = create_nested_tree_for_node_test();
     let descendants: Vec<_> = tree.descendants().collect();
     
     // Should include all nodes in the tree structure (including deeply nested ones)
@@ -560,7 +510,7 @@ fn test_token_at_offset_when_invalid_offset_expect_panic() {
 
 #[test]
 fn test_complex_navigation_when_deep_tree_expect_correct_paths() {
-    let tree = create_nested_tree();
+    let tree = create_nested_tree_for_node_test();
     
     // Navigate from root to deepest node
     let level1 = tree.first_child().unwrap(); // ARRAY

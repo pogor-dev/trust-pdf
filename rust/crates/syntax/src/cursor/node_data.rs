@@ -1,3 +1,16 @@
+//! Internal node data structure for cursor implementation.
+//!
+//! ```text
+//!     🎯 NodeData (Internal)
+//!    ┌─────────────┐
+//!    │ ┌─────────┐ │   Core cursor data:
+//!    │ │ RefCnt  │ │   • reference counting
+//!    │ │ Parent  │ │   • parent linkage  
+//!    │ │ Green   │ │   • green tree ref
+//!    │ └─────────┘ │   • mutation support
+//!    └─────────────┘   
+//! ```
+
 use std::{
     cell::Cell,
     mem::{self, ManuallyDrop},
@@ -37,6 +50,7 @@ pub(super) struct NodeData {
 }
 
 impl NodeData {
+    /// Creates a new NodeData with the given parent, index, offset, and green tree reference.
     #[inline]
     pub(super) fn new(
         parent: Option<SyntaxNode>,
@@ -98,6 +112,7 @@ impl NodeData {
         }
     }
 
+    /// Increments the reference count.
     #[inline]
     pub(super) fn inc_rc(&self) {
         let rc = match self.rc.get().checked_add(1) {
@@ -107,6 +122,7 @@ impl NodeData {
         self.rc.set(rc)
     }
 
+    /// Decrements the reference count, returns true if count reaches zero.
     #[inline]
     pub(super) fn dec_rc(&self) -> bool {
         let rc = self.rc.get() - 1;
@@ -114,6 +130,7 @@ impl NodeData {
         rc == 0
     }
 
+    /// Returns a unique key for this node data based on green pointer and offset.
     #[inline]
     pub(super) fn key(&self) -> (ptr::NonNull<()>, u32) {
         let ptr = match &self.green {
@@ -123,6 +140,7 @@ impl NodeData {
         (ptr, self.offset())
     }
 
+    /// Returns the parent node as a SyntaxNode wrapper.
     #[inline]
     pub(super) fn parent_node(&self) -> Option<SyntaxNode> {
         let parent = self.parent()?;
@@ -133,11 +151,13 @@ impl NodeData {
         })
     }
 
+    /// Returns a raw reference to the parent NodeData.
     #[inline]
     pub(super) fn parent(&self) -> Option<&NodeData> {
         self.parent.get().map(|it| unsafe { &*it.as_ptr() })
     }
 
+    /// Returns a reference to the underlying green tree element.
     #[inline]
     pub(super) fn green(&self) -> GreenElementRef<'_> {
         match &self.green {
@@ -145,8 +165,10 @@ impl NodeData {
             Green::Token { ptr } => GreenElementRef::Token(unsafe { ptr.as_ref() }),
         }
     }
+
+    /// Returns an iterator over sibling green children.
     #[inline]
-    pub(super) fn green_siblings(&self) -> slice::Iter<GreenChild> {
+    pub(super) fn green_siblings(&self) -> slice::Iter<'_, GreenChild> {
         match &self.parent().map(|it| &it.green) {
             Some(Green::Node { ptr }) => unsafe { &*ptr.get().as_ptr() }.children().raw,
             Some(Green::Token { .. }) => {
@@ -156,11 +178,14 @@ impl NodeData {
             None => [].iter(),
         }
     }
+
+    /// Returns the index of this node among its siblings.
     #[inline]
     pub(super) fn index(&self) -> u32 {
         self.index.get()
     }
 
+    /// Returns the absolute byte offset of this node in the text.
     #[inline]
     pub(super) fn offset(&self) -> u32 {
         if self.mutable {
@@ -189,6 +214,7 @@ impl NodeData {
         res
     }
 
+    /// Returns the text span (excluding trivia) of this node.
     #[inline]
     pub(super) fn span(&self) -> Range<u32> {
         let offset = self.offset();
@@ -196,6 +222,7 @@ impl NodeData {
         offset..(offset + len)
     }
 
+    /// Returns the full text span (including trivia) of this node.
     #[inline]
     pub(super) fn full_span(&self) -> Range<u32> {
         let offset = self.offset();
@@ -203,11 +230,13 @@ impl NodeData {
         offset..(offset + len)
     }
 
+    /// Returns the syntax kind of this node.
     #[inline]
     pub(super) fn kind(&self) -> SyntaxKind {
         self.green().kind()
     }
 
+    /// Returns the next sibling node if it exists.
     pub(super) fn next_sibling(&self) -> Option<SyntaxNode> {
         let siblings = self.green_siblings().enumerate();
         let index = self.index() as usize;
@@ -221,6 +250,7 @@ impl NodeData {
         })
     }
 
+    /// Returns the next sibling node matching the given kind predicate.
     pub(super) fn next_sibling_by_kind(
         &self,
         matcher: &impl Fn(SyntaxKind) -> bool,
@@ -240,6 +270,7 @@ impl NodeData {
         })
     }
 
+    /// Returns the previous sibling node if it exists.
     pub(super) fn prev_sibling(&self) -> Option<SyntaxNode> {
         let rev_siblings = self.green_siblings().enumerate().rev();
         let index = rev_siblings.len().checked_sub(self.index() as usize)?;
@@ -253,6 +284,7 @@ impl NodeData {
         })
     }
 
+    /// Returns the next sibling element (node or token) if it exists.
     pub(super) fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
         let mut siblings = self.green_siblings().enumerate();
         let index = self.index() as usize + 1;
@@ -269,6 +301,7 @@ impl NodeData {
         })
     }
 
+    /// Returns the next sibling element matching the given kind predicate.
     pub(super) fn next_sibling_or_token_by_kind(
         &self,
         matcher: &impl Fn(SyntaxKind) -> bool,
@@ -291,6 +324,7 @@ impl NodeData {
         })
     }
 
+    /// Returns the previous sibling element (node or token) if it exists.
     pub(super) fn prev_sibling_or_token(&self) -> Option<SyntaxElement> {
         let mut siblings = self.green_siblings().enumerate();
         let index = self.index().checked_sub(1)? as usize;
@@ -307,6 +341,7 @@ impl NodeData {
         })
     }
 
+    /// Detaches this node from its parent (mutable trees only).
     pub(super) fn detach(&self) {
         assert!(self.mutable);
         assert!(self.rc.get() > 0);
@@ -342,6 +377,7 @@ impl NodeData {
         }
     }
 
+    /// Attaches a child node at the given index (mutable trees only).
     pub(super) fn attach_child(&self, index: usize, child: &NodeData) {
         assert!(self.mutable && child.mutable && child.parent().is_none());
         assert!(self.rc.get() > 0 && child.rc.get() > 0);

@@ -1,3 +1,14 @@
+//! Preorder tree traversal iterator for syntax nodes.
+//!
+//! ```text
+//!     📋 Preorder Iterator
+//!           🌳
+//!          ╱ ╲
+//!        🌿   🌿    Traverses: Enter → Children → Leave
+//!       ╱ ╲   ╱ ╲   • depth-first traversal
+//!      🍃 🍃 🍃 🍃   • skip_subtree() support
+//! ```
+
 use crate::{cursor::node::SyntaxNode, utility_types::WalkEvent};
 
 #[derive(Debug, Clone)]
@@ -8,6 +19,7 @@ pub struct Preorder {
 }
 
 impl Preorder {
+    /// Creates a new preorder iterator starting from the given node.
     pub(super) fn new(start: SyntaxNode) -> Preorder {
         let next = Some(WalkEvent::Enter(start.clone()));
         Preorder {
@@ -17,6 +29,7 @@ impl Preorder {
         }
     }
 
+    /// Skips the subtree of the current node in the traversal.
     pub fn skip_subtree(&mut self) {
         self.skip_subtree = true;
     }

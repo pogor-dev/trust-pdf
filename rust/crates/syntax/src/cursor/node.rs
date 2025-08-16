@@ -1,3 +1,15 @@
+//! SyntaxNode - The primary cursor for navigating syntax trees.
+//!
+//! ```text
+//!     🌳 SyntaxNode
+//!    ┌─────────────┐
+//!    │ ┌─────────┐ │   Provides tree navigation:
+//!    │ │  Node   │ │   • parent() / children()
+//!    │ │ Data    │ │   • siblings() / ancestors()
+//!    │ └─────────┘ │   • preorder() traversal
+//!    └─────────────┘   • text ranges & offsets
+//! ```
+
 use std::{
     borrow::Cow,
     cell::Cell,
@@ -23,6 +35,7 @@ pub struct SyntaxNode {
 }
 
 impl SyntaxNode {
+    /// Creates a new immutable root node from a green tree.
     pub fn new_root(green: GreenNode) -> SyntaxNode {
         let green = GreenNode::into_raw(green);
         let green = Green::Node {
@@ -33,6 +46,7 @@ impl SyntaxNode {
         }
     }
 
+    /// Creates a new mutable root node from a green tree.
     pub fn new_root_mut(green: GreenNode) -> SyntaxNode {
         let green = GreenNode::into_raw(green);
         let green = Green::Node {
@@ -43,6 +57,7 @@ impl SyntaxNode {
         }
     }
 
+    /// Creates a new child node with the given green data and parent.
     pub(super) fn new_child(
         green: &GreenNodeData,
         parent: SyntaxNode,
@@ -58,10 +73,12 @@ impl SyntaxNode {
         }
     }
 
+    /// Returns whether this node is part of a mutable tree.
     pub fn is_mutable(&self) -> bool {
         self.data().mutable
     }
 
+    /// Creates a mutable copy of the entire tree containing this node.
     pub fn clone_for_update(&self) -> SyntaxNode {
         assert!(!self.data().mutable);
         match self.parent() {
@@ -73,20 +90,24 @@ impl SyntaxNode {
         }
     }
 
+    /// Creates a new independent tree rooted at this node.
     pub fn clone_subtree(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green().into())
     }
 
+    /// Returns a reference to the underlying NodeData.
     #[inline]
     pub(super) fn data(&self) -> &NodeData {
         unsafe { self.ptr.as_ref() }
     }
 
+    /// Returns true if this node's pointer can be safely taken.
     #[inline]
     pub(super) fn can_take_ptr(&self) -> bool {
         self.data().rc.get() == 1 && !self.data().mutable
     }
 
+    /// Takes ownership of the underlying pointer (for optimization).
     #[inline]
     pub(super) fn take_ptr(self) -> ptr::NonNull<NodeData> {
         assert!(self.can_take_ptr());
@@ -96,6 +117,7 @@ impl SyntaxNode {
         ret
     }
 
+    /// Replaces this node with a new one, returning the updated root.
     pub fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         assert_eq!(self.kind(), replacement.kind());
         match &self.parent() {
@@ -109,26 +131,31 @@ impl SyntaxNode {
         }
     }
 
+    /// Returns the syntax kind of this node.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data().kind()
     }
 
+    /// Returns the absolute byte offset of this node in the text.
     #[inline]
     pub(super) fn offset(&self) -> u32 {
         self.data().offset()
     }
 
+    /// Returns the text range (excluding trivia) of this node.
     #[inline]
     pub fn span(&self) -> Range<u32> {
         self.data().span()
     }
 
+    /// Returns the full text range (including trivia) of this node.
     #[inline]
     pub fn full_span(&self) -> Range<u32> {
         self.data().full_span()
     }
 
+    /// Returns the index of this node among its siblings.
     #[inline]
     pub fn index(&self) -> usize {
         self.data().index() as usize
@@ -139,6 +166,7 @@ impl SyntaxNode {
     //     SyntaxText::new(self.clone())
     // }
 
+    /// Returns the underlying green node data.
     #[inline]
     pub fn green(&self) -> Cow<'_, GreenNodeData> {
         let green_ref = self.green_ref();
@@ -147,31 +175,38 @@ impl SyntaxNode {
             true => Cow::Owned(green_ref.to_owned()),
         }
     }
+
+    /// Returns a reference to the underlying green node data.
     #[inline]
     pub(super) fn green_ref(&self) -> &GreenNodeData {
         self.data().green().into_node().unwrap()
     }
 
+    /// Returns the parent node containing this node.
     #[inline]
     pub fn parent(&self) -> Option<SyntaxNode> {
         self.data().parent_node()
     }
 
+    /// Returns an iterator over all ancestor nodes.
     #[inline]
     pub fn ancestors(&self) -> impl Iterator<Item = SyntaxNode> + use<> {
         iter::successors(Some(self.clone()), SyntaxNode::parent)
     }
 
+    /// Returns an iterator over direct child nodes.
     #[inline]
     pub fn children(&self) -> SyntaxNodeChildren {
         SyntaxNodeChildren::new(self.clone())
     }
 
+    /// Returns an iterator over direct child elements (nodes and tokens).
     #[inline]
     pub fn children_with_tokens(&self) -> SyntaxElementChildren {
         SyntaxElementChildren::new(self.clone())
     }
 
+    /// Returns the first child node.
     pub fn first_child(&self) -> Option<SyntaxNode> {
         self.green_ref()
             .children()
@@ -189,6 +224,7 @@ impl SyntaxNode {
             })
     }
 
+    /// Returns the first child node matching the given kind predicate.
     pub fn first_child_by_kind(&self, matcher: &impl Fn(SyntaxKind) -> bool) -> Option<SyntaxNode> {
         self.green_ref()
             .children()
@@ -209,6 +245,7 @@ impl SyntaxNode {
             })
     }
 
+    /// Returns the last child node.
     pub fn last_child(&self) -> Option<SyntaxNode> {
         self.green_ref()
             .children()
@@ -227,6 +264,7 @@ impl SyntaxNode {
             })
     }
 
+    /// Returns the first child element (node or token).
     pub fn first_child_or_token(&self) -> Option<SyntaxElement> {
         self.green_ref().children().raw.next().map(|child| {
             SyntaxElement::new(
@@ -238,6 +276,7 @@ impl SyntaxNode {
         })
     }
 
+    /// Returns the first child element matching the given kind predicate.
     pub fn first_child_or_token_by_kind(
         &self,
         matcher: &impl Fn(SyntaxKind) -> bool,
@@ -259,6 +298,7 @@ impl SyntaxNode {
             })
     }
 
+    /// Returns the last child element (node or token).
     pub fn last_child_or_token(&self) -> Option<SyntaxElement> {
         self.green_ref()
             .children()
@@ -315,10 +355,12 @@ impl SyntaxNode {
             })
     }
 
+    /// Returns the next sibling node.
     pub fn next_sibling(&self) -> Option<SyntaxNode> {
         self.data().next_sibling()
     }
 
+    /// Returns the next sibling node matching the given kind predicate.
     pub fn next_sibling_by_kind(
         &self,
         matcher: &impl Fn(SyntaxKind) -> bool,
@@ -326,14 +368,17 @@ impl SyntaxNode {
         self.data().next_sibling_by_kind(matcher)
     }
 
+    /// Returns the previous sibling node.
     pub fn prev_sibling(&self) -> Option<SyntaxNode> {
         self.data().prev_sibling()
     }
 
+    /// Returns the next sibling element (node or token).
     pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
         self.data().next_sibling_or_token()
     }
 
+    /// Returns the next sibling element matching the given kind predicate.
     pub fn next_sibling_or_token_by_kind(
         &self,
         matcher: &impl Fn(SyntaxKind) -> bool,
@@ -341,17 +386,22 @@ impl SyntaxNode {
         self.data().next_sibling_or_token_by_kind(matcher)
     }
 
+    /// Returns the previous sibling element (node or token).
     pub fn prev_sibling_or_token(&self) -> Option<SyntaxElement> {
         self.data().prev_sibling_or_token()
     }
 
+    /// Returns the first token within this node's subtree.
     pub fn first_token(&self) -> Option<SyntaxToken> {
         self.first_child_or_token()?.first_token()
     }
+
+    /// Returns the last token within this node's subtree.
     pub fn last_token(&self) -> Option<SyntaxToken> {
         self.last_child_or_token()?.last_token()
     }
 
+    /// Returns an iterator over sibling nodes in the given direction.
     #[inline]
     pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = SyntaxNode> + use<> {
         iter::successors(Some(self.clone()), move |node| match direction {
@@ -388,11 +438,13 @@ impl SyntaxNode {
         })
     }
 
+    /// Returns a preorder iterator over child nodes only.
     #[inline]
     pub fn preorder(&self) -> Preorder {
         Preorder::new(self.clone())
     }
 
+    /// Returns a preorder iterator over all elements (nodes and tokens).
     #[inline]
     pub fn preorder_with_tokens(&self) -> PreorderWithTokens {
         PreorderWithTokens::new(self.clone())

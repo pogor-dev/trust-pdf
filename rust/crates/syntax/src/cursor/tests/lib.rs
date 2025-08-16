@@ -1,3 +1,4 @@
+mod fixtures;
 mod node;
 mod node_data;
 mod preorder;

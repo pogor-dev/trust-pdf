@@ -1,34 +1,20 @@
 use crate::{
-    NodeOrToken, SyntaxKind,
+    NodeOrToken,
     cursor::{node::SyntaxNode, syntax_element::SyntaxElement},
-    green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
     utility_types::TokenAtOffset,
 };
 
-// Test constants for different PDF syntax kinds
-const STRING_KIND: SyntaxKind = SyntaxKind(1);
-const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
-const NAME_KIND: SyntaxKind = SyntaxKind(3);
-const DICT_KIND: SyntaxKind = SyntaxKind(4);
-const ARRAY_KIND: SyntaxKind = SyntaxKind(5);
-const OBJ_KIND: SyntaxKind = SyntaxKind(6);
-const COMMENT_KIND: SyntaxKind = SyntaxKind(7);
-const BOOLEAN_KIND: SyntaxKind = SyntaxKind(8);
+use super::fixtures::{
+    // Common constants
+    STRING_KIND, NUMBER_KIND, NAME_KIND, DICT_KIND, ARRAY_KIND, OBJ_KIND, COMMENT_KIND,
+    // Common helper functions
+    create_green_token, create_green_node,
+};
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
+// Test constants for local use
+const BOOLEAN_KIND: crate::SyntaxKind = crate::SyntaxKind(8);
 
-/// Creates a simple GreenToken for testing purposes
-fn create_green_token(kind: SyntaxKind, text: &str) -> GreenToken {
-    let empty_trivia = GreenTrivia::new([]);
-    GreenToken::new(kind, text.as_bytes(), empty_trivia.clone(), empty_trivia)
-}
-
-/// Creates a GreenNode with the given kind and children
-fn create_green_node(kind: SyntaxKind, children: Vec<GreenElement>) -> GreenNode {
-    GreenNode::new(kind, children)
-}
+// Local specialized fixtures for this test file
 
 /// Creates a tree with mixed tokens and nodes for comprehensive testing
 fn create_mixed_tree() -> SyntaxNode {

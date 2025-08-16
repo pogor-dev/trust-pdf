@@ -70,6 +70,7 @@ applyTo: "**/*.rs,**/Cargo.toml"
 - The documentation should be a few lines, focusing on the "why" rather than the "how" of the implementation.
 - The documentation is not applied to tests.
 - The documentation is applied to all public functions, structs, and modules.
+- The documentation might be applied for `pub(super)`, `pub(crate)`, and private items, depending on their complexity and importance.
 
 ## Rust module internal organization
 

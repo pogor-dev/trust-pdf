@@ -1,3 +1,16 @@
+//! SyntaxElement - Unified cursor for nodes and tokens.
+//!
+//! ```text
+//!     🔗 SyntaxElement
+//!    ┌─────────────┐
+//!    │  Node OR    │   Unified interface:
+//!    │  Token      │   • pattern matching
+//!    │ ┌─────────┐ │   • common operations
+//!    │ │ Element │ │   • polymorphic access
+//!    │ └─────────┘ │   
+//!    └─────────────┘   
+//! ```
+
 use std::{cell::Cell, iter, ops::Range, ptr};
 
 use crate::{
@@ -10,6 +23,7 @@ use crate::{
 pub type SyntaxElement = NodeOrToken<SyntaxNode, SyntaxToken>;
 
 impl SyntaxElement {
+    /// Creates a new SyntaxElement from a green element reference.
     pub(super) fn new(
         element: GreenElementRef<'_>,
         parent: SyntaxNode,
@@ -22,6 +36,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the text range (excluding trivia) of this element.
     #[inline]
     pub fn span(&self) -> Range<u32> {
         match self {
@@ -30,6 +45,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the full text range (including trivia) of this element.
     #[inline]
     pub fn full_span(&self) -> Range<u32> {
         match self {
@@ -38,6 +54,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the index of this element among its siblings.
     #[inline]
     pub fn index(&self) -> usize {
         match self {
@@ -46,6 +63,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the syntax kind of this element.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match self {
@@ -54,6 +72,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the parent node containing this element.
     #[inline]
     pub fn parent(&self) -> Option<SyntaxNode> {
         match self {
@@ -62,6 +81,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns an iterator over all ancestor nodes.
     #[inline]
     pub fn ancestors(&self) -> impl Iterator<Item = SyntaxNode> + use<> {
         let first = match self {
@@ -71,12 +91,15 @@ impl SyntaxElement {
         iter::successors(first, SyntaxNode::parent)
     }
 
+    /// Returns the first token within this element's subtree.
     pub fn first_token(&self) -> Option<SyntaxToken> {
         match self {
             NodeOrToken::Node(it) => it.first_token(),
             NodeOrToken::Token(it) => Some(it.clone()),
         }
     }
+
+    /// Returns the last token within this element's subtree.
     pub fn last_token(&self) -> Option<SyntaxToken> {
         match self {
             NodeOrToken::Node(it) => it.last_token(),
@@ -84,6 +107,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the next sibling element (node or token).
     pub fn next_sibling_or_token(&self) -> Option<SyntaxElement> {
         match self {
             NodeOrToken::Node(it) => it.next_sibling_or_token(),
@@ -166,6 +190,7 @@ impl SyntaxElement {
         }
     }
 
+    /// Returns the token at the given byte offset within this element.
     pub(super) fn token_at_offset(&self, offset: u32) -> TokenAtOffset<SyntaxToken> {
         assert!(self.full_span().start <= offset && offset <= self.full_span().end);
         match self {

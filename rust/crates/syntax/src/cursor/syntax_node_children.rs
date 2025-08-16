@@ -1,3 +1,13 @@
+//! Iterator for child nodes of a syntax node.
+//!
+//! ```text
+//!     👨‍👧‍👦 SyntaxNodeChildren
+//!       🌳
+//!       ├── 🌿  Iterator over:
+//!       ├── 🌿  • direct children only
+//!       └── 🌿  • filtered by kind
+//! ```
+
 use crate::{SyntaxKind, cursor::node::SyntaxNode};
 
 #[derive(Clone, Debug)]
@@ -8,6 +18,7 @@ pub struct SyntaxNodeChildren {
 }
 
 impl SyntaxNodeChildren {
+    /// Creates a new iterator over child nodes of the given parent.
     pub(super) fn new(parent: SyntaxNode) -> SyntaxNodeChildren {
         SyntaxNodeChildren {
             parent,
@@ -16,6 +27,7 @@ impl SyntaxNodeChildren {
         }
     }
 
+    /// Filters the iteration to only yield children matching the provided predicate
     pub fn by_kind<F: Fn(SyntaxKind) -> bool>(self, matcher: F) -> SyntaxNodeChildrenByKind<F> {
         if !self.next_initialized {
             SyntaxNodeChildrenByKind {

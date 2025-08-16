@@ -1,81 +1,32 @@
 use std::{collections::HashMap, ops::Range};
 
 use crate::{
-    SyntaxKind,
     cursor::{node::SyntaxNode, syntax_element::SyntaxElement, token::SyntaxToken},
-    green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
-    utility_types::{Direction, WalkEvent},
+    utility_types::Direction,
 };
 
-// Test constants for different PDF syntax kinds
-const STRING_KIND: SyntaxKind = SyntaxKind(1);
-const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
-const NAME_KIND: SyntaxKind = SyntaxKind(3);
-const DICT_KIND: SyntaxKind = SyntaxKind(4);
-const ARRAY_KIND: SyntaxKind = SyntaxKind(5);
-const OBJ_KIND: SyntaxKind = SyntaxKind(6);
-const OBJ_KW: SyntaxKind = SyntaxKind(7);
-const ENDOBJ_KW: SyntaxKind = SyntaxKind(8);
-const WHITESPACE_KIND: SyntaxKind = SyntaxKind(9);
+use super::fixtures::{
+    DICT_KIND,
+    ENDOBJ_KW,
+    NAME_KIND,
+    NUMBER_KIND,
+    OBJ_KIND,
+    OBJ_KW,
+    // Common constants
+    STRING_KIND,
+    create_flat_tree as create_multi_token_syntax_tree,
+    create_green_node,
+    // Common helper functions
+    create_green_token,
+    // Common tree creation functions
+    create_simple_syntax_tree,
+    create_trivia_tree as create_trivia_syntax_tree,
+    get_first_token,
+};
 
-/// Helper function to create test tokens with different content types
-fn create_green_token(kind: SyntaxKind, text: &str) -> GreenToken {
-    let empty_trivia = GreenTrivia::new([]);
-    GreenToken::new(kind, text.as_bytes(), empty_trivia.clone(), empty_trivia)
-}
+// Local specialized fixtures for this test file
 
-/// Helper function to create test tokens with trivia
-fn create_green_token_with_trivia(
-    kind: SyntaxKind,
-    text: &[u8],
-    leading: &[u8],
-    trailing: &[u8],
-) -> GreenToken {
-    let leading_trivia = if leading.is_empty() {
-        GreenTrivia::new([])
-    } else {
-        GreenTrivia::new([crate::green::trivia::GreenTriviaChild::new(
-            WHITESPACE_KIND,
-            leading,
-        )])
-    };
-    let trailing_trivia = if trailing.is_empty() {
-        GreenTrivia::new([])
-    } else {
-        GreenTrivia::new([crate::green::trivia::GreenTriviaChild::new(
-            WHITESPACE_KIND,
-            trailing,
-        )])
-    };
-    GreenToken::new(kind, text, leading_trivia, trailing_trivia)
-}
-
-/// Helper function to create test nodes with given children
-fn create_green_node(kind: SyntaxKind, children: Vec<GreenElement>) -> GreenNode {
-    GreenNode::new(kind, children)
-}
-
-/// Helper function to create a simple syntax tree for testing
-fn create_simple_syntax_tree() -> SyntaxNode {
-    let green_token = create_green_token(STRING_KIND, "(Hello)");
-    let green_node = create_green_node(DICT_KIND, vec![green_token.into()]);
-    SyntaxNode::new_root(green_node)
-}
-
-/// Helper function to create a complex syntax tree with multiple tokens
-fn create_multi_token_syntax_tree() -> SyntaxNode {
-    let token1 = create_green_token(NAME_KIND, "/Type");
-    let token2 = create_green_token(NAME_KIND, "/Catalog");
-    let token3 = create_green_token(NUMBER_KIND, "42");
-
-    let green_node = create_green_node(
-        ARRAY_KIND,
-        vec![token1.into(), token2.into(), token3.into()],
-    );
-    SyntaxNode::new_root(green_node)
-}
-
-/// Helper function to create a nested syntax tree
+/// Creates a nested syntax tree specifically for token tests: OBJ -> DICT -> ["/Type", "/Page"] + "endobj"
 fn create_nested_syntax_tree() -> SyntaxNode {
     let inner_token1 = create_green_token(NAME_KIND, "/Type");
     let inner_token2 = create_green_token(NAME_KIND, "/Page");
@@ -85,19 +36,6 @@ fn create_nested_syntax_tree() -> SyntaxNode {
     let outer_node = create_green_node(OBJ_KIND, vec![inner_dict.into(), outer_token.into()]);
 
     SyntaxNode::new_root(outer_node)
-}
-
-/// Helper function to create a syntax tree with trivia
-fn create_trivia_syntax_tree() -> SyntaxNode {
-    let token_with_trivia = create_green_token_with_trivia(NAME_KIND, b"/Type", b"  ", b" ");
-    let green_node = create_green_node(DICT_KIND, vec![token_with_trivia.into()]);
-    SyntaxNode::new_root(green_node)
-}
-
-/// Helper to get first token from a syntax tree
-fn get_first_token(node: &SyntaxNode) -> SyntaxToken {
-    node.first_token()
-        .expect("Tree should have at least one token")
 }
 
 // =============================================================================
@@ -402,26 +340,29 @@ fn test_prev_token_when_has_previous_token_expect_found() {
 #[test]
 fn test_prev_token_when_crossing_nodes_expect_found() {
     let tree = create_nested_syntax_tree();
-    let mut tokens: Vec<SyntaxToken> = Vec::new();
 
-    // Collect all tokens from the tree
-    for element in tree.preorder_with_tokens() {
-        match element {
-            WalkEvent::Enter(elem) => {
-                if let Some(token) = elem.into_token() {
-                    tokens.push(token);
-                }
-            }
-            _ => {}
-        }
-    }
+    // Get all tokens using a simple traversal to understand the order
+    let all_tokens: Vec<SyntaxToken> = tree
+        .descendants_with_tokens()
+        .filter_map(|elem| elem.into_token())
+        .collect();
+
+    // Should have exactly 3 tokens in our structure
+    assert_eq!(all_tokens.len(), 3);
 
     // The last token should be "endobj"
-    let last_token = tokens.last().expect("Should have tokens");
+    let last_token = &all_tokens[2];
     assert_eq!(last_token.text(), b"endobj");
 
-    let prev_token = last_token.prev_token().expect("Should have previous token");
-    assert_eq!(prev_token.text(), b"/Page");
+    // Test prev_token() functionality
+    if let Some(prev_token) = last_token.prev_token() {
+        // The previous token should be "/Page" (the last token before "endobj")
+        assert_eq!(prev_token.text(), b"/Page");
+    } else {
+        // If prev_token() returns None, that might be expected behavior
+        // depending on how the traversal works across node boundaries
+        panic!("Expected to find a previous token, but got None");
+    }
 }
 
 // =============================================================================

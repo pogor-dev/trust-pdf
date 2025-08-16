@@ -1,152 +1,42 @@
 use crate::{
-    SyntaxKind,
     cursor::{node::SyntaxNode, preorder::Preorder},
-    green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
     utility_types::WalkEvent,
 };
 
-// Test constants for different PDF syntax kinds
-const STRING_KIND: SyntaxKind = SyntaxKind(1);
-const NUMBER_KIND: SyntaxKind = SyntaxKind(2);
-const NAME_KIND: SyntaxKind = SyntaxKind(3);
-const DICT_KIND: SyntaxKind = SyntaxKind(4);
-const ARRAY_KIND: SyntaxKind = SyntaxKind(5);
-const OBJ_KIND: SyntaxKind = SyntaxKind(6);
-const STREAM_KIND: SyntaxKind = SyntaxKind(10);
+use super::fixtures::{
+    ARRAY_KIND,
+    DICT_KIND,
+    NAME_KIND,
+    NUMBER_KIND,
+    OBJ_KIND,
+    STREAM_KIND,
+    // Common constants
+    STRING_KIND,
+    create_complex_pdf_structure,
+    create_deeply_nested_tree,
+    create_flat_tree,
+    create_green_node,
+    // Common helper functions
+    create_green_token,
+    create_nested_tree,
+    // Common tree creation functions
+    create_single_node_tree,
+};
 
-/// Helper function to create test tokens
-fn create_green_token(kind: SyntaxKind, text: &str) -> GreenToken {
-    let empty_trivia = GreenTrivia::new([]);
-    GreenToken::new(kind, text.as_bytes(), empty_trivia.clone(), empty_trivia)
-}
+// Local specialized fixtures for this test file
+fn create_sibling_tree_for_preorder_test() -> SyntaxNode {
+    // Create a tree with siblings to test the next_sibling() branch
+    // Structure: root -> [child1, child2, child3]
+    let child1_token = create_green_token(STRING_KIND, "(string1)");
+    let child2_token = create_green_token(NAME_KIND, "/name2");
+    let child3_token = create_green_token(NUMBER_KIND, "123");
 
-/// Helper function to create test nodes with given children
-fn create_green_node(kind: SyntaxKind, children: Vec<GreenElement>) -> GreenNode {
-    GreenNode::new(kind, children)
-}
+    let child1 = create_green_node(DICT_KIND, vec![child1_token.into()]);
+    let child2 = create_green_node(DICT_KIND, vec![child2_token.into()]);
+    let child3 = create_green_node(DICT_KIND, vec![child3_token.into()]);
 
-/// Helper function to create a simple single-node tree
-fn create_single_node_tree() -> SyntaxNode {
-    let token = create_green_token(STRING_KIND, "(Hello)");
-    let node = create_green_node(DICT_KIND, vec![token.into()]);
-    SyntaxNode::new_root(node)
-}
-
-/// Helper function to create a flat tree with multiple children
-fn create_flat_tree() -> SyntaxNode {
-    let token1 = create_green_token(NAME_KIND, "/Type");
-    let token2 = create_green_token(NAME_KIND, "/Catalog");
-    let token3 = create_green_token(NUMBER_KIND, "42");
-
-    let node = create_green_node(
-        ARRAY_KIND,
-        vec![token1.into(), token2.into(), token3.into()],
-    );
-    SyntaxNode::new_root(node)
-}
-
-/// Helper function to create a nested tree structure
-fn create_nested_tree() -> SyntaxNode {
-    // Inner dictionary: /Type /Page
-    let inner_token1 = create_green_token(NAME_KIND, "/Type");
-    let inner_token2 = create_green_token(NAME_KIND, "/Page");
-    let inner_dict = create_green_node(DICT_KIND, vec![inner_token1.into(), inner_token2.into()]);
-
-    // Outer object containing the dictionary and a number
-    let number_token = create_green_token(NUMBER_KIND, "123");
-    let outer_obj = create_green_node(OBJ_KIND, vec![inner_dict.into(), number_token.into()]);
-
-    SyntaxNode::new_root(outer_obj)
-}
-
-/// Helper function to create a deeply nested tree structure
-fn create_deeply_nested_tree() -> SyntaxNode {
-    // Level 3: innermost array [42]
-    let number = create_green_token(NUMBER_KIND, "42");
-    let inner_array = create_green_node(ARRAY_KIND, vec![number.into()]);
-
-    // Level 2: dictionary containing the array { /Contents [42] }
-    let contents_name = create_green_token(NAME_KIND, "/Contents");
-    let dict = create_green_node(DICT_KIND, vec![contents_name.into(), inner_array.into()]);
-
-    // Level 1: stream containing the dictionary
-    let stream_data = create_green_token(STRING_KIND, "stream_data");
-    let stream = create_green_node(STREAM_KIND, vec![dict.into(), stream_data.into()]);
-
-    // Level 0: root object containing the stream
-    let obj_num = create_green_token(NUMBER_KIND, "1");
-    let root = create_green_node(OBJ_KIND, vec![obj_num.into(), stream.into()]);
-
-    SyntaxNode::new_root(root)
-}
-
-/// Helper function to create a complex PDF-like structure
-fn create_complex_pdf_structure() -> SyntaxNode {
-    // Create a realistic PDF object structure:
-    // 1 0 obj
-    // <<
-    //   /Type /Catalog
-    //   /Pages 2 0 R
-    //   /Names << /JavaScript 3 0 R >>
-    // >>
-    // endobj
-
-    let obj_num = create_green_token(NUMBER_KIND, "1");
-    let gen_num = create_green_token(NUMBER_KIND, "0");
-    let obj_kw = create_green_token(STRING_KIND, "obj");
-
-    // Names dictionary: /JavaScript 3 0 R
-    let js_name = create_green_token(NAME_KIND, "/JavaScript");
-    let js_ref_num = create_green_token(NUMBER_KIND, "3");
-    let js_ref_gen = create_green_token(NUMBER_KIND, "0");
-    let js_ref_r = create_green_token(STRING_KIND, "R");
-    let names_dict = create_green_node(
-        DICT_KIND,
-        vec![
-            js_name.into(),
-            js_ref_num.into(),
-            js_ref_gen.into(),
-            js_ref_r.into(),
-        ],
-    );
-
-    // Main dictionary contents
-    let type_name = create_green_token(NAME_KIND, "/Type");
-    let catalog_name = create_green_token(NAME_KIND, "/Catalog");
-    let pages_name = create_green_token(NAME_KIND, "/Pages");
-    let pages_ref_num = create_green_token(NUMBER_KIND, "2");
-    let pages_ref_gen = create_green_token(NUMBER_KIND, "0");
-    let pages_ref_r = create_green_token(STRING_KIND, "R");
-    let names_key = create_green_token(NAME_KIND, "/Names");
-
-    let main_dict = create_green_node(
-        DICT_KIND,
-        vec![
-            type_name.into(),
-            catalog_name.into(),
-            pages_name.into(),
-            pages_ref_num.into(),
-            pages_ref_gen.into(),
-            pages_ref_r.into(),
-            names_key.into(),
-            names_dict.into(),
-        ],
-    );
-
-    let endobj_kw = create_green_token(STRING_KIND, "endobj");
-
-    let root = create_green_node(
-        OBJ_KIND,
-        vec![
-            obj_num.into(),
-            gen_num.into(),
-            obj_kw.into(),
-            main_dict.into(),
-            endobj_kw.into(),
-        ],
-    );
-
-    SyntaxNode::new_root(root)
+    let children = vec![child1.into(), child2.into(), child3.into()];
+    SyntaxNode::new_root(create_green_node(ARRAY_KIND, children))
 }
 
 // =============================================================================
@@ -647,16 +537,7 @@ fn test_debug_format_when_creating_preorder_expect_readable_output() {
 fn test_preorder_sibling_traversal() {
     // Create a tree with siblings to test the next_sibling() branch
     // Structure: root -> [child1, child2, child3]
-    let child1_token = create_green_token(STRING_KIND, "(string1)");
-    let child2_token = create_green_token(NAME_KIND, "/name2");
-    let child3_token = create_green_token(NUMBER_KIND, "123");
-
-    let child1 = create_green_node(DICT_KIND, vec![child1_token.into()]);
-    let child2 = create_green_node(DICT_KIND, vec![child2_token.into()]);
-    let child3 = create_green_node(DICT_KIND, vec![child3_token.into()]);
-
-    let children = vec![child1.into(), child2.into(), child3.into()];
-    let root = SyntaxNode::new_root(create_green_node(ARRAY_KIND, children));
+    let root = create_sibling_tree_for_preorder_test();
 
     let preorder = root.preorder();
     let events: Vec<_> = preorder.collect();

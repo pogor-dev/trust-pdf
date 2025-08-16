@@ -1,3 +1,14 @@
+//! Preorder tree traversal including both nodes and tokens.
+//!
+//! ```text
+//!     📋 PreorderWithTokens
+//!           🌳
+//!          ╱ ╲    
+//!        🌿   📝   Traverses: Everything in tree
+//!       ╱ ╲   📝   • nodes AND tokens
+//!      📝 📝       • complete tree coverage
+//! ```
+
 use crate::{
     NodeOrToken,
     cursor::{node::SyntaxNode, syntax_element::SyntaxElement},
@@ -12,6 +23,7 @@ pub struct PreorderWithTokens {
 }
 
 impl PreorderWithTokens {
+    /// Creates a new preorder iterator starting from the given node.
     pub(super) fn new(start: SyntaxNode) -> PreorderWithTokens {
         let next = Some(WalkEvent::Enter(start.clone().into()));
         PreorderWithTokens {
@@ -21,6 +33,7 @@ impl PreorderWithTokens {
         }
     }
 
+    /// Skips the subtree of the current element in the traversal.
     pub fn skip_subtree(&mut self) {
         self.skip_subtree = true;
     }
