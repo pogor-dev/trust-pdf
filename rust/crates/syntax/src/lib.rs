@@ -1,8 +1,9 @@
 mod arc;
 mod cow_mut;
-pub mod cursor;
+pub(crate) mod cursor;
 mod green;
 mod sll;
+mod syntax_text;
 mod utility_types;
 
 #[cfg(test)]
@@ -14,5 +15,6 @@ pub use crate::{
         Checkpoint, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
         GreenTrivia, GreenTriviaData, NodeCache, NodeChildren, SyntaxKind,
     },
-    utility_types::NodeOrToken,
+    syntax_text::SyntaxText,
+    utility_types::{Direction, NodeOrToken, TokenAtOffset, WalkEvent},
 };

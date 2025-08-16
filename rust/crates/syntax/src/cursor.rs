@@ -84,20 +84,20 @@
 use std::ptr;
 
 use crate::{
-    GreenNode, GreenNodeData, GreenToken, GreenTokenData, NodeOrToken,
-    cursor::{green::Green, node::SyntaxNode, node_data::NodeData, token::SyntaxToken},
+    GreenNode, GreenToken,
+    cursor::{green::Green, node_data::NodeData},
     sll,
 };
 
 mod green;
-mod node;
+pub(super) mod node;
 mod node_data;
 mod preorder;
 mod preorder_with_tokens;
 mod syntax_element;
 mod syntax_element_children;
 mod syntax_node_children;
-mod token;
+pub(super) mod token;
 
 #[cfg(test)]
 #[path = "cursor/tests/lib.rs"]

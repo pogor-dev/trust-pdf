@@ -161,10 +161,10 @@ impl SyntaxNode {
         self.data().index() as usize
     }
 
-    // #[inline]
-    // pub fn text(&self) -> SyntaxText {
-    //     SyntaxText::new(self.clone())
-    // }
+    #[inline]
+    pub fn full_text(&self) -> crate::SyntaxText {
+        crate::SyntaxText::new(self.clone())
+    }
 
     /// Returns the underlying green node data.
     #[inline]
