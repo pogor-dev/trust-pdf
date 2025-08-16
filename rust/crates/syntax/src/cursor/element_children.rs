@@ -10,7 +10,7 @@
 
 use crate::{
     SyntaxKind,
-    cursor::{node::SyntaxNode, syntax_element::SyntaxElement},
+    cursor::{element::SyntaxElement, node::SyntaxNode},
 };
 
 #[derive(Clone, Debug)]

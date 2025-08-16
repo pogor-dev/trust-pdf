@@ -11,7 +11,7 @@
 
 use crate::{
     NodeOrToken,
-    cursor::{node::SyntaxNode, syntax_element::SyntaxElement},
+    cursor::{element::SyntaxElement, node::SyntaxNode},
     utility_types::WalkEvent,
 };
 

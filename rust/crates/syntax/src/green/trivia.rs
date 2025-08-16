@@ -57,6 +57,7 @@ impl GreenTrivia {
     /// # Safety
     /// The returned pointer must be converted back using `from_raw` to prevent memory leaks.
     #[inline]
+    #[allow(dead_code)]
     pub(crate) fn into_raw(this: GreenTrivia) -> ptr::NonNull<GreenTriviaData> {
         let green = ManuallyDrop::new(this);
         let green: &GreenTriviaData = &green;
@@ -199,6 +200,7 @@ impl GreenTriviaChild {
     ///
     /// Caller must eventually free the returned pointer.
     #[inline]
+    #[allow(dead_code)]
     pub(crate) fn into_raw(this: GreenTriviaChild) -> ptr::NonNull<GreenTriviaChildData> {
         let green = ManuallyDrop::new(this);
         let green: &GreenTriviaChildData = &green;

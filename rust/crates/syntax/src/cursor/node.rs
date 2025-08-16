@@ -24,8 +24,8 @@ use crate::{
     GreenNode, GreenNodeData, NodeOrToken, SyntaxKind,
     cursor::{
         Green, NodeData, free, preorder::Preorder, preorder_with_tokens::PreorderWithTokens,
-        syntax_element::SyntaxElement, syntax_element_children::SyntaxElementChildren,
-        syntax_node_children::SyntaxNodeChildren, token::SyntaxToken,
+        element::SyntaxElement, element_children::SyntaxElementChildren,
+        node_children::SyntaxNodeChildren, token::SyntaxToken,
     },
     utility_types::{Direction, TokenAtOffset, WalkEvent},
 };

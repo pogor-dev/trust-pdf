@@ -1,7 +1,7 @@
 use std::{collections::HashMap, ops::Range};
 
 use crate::{
-    cursor::{node::SyntaxNode, syntax_element::SyntaxElement, token::SyntaxToken},
+    cursor::{node::SyntaxNode, element::SyntaxElement, token::SyntaxToken},
     utility_types::Direction,
 };
 

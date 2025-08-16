@@ -14,7 +14,7 @@ use std::{fmt, hash, iter, ops::Range, ptr};
 
 use crate::{
     GreenNode, GreenToken, GreenTokenData, SyntaxKind,
-    cursor::{Green, free, node::SyntaxNode, node_data::NodeData, syntax_element::SyntaxElement},
+    cursor::{Green, free, node::SyntaxNode, node_data::NodeData, element::SyntaxElement},
     utility_types::Direction,
 };
 

@@ -492,7 +492,7 @@ impl fmt::Display for GreenNodeData {
 
 impl GreenChild {
     #[inline]
-    pub(crate) fn as_ref(&self) -> GreenElementRef {
+    pub(crate) fn as_ref(&'_ self) -> GreenElementRef<'_> {
         match self {
             GreenChild::Node { node, .. } => NodeOrToken::Node(node),
             GreenChild::Token { token, .. } => NodeOrToken::Token(token),

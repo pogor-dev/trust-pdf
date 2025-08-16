@@ -1,7 +1,7 @@
 use crate::{
     NodeOrToken, SyntaxKind,
     cursor::{
-        node::SyntaxNode, preorder_with_tokens::PreorderWithTokens, syntax_element::SyntaxElement,
+        node::SyntaxNode, preorder_with_tokens::PreorderWithTokens, element::SyntaxElement,
     },
     green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
     utility_types::WalkEvent,

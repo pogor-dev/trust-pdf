@@ -1,9 +1,15 @@
-pub(crate) mod language;
-// pub(crate) mod node;
-// pub(crate) mod token;
-pub(crate) mod trivia;
+mod element;
+mod element_children;
+mod language;
+mod node;
+mod node_children;
+mod preorder;
+mod preorder_with_tokens;
+mod token;
+mod trivia;
 
-// #[cfg(test)]
-// mod token_tests;
-#[cfg(test)]
-mod trivia_tests;
+pub use self::{
+    element::SyntaxElement, element_children::SyntaxElementChildren, language::Language,
+    node::SyntaxNode, node_children::SyntaxNodeChildren, preorder::Preorder,
+    preorder_with_tokens::PreorderWithTokens, token::SyntaxToken, trivia::SyntaxTrivia,
+};

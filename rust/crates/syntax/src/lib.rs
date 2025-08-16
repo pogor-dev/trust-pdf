@@ -1,3 +1,4 @@
+pub mod api;
 mod arc;
 mod cow_mut;
 pub(crate) mod cursor;
@@ -11,6 +12,9 @@ mod utility_types;
 mod tests;
 
 pub use crate::{
+    api::{
+        Language, SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren, SyntaxToken,
+    },
     green::{
         Checkpoint, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
         GreenTrivia, GreenTriviaData, NodeCache, NodeChildren, SyntaxKind,

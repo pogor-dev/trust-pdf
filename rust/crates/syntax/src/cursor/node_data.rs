@@ -22,7 +22,7 @@ use countme::Count;
 
 use crate::{
     GreenNode, GreenToken, NodeOrToken, SyntaxKind,
-    cursor::{Green, free, node::SyntaxNode, syntax_element::SyntaxElement},
+    cursor::{Green, element::SyntaxElement, free, node::SyntaxNode},
     green::{GreenChild, GreenElementRef},
     sll,
     utility_types::Delta,

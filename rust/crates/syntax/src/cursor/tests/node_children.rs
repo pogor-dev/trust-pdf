@@ -1,6 +1,6 @@
 use crate::{
     SyntaxKind,
-    cursor::{node::SyntaxNode, syntax_node_children::SyntaxNodeChildren},
+    cursor::{node::SyntaxNode, node_children::SyntaxNodeChildren},
     green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
 };
 

@@ -1,6 +1,6 @@
 use crate::{
     NodeOrToken,
-    cursor::{node::SyntaxNode, syntax_element::SyntaxElement},
+    cursor::{node::SyntaxNode, element::SyntaxElement},
     utility_types::TokenAtOffset,
 };
 

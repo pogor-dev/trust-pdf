@@ -1,8 +1,8 @@
 use crate::{
     SyntaxKind,
     cursor::{
-        node::SyntaxNode, syntax_element::SyntaxElement,
-        syntax_element_children::SyntaxElementChildren,
+        node::SyntaxNode, element::SyntaxElement,
+        element_children::SyntaxElementChildren,
     },
     green::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia},
 };

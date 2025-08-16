@@ -94,14 +94,20 @@ pub(super) mod node;
 mod node_data;
 mod preorder;
 mod preorder_with_tokens;
-mod syntax_element;
-mod syntax_element_children;
-mod syntax_node_children;
+mod element;
+mod element_children;
+mod node_children;
 pub(super) mod token;
 
 #[cfg(test)]
 #[path = "cursor/tests/lib.rs"]
 mod tests;
+
+pub(crate) use self::{
+    node::SyntaxNode, preorder::Preorder, preorder_with_tokens::PreorderWithTokens,
+    element::SyntaxElement, element_children::SyntaxElementChildren,
+    node_children::SyntaxNodeChildren, token::SyntaxToken,
+};
 
 #[inline(never)]
 unsafe fn free(mut data: ptr::NonNull<NodeData>) {
