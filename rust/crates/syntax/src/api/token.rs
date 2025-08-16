@@ -2,7 +2,7 @@ use std::{fmt, marker::PhantomData, ops::Range};
 
 use crate::{
     Direction, GreenNode, GreenToken, GreenTokenData, Language, NodeOrToken, SyntaxElement,
-    SyntaxNode, cursor,
+    SyntaxNode, api::SyntaxTrivia, cursor,
 };
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -86,8 +86,13 @@ impl<L: Language> SyntaxToken<L> {
         self.raw.detach()
     }
 
-    // pub fn leading_trivia(&self) -> SyntaxTrivia<L> {}
-    // pub fn trailing_trivia(&self) -> SyntaxTrivia<L> {}
+    pub fn leading_trivia(&self) -> SyntaxTrivia<L> {
+        SyntaxTrivia::new(self.raw.leading_trivia())
+    }
+
+    pub fn trailing_trivia(&self) -> SyntaxTrivia<L> {
+        SyntaxTrivia::new(self.raw.trailing_trivia())
+    }
 }
 
 impl<L: Language> From<cursor::SyntaxToken> for SyntaxToken<L> {

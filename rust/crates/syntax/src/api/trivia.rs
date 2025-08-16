@@ -2,7 +2,7 @@ use std::{fmt, marker::PhantomData, ops::Range};
 
 use crate::{GreenTriviaData, Language, cursor};
 
-// #[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxTrivia<L: Language> {
     raw: cursor::SyntaxTrivia,
     _p: PhantomData<L>,
