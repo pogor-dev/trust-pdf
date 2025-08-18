@@ -153,16 +153,16 @@ impl GreenTokenData {
 
     /// Returns the byte width (length) of this token element.
     #[inline]
-    pub fn width(&self) -> u32 {
-        self.text().len() as u32
+    pub fn width(&self) -> usize {
+        self.text().len()
     }
 
     /// Returns the total byte width including leading and trailing trivia.
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub fn full_width(&self) -> usize {
         let leading = self.leading_trivia().width();
         let trailing = self.trailing_trivia().width();
-        (self.width() + leading + trailing) as u32
+        self.width() + leading + trailing
     }
 
     /// Returns the leading trivia associated with this token.

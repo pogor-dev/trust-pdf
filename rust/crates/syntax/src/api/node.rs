@@ -32,11 +32,11 @@ impl<L: Language> SyntaxNode<L> {
         L::kind_from_raw(self.raw.kind())
     }
 
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         self.raw.span()
     }
 
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         self.raw.full_span()
     }
 
@@ -193,7 +193,7 @@ impl<L: Language> SyntaxNode<L> {
 
     /// Find a token in the subtree corresponding to this node, which covers the offset.
     /// Precondition: offset must be within node's range.
-    pub fn token_at_offset(&self, offset: u32) -> TokenAtOffset<SyntaxToken<L>> {
+    pub fn token_at_offset(&self, offset: usize) -> TokenAtOffset<SyntaxToken<L>> {
         self.raw.token_at_offset(offset).map(SyntaxToken::from)
     }
 
@@ -201,7 +201,7 @@ impl<L: Language> SyntaxNode<L> {
     /// contains the range. If the range is empty and is contained in two leaf
     /// nodes, either one can be returned. Precondition: range must be contained
     /// within the current node
-    pub fn covering_element(&self, range: Range<u32>) -> SyntaxElement<L> {
+    pub fn covering_element(&self, range: Range<usize>) -> SyntaxElement<L> {
         NodeOrToken::from(self.raw.covering_element(range))
     }
 
@@ -210,7 +210,7 @@ impl<L: Language> SyntaxNode<L> {
     ///
     /// The method uses binary search internally, so it's complexity is
     /// `O(log(N))` where `N = self.children_with_tokens().count()`.
-    pub fn child_or_token_at_range(&self, range: Range<u32>) -> Option<SyntaxElement<L>> {
+    pub fn child_or_token_at_range(&self, range: Range<usize>) -> Option<SyntaxElement<L>> {
         self.raw
             .child_or_token_at_range(range)
             .map(SyntaxElement::from)
@@ -238,7 +238,7 @@ impl<L: Language> SyntaxNode<L> {
 
     pub fn splice_children<I: IntoIterator<Item = SyntaxElement<L>>>(
         &self,
-        to_delete: Range<u32>,
+        to_delete: Range<usize>,
         to_insert: I,
     ) {
         let to_insert = to_insert.into_iter().map(cursor::SyntaxElement::from);

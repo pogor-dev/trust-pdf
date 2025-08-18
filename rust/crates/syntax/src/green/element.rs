@@ -26,13 +26,13 @@ impl GreenElement {
 
     /// Returns the byte length of text content within this element.
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         self.as_deref().width()
     }
 
     /// Returns the total byte span including leading and trailing trivia.
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub fn full_width(&self) -> usize {
         self.as_deref().full_width()
     }
 }
@@ -70,7 +70,7 @@ impl GreenElementRef<'_> {
 
     /// Returns the byte length of text content for borrowed elements.
     #[inline]
-    pub fn width(self) -> u32 {
+    pub fn width(self) -> usize {
         match self {
             NodeOrToken::Node(it) => it.width(),
             NodeOrToken::Token(it) => it.width(),
@@ -79,7 +79,7 @@ impl GreenElementRef<'_> {
 
     /// Returns total byte span including trivia for borrowed elements.
     #[inline]
-    pub fn full_width(self) -> u32 {
+    pub fn full_width(self) -> usize {
         match self {
             NodeOrToken::Node(it) => it.full_width(),
             NodeOrToken::Token(it) => it.full_width(),

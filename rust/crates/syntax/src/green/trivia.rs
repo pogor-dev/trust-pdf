@@ -115,7 +115,7 @@ impl GreenTriviaData {
 
     /// Returns the total byte width of all trivia children in this collection.
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         self.children().iter().map(|c| c.width()).sum()
     }
 
@@ -270,8 +270,8 @@ impl GreenTriviaChildData {
 
     /// Returns the byte width (length) of this trivia element.
     #[inline]
-    pub fn width(&self) -> u32 {
-        self.text().len() as u32
+    pub fn width(&self) -> usize {
+        self.text().len()
     }
 }
 

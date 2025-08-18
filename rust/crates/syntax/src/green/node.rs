@@ -24,9 +24,12 @@ use crate::{
 #[repr(u8)]
 pub(crate) enum GreenChild {
     /// Child node with relative byte offset from parent start
-    Node { rel_offset: u32, node: GreenNode },
-    /// Child token with relative byte offset from parent start  
-    Token { rel_offset: u32, token: GreenToken },
+    Node { rel_offset: usize, node: GreenNode },
+    /// Child token with relative byte offset from parent start
+    Token {
+        rel_offset: usize,
+        token: GreenToken,
+    },
 }
 
 type Repr = HeaderSlice<GreenNodeHead, [GreenChild]>;
@@ -48,7 +51,7 @@ struct GreenNodeHead {
     /// PDF syntax kind (Object, Dictionary, Array, etc.)
     kind: SyntaxKind,
     /// Total width including all trivia elements
-    full_width: u32,
+    full_width: usize,
     /// Reference counting for memory management
     _c: Count<GreenNode>,
 }
@@ -63,7 +66,7 @@ impl GreenNode {
         I: IntoIterator<Item = GreenElement>,
         I::IntoIter: ExactSizeIterator,
     {
-        let mut full_width: u32 = 0;
+        let mut full_width: usize = 0;
         let children = children.into_iter().map(|el| {
             let rel_offset = full_width;
             full_width += el.full_width();
@@ -176,7 +179,7 @@ impl GreenNodeData {
     ///
     /// Calculated as total width minus leading and trailing trivia, similar to Roslyn's approach.
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         if self.full_width() == 0 {
             return 0;
         }
@@ -190,7 +193,7 @@ impl GreenNodeData {
 
     /// Returns the total byte span including all child trivia.
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub fn full_width(&self) -> usize {
         self.header().full_width
     }
 
@@ -199,7 +202,7 @@ impl GreenNodeData {
     /// Similar to Roslyn's GetLeadingTriviaWidth, finds the leftmost terminal
     /// and returns its leading trivia width.
     #[inline]
-    pub fn get_leading_trivia_width(&self) -> u32 {
+    pub fn get_leading_trivia_width(&self) -> usize {
         if self.full_width() == 0 {
             return 0;
         }
@@ -216,7 +219,7 @@ impl GreenNodeData {
     /// Similar to Roslyn's GetTrailingTriviaWidth, finds the rightmost terminal
     /// and returns its trailing trivia width.
     #[inline]
-    pub fn get_trailing_trivia_width(&self) -> u32 {
+    pub fn get_trailing_trivia_width(&self) -> usize {
         if self.full_width() == 0 {
             return 0;
         }
@@ -238,8 +241,8 @@ impl GreenNodeData {
 
     pub(crate) fn child_at_range(
         &self,
-        rel_range: Range<u32>,
-    ) -> Option<(usize, u32, GreenElementRef<'_>)> {
+        rel_range: Range<usize>,
+    ) -> Option<(u32, usize, GreenElementRef<'_>)> {
         let idx = self
             .slice()
             .binary_search_by(|it| {
@@ -261,7 +264,7 @@ impl GreenNodeData {
             child_range.start <= rel_range.start && child_range.end >= rel_range.end
         })?;
 
-        Some((idx, child.rel_offset(), child.as_ref()))
+        Some((idx as u32, child.rel_offset(), child.as_ref()))
     }
 
     /// Creates a new node with one child replaced.
@@ -500,7 +503,7 @@ impl GreenChild {
     }
 
     #[inline]
-    pub(crate) fn rel_offset(&self) -> u32 {
+    pub(crate) fn rel_offset(&self) -> usize {
         match self {
             GreenChild::Node { rel_offset, .. } | GreenChild::Token { rel_offset, .. } => {
                 *rel_offset
@@ -509,7 +512,7 @@ impl GreenChild {
     }
 
     #[inline]
-    pub(crate) fn rel_range(&self) -> Range<u32> {
+    pub(crate) fn rel_range(&self) -> Range<usize> {
         let len = self.as_ref().full_width();
         let rel_offset = self.rel_offset();
         rel_offset..(rel_offset + len)

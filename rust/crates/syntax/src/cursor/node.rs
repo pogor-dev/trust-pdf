@@ -23,9 +23,9 @@ use std::{
 use crate::{
     GreenNode, GreenNodeData, NodeOrToken, SyntaxKind,
     cursor::{
-        Green, NodeData, free, preorder::Preorder, preorder_with_tokens::PreorderWithTokens,
-        element::SyntaxElement, element_children::SyntaxElementChildren,
-        node_children::SyntaxNodeChildren, token::SyntaxToken,
+        Green, NodeData, element::SyntaxElement, element_children::SyntaxElementChildren, free,
+        node_children::SyntaxNodeChildren, preorder::Preorder,
+        preorder_with_tokens::PreorderWithTokens, token::SyntaxToken,
     },
     utility_types::{Direction, TokenAtOffset, WalkEvent},
 };
@@ -62,7 +62,7 @@ impl SyntaxNode {
         green: &GreenNodeData,
         parent: SyntaxNode,
         index: u32,
-        offset: u32,
+        offset: usize,
     ) -> SyntaxNode {
         let mutable = parent.data().mutable;
         let green = Green::Node {
@@ -139,19 +139,19 @@ impl SyntaxNode {
 
     /// Returns the absolute byte offset of this node in the text.
     #[inline]
-    pub(super) fn offset(&self) -> u32 {
+    pub(super) fn offset(&self) -> usize {
         self.data().offset()
     }
 
     /// Returns the text range (excluding trivia) of this node.
     #[inline]
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         self.data().span()
     }
 
     /// Returns the full text range (including trivia) of this node.
     #[inline]
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         self.data().full_span()
     }
 
@@ -450,7 +450,7 @@ impl SyntaxNode {
         PreorderWithTokens::new(self.clone())
     }
 
-    pub fn token_at_offset(&self, offset: u32) -> TokenAtOffset<SyntaxToken> {
+    pub fn token_at_offset(&self, offset: usize) -> TokenAtOffset<SyntaxToken> {
         // TODO: this could be faster if we first drill-down to node, and only
         // then switch to token search. We should also replace explicit
         // recursion with a loop.
@@ -486,7 +486,7 @@ impl SyntaxNode {
         }
     }
 
-    pub fn covering_element(&self, range: Range<u32>) -> SyntaxElement {
+    pub fn covering_element(&self, range: Range<usize>) -> SyntaxElement {
         let mut res: SyntaxElement = self.clone().into();
         loop {
             assert!(
@@ -506,17 +506,12 @@ impl SyntaxNode {
         }
     }
 
-    pub fn child_or_token_at_range(&self, range: Range<u32>) -> Option<SyntaxElement> {
+    pub fn child_or_token_at_range(&self, range: Range<usize>) -> Option<SyntaxElement> {
         let rel_range = (range.start - self.offset())..(range.end - self.offset());
         self.green_ref()
             .child_at_range(rel_range)
             .map(|(index, rel_offset, green)| {
-                SyntaxElement::new(
-                    green,
-                    self.clone(),
-                    index as u32,
-                    self.offset() + rel_offset,
-                )
+                SyntaxElement::new(green, self.clone(), index, self.offset() + rel_offset)
             })
     }
 

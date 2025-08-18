@@ -40,7 +40,7 @@ pub(super) struct NodeData {
     /// Invariant: never changes after NodeData is created.
     pub(super) mutable: bool,
     /// Absolute offset for immutable nodes, unused for mutable nodes.
-    pub(super) offset: u32,
+    pub(super) offset: usize,
     // The following links only have meaning when `mutable` is true.
     pub(super) first: Cell<*const NodeData>,
     /// Invariant: never null if mutable.
@@ -55,7 +55,7 @@ impl NodeData {
     pub(super) fn new(
         parent: Option<SyntaxNode>,
         index: u32,
-        offset: u32,
+        offset: usize,
         green: Green,
         mutable: bool,
     ) -> ptr::NonNull<NodeData> {
@@ -132,7 +132,7 @@ impl NodeData {
 
     /// Returns a unique key for this node data based on green pointer and offset.
     #[inline]
-    pub(super) fn key(&self) -> (ptr::NonNull<()>, u32) {
+    pub(super) fn key(&self) -> (ptr::NonNull<()>, usize) {
         let ptr = match &self.green {
             Green::Node { ptr } => ptr.get().cast(),
             Green::Token { ptr } => ptr.cast(),
@@ -187,7 +187,7 @@ impl NodeData {
 
     /// Returns the absolute byte offset of this node in the text.
     #[inline]
-    pub(super) fn offset(&self) -> u32 {
+    pub(super) fn offset(&self) -> usize {
         if self.mutable {
             self.offset_mut()
         } else {
@@ -196,8 +196,8 @@ impl NodeData {
     }
 
     #[cold]
-    fn offset_mut(&self) -> u32 {
-        let mut res = 0u32;
+    fn offset_mut(&self) -> usize {
+        let mut res = 0usize;
 
         let mut node = self;
         while let Some(parent) = node.parent() {
@@ -216,7 +216,7 @@ impl NodeData {
 
     /// Returns the text span (excluding trivia) of this node.
     #[inline]
-    pub(super) fn span(&self) -> Range<u32> {
+    pub(super) fn span(&self) -> Range<usize> {
         let offset = self.offset();
         let len = self.green().width();
         offset..(offset + len)
@@ -224,7 +224,7 @@ impl NodeData {
 
     /// Returns the full text span (including trivia) of this node.
     #[inline]
-    pub(super) fn full_span(&self) -> Range<u32> {
+    pub(super) fn full_span(&self) -> Range<usize> {
         let offset = self.offset();
         let len = self.green().full_width();
         offset..(offset + len)

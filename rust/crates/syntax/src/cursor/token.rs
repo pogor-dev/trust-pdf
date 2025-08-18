@@ -14,7 +14,7 @@ use std::{fmt, hash, iter, ops::Range, ptr};
 
 use crate::{
     GreenNode, GreenToken, GreenTokenData, SyntaxKind,
-    cursor::{Green, free, node::SyntaxNode, node_data::NodeData, element::SyntaxElement},
+    cursor::{Green, element::SyntaxElement, free, node::SyntaxNode, node_data::NodeData},
     utility_types::Direction,
 };
 
@@ -29,7 +29,7 @@ impl SyntaxToken {
         green: &GreenTokenData,
         parent: SyntaxNode,
         index: u32,
-        offset: u32,
+        offset: usize,
     ) -> SyntaxToken {
         let mutable = parent.data().mutable;
         let green = Green::Token { ptr: green.into() };
@@ -80,13 +80,13 @@ impl SyntaxToken {
 
     /// Returns the text range (excluding trivia) of this token.
     #[inline]
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         self.data().span()
     }
 
     /// Returns the full text range (including trivia) of this token.
     #[inline]
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         self.data().full_span()
     }
 
@@ -130,7 +130,7 @@ impl SyntaxToken {
 
     /// Returns the width (byte length) of this token excluding trivia.
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub fn width(&self) -> usize {
         match self.data().green().as_token() {
             Some(it) => it.width(),
             None => {
@@ -146,7 +146,7 @@ impl SyntaxToken {
 
     /// Returns the full width (byte length) including trivia.
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub fn full_width(&self) -> usize {
         match self.data().green().as_token() {
             Some(it) => it.full_width(),
             None => {

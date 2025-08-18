@@ -63,10 +63,10 @@ fn test_width_when_various_structures_expect_correct_calculations() {
         // Token element
         (
             GreenElement::from(create_token(STRING_KIND, "(Hello)")),
-            7u32,
+            7usize,
         ),
         // Empty node
-        (GreenElement::from(create_node(ARRAY_KIND, vec![])), 0u32),
+        (GreenElement::from(create_node(ARRAY_KIND, vec![])), 0usize),
         // Node with children
         (
             GreenElement::from(create_node(
@@ -76,7 +76,7 @@ fn test_width_when_various_structures_expect_correct_calculations() {
                     GreenElement::from(create_token(NUMBER_KIND, "123")),     // 3 bytes
                 ],
             )),
-            10u32,
+            10usize,
         ),
     ];
 

@@ -23,11 +23,11 @@ impl<L: Language> SyntaxToken<L> {
         L::kind_from_raw(self.raw.kind())
     }
 
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         self.raw.span()
     }
 
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         self.raw.full_span()
     }
 

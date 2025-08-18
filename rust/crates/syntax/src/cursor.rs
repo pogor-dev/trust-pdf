@@ -89,24 +89,25 @@ use crate::{
     sll,
 };
 
+mod element;
+mod element_children;
 mod green;
 pub(super) mod node;
+mod node_children;
 mod node_data;
 mod preorder;
 mod preorder_with_tokens;
-mod element;
-mod element_children;
-mod node_children;
 pub(super) mod token;
+pub(super) mod trivia;
 
 #[cfg(test)]
 #[path = "cursor/tests/lib.rs"]
 mod tests;
 
 pub(crate) use self::{
-    node::SyntaxNode, preorder::Preorder, preorder_with_tokens::PreorderWithTokens,
-    element::SyntaxElement, element_children::SyntaxElementChildren,
-    node_children::SyntaxNodeChildren, token::SyntaxToken,
+    element::SyntaxElement, element_children::SyntaxElementChildren, node::SyntaxNode,
+    node_children::SyntaxNodeChildren, preorder::Preorder,
+    preorder_with_tokens::PreorderWithTokens, token::SyntaxToken, trivia::SyntaxTrivia,
 };
 
 #[inline(never)]

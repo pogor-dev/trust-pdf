@@ -49,7 +49,7 @@ pub struct SyntaxText {
     /// The root syntax node containing the text tokens
     node: SyntaxNode,
     /// The byte range within the node's text span
-    range: Range<u32>,
+    range: Range<usize>,
 }
 
 impl SyntaxText {
@@ -63,8 +63,8 @@ impl SyntaxText {
     }
 
     /// Returns the text length in bytes.
-    pub fn len(&self) -> u32 {
-        self.range.len() as u32
+    pub fn len(&self) -> usize {
+        self.range.len()
     }
 
     /// Returns `true` if the text contains no bytes.
@@ -83,14 +83,14 @@ impl SyntaxText {
     /// Finds the first occurrence of a byte and returns its position.
     ///
     /// Returns `None` if the byte is not found. Position is relative to this text view.
-    pub fn find_byte(&self, c: u8) -> Option<u32> {
-        let mut acc: u32 = 0;
+    pub fn find_byte(&self, c: u8) -> Option<usize> {
+        let mut acc: usize = 0;
         let res = self.try_for_each_chunk(|chunk| {
             if let Some(pos) = chunk.iter().position(|&b| b == c) {
-                let pos: u32 = pos as u32;
+                let pos: usize = pos as usize;
                 return Err(acc + pos);
             }
-            acc += chunk.len() as u32;
+            acc += chunk.len();
             Ok(())
         });
         found(res)
@@ -202,7 +202,7 @@ impl SyntaxText {
     ///
     /// Used internally by chunk processing methods to access the underlying
     /// syntax tokens and their corresponding text content.
-    fn tokens_with_ranges(&self) -> impl Iterator<Item = (SyntaxToken, Range<u32>)> + use<> {
+    fn tokens_with_ranges(&self) -> impl Iterator<Item = (SyntaxToken, Range<usize>)> + use<> {
         let text_range = self.range.clone();
         self.node
             .descendants_with_tokens()
@@ -231,7 +231,7 @@ fn found<T>(res: Result<(), T>) -> Option<T> {
 /// Computes the intersection of two byte ranges.
 ///
 /// Returns the overlapping portion if ranges intersect, otherwise `None`.
-fn range_intersection(a: Range<u32>, b: Range<u32>) -> Option<Range<u32>> {
+fn range_intersection(a: Range<usize>, b: Range<usize>) -> Option<Range<usize>> {
     let start = std::cmp::max(a.start, b.start);
     let end = std::cmp::min(a.end, b.end);
     if start < end { Some(start..end) } else { None }
@@ -332,7 +332,10 @@ impl PartialEq for SyntaxText {
 ///
 /// Advances through both iterators synchronously, comparing overlapping portions
 /// even when token boundaries differ. Returns `Some(())` on mismatch, `None` if equal.
-fn zip_texts<I: Iterator<Item = (SyntaxToken, Range<u32>)>>(xs: &mut I, ys: &mut I) -> Option<()> {
+fn zip_texts<I: Iterator<Item = (SyntaxToken, Range<usize>)>>(
+    xs: &mut I,
+    ys: &mut I,
+) -> Option<()> {
     let mut x = xs.next()?;
     let mut y = ys.next()?;
     loop {
@@ -349,7 +352,7 @@ fn zip_texts<I: Iterator<Item = (SyntaxToken, Range<u32>)>>(xs: &mut I, ys: &mut
         if !(x_text.starts_with(y_text) || y_text.starts_with(x_text)) {
             return Some(());
         }
-        let advance = std::cmp::min(x.1.len(), y.1.len()) as u32;
+        let advance = std::cmp::min(x.1.len(), y.1.len());
         x.1 = x.1.start + advance..x.1.end;
         y.1 = y.1.start + advance..y.1.end;
     }
@@ -361,42 +364,42 @@ mod private {
     use std::ops::{self, Range};
 
     pub trait SyntaxTextRange {
-        fn start(&self) -> Option<u32>;
-        fn end(&self) -> Option<u32>;
+        fn start(&self) -> Option<usize>;
+        fn end(&self) -> Option<usize>;
     }
 
-    impl SyntaxTextRange for Range<u32> {
-        fn start(&self) -> Option<u32> {
+    impl SyntaxTextRange for Range<usize> {
+        fn start(&self) -> Option<usize> {
             Some(self.start)
         }
-        fn end(&self) -> Option<u32> {
+        fn end(&self) -> Option<usize> {
             Some(self.end)
         }
     }
 
-    impl SyntaxTextRange for ops::RangeFrom<u32> {
-        fn start(&self) -> Option<u32> {
+    impl SyntaxTextRange for ops::RangeFrom<usize> {
+        fn start(&self) -> Option<usize> {
             Some(self.start)
         }
-        fn end(&self) -> Option<u32> {
+        fn end(&self) -> Option<usize> {
             None
         }
     }
 
-    impl SyntaxTextRange for ops::RangeTo<u32> {
-        fn start(&self) -> Option<u32> {
+    impl SyntaxTextRange for ops::RangeTo<usize> {
+        fn start(&self) -> Option<usize> {
             None
         }
-        fn end(&self) -> Option<u32> {
+        fn end(&self) -> Option<usize> {
             Some(self.end)
         }
     }
 
     impl SyntaxTextRange for ops::RangeFull {
-        fn start(&self) -> Option<u32> {
+        fn start(&self) -> Option<usize> {
             None
         }
-        fn end(&self) -> Option<u32> {
+        fn end(&self) -> Option<usize> {
             None
         }
     }

@@ -28,7 +28,7 @@ impl SyntaxElement {
         element: GreenElementRef<'_>,
         parent: SyntaxNode,
         index: u32,
-        offset: u32,
+        offset: usize,
     ) -> SyntaxElement {
         match element {
             NodeOrToken::Node(node) => SyntaxNode::new_child(node, parent, index, offset).into(),
@@ -38,7 +38,7 @@ impl SyntaxElement {
 
     /// Returns the text range (excluding trivia) of this element.
     #[inline]
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         match self {
             NodeOrToken::Node(it) => it.span(),
             NodeOrToken::Token(it) => it.span(),
@@ -47,7 +47,7 @@ impl SyntaxElement {
 
     /// Returns the full text range (including trivia) of this element.
     #[inline]
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         match self {
             NodeOrToken::Node(it) => it.full_span(),
             NodeOrToken::Token(it) => it.full_span(),
@@ -191,7 +191,7 @@ impl SyntaxElement {
     }
 
     /// Returns the token at the given byte offset within this element.
-    pub(super) fn token_at_offset(&self, offset: u32) -> TokenAtOffset<SyntaxToken> {
+    pub(super) fn token_at_offset(&self, offset: usize) -> TokenAtOffset<SyntaxToken> {
         assert!(self.full_span().start <= offset && offset <= self.full_span().end);
         match self {
             NodeOrToken::Token(token) => TokenAtOffset::Single(token.clone()),

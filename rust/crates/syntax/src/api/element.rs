@@ -5,14 +5,14 @@ use crate::{Language, NodeOrToken, SyntaxNode, SyntaxToken, cursor};
 pub type SyntaxElement<L> = NodeOrToken<SyntaxNode<L>, SyntaxToken<L>>;
 
 impl<L: Language> SyntaxElement<L> {
-    pub fn span(&self) -> Range<u32> {
+    pub fn span(&self) -> Range<usize> {
         match self {
             NodeOrToken::Node(it) => it.span(),
             NodeOrToken::Token(it) => it.span(),
         }
     }
 
-    pub fn full_span(&self) -> Range<u32> {
+    pub fn full_span(&self) -> Range<usize> {
         match self {
             NodeOrToken::Node(it) => it.full_span(),
             NodeOrToken::Token(it) => it.full_span(),

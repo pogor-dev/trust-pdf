@@ -109,15 +109,15 @@ fn test_byte_at() {
 fn test_slice() {
     let text = build_tree(&[b"hello", b" ", b"world"]).full_text();
 
-    // Test Range<u32>
+    // Test Range<usize>
     let slice = text.slice(1..4);
     assert_eq!(slice.to_bytes(), b"ell");
 
-    // Test RangeFrom<u32>
+    // Test RangeFrom<usize>
     let slice = text.slice(6..);
     assert_eq!(slice.to_bytes(), b"world");
 
-    // Test RangeTo<u32>
+    // Test RangeTo<usize>
     let slice = text.slice(..5);
     assert_eq!(slice.to_bytes(), b"hello");
 

@@ -9,10 +9,17 @@ pub struct SyntaxTrivia<L: Language> {
 }
 
 impl<L: Language> SyntaxTrivia<L> {
+    pub fn new(raw: cursor::SyntaxTrivia) -> Self {
+        Self {
+            raw,
+            _p: PhantomData,
+        }
+    }
+
     pub fn kind(&self) -> L::Kind {}
     pub fn text(&self) -> &[u8] {}
-    pub fn width(&self) -> u32 {}
-    pub fn span(&self) -> Range<u32> {}
+    pub fn width(&self) -> usize {}
+    pub fn span(&self) -> Range<usize> {}
     pub fn green(&self) -> &GreenTriviaData {}
     pub fn parent(&self) -> Option<SyntaxToken<L>> {}
 }
