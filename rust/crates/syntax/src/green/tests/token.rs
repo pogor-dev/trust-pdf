@@ -188,7 +188,7 @@ fn test_pdf_tokens_when_creating_expect_correct_handling() {
     for (kind, text, expected_bytes) in tokens {
         let token = create_token(kind, text);
         assert_eq!(token.text(), expected_bytes);
-        assert_eq!(token.width(), expected_bytes.len() as u32);
+        assert_eq!(token.width(), expected_bytes.len());
     }
 }
 

@@ -33,9 +33,9 @@ fn create_trivia_collection(pieces: Vec<(SyntaxKind, &str)>) -> GreenTrivia {
 fn test_trivia_child_properties_when_accessing_expect_correct_values() {
     // Combine multiple property tests into one to reduce redundancy
     let test_cases = [
-        (NEWLINE_KIND, "\n", 1u32),
-        (WHITESPACE_KIND, " ", 1u32),
-        (COMMENT_KIND, "%PDF-1.7", 8u32),
+        (NEWLINE_KIND, "\n", 1usize),
+        (WHITESPACE_KIND, " ", 1usize),
+        (COMMENT_KIND, "%PDF-1.7", 8usize),
     ];
 
     for (kind, text, expected_width) in test_cases {

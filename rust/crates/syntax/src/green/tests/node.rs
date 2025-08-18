@@ -702,7 +702,7 @@ fn test_children_fold_when_accumulating_expect_correct_result() {
     let children = node.children();
 
     // Fold over children to accumulate total width
-    let total_width = children.fold(0u32, |acc, child| acc + child.full_width());
+    let total_width = children.fold(0usize, |acc, child| acc + child.full_width());
 
     assert!(total_width > 0);
     assert_eq!(total_width, node.full_width());
@@ -732,7 +732,7 @@ fn test_children_rfold_when_reverse_accumulating_expect_correct_result() {
     let children = node.children();
 
     // Reverse fold over children to accumulate total width
-    let total_width = children.rfold(0u32, |acc, child| acc + child.full_width());
+    let total_width = children.rfold(0usize, |acc, child| acc + child.full_width());
 
     assert!(total_width > 0);
     assert_eq!(total_width, node.full_width());
