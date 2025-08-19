@@ -53,13 +53,13 @@ use std::ptr;
 use crate::arc::{arc_inner::ArcInner, header_slice::HeaderSlice};
 
 #[allow(dead_code)]
-pub(crate) mod arc_inner;
+pub(super) mod arc_inner;
 #[allow(dead_code)]
-pub(crate) mod arc_main;
+pub(super) mod arc_main;
 #[allow(dead_code)]
-pub(crate) mod header_slice;
+pub(super) mod header_slice;
 #[allow(dead_code)]
-pub(crate) mod thin_arc;
+pub(super) mod thin_arc;
 
 #[cfg(test)]
 #[path = "arc/tests/lib.rs"]

@@ -169,7 +169,7 @@ use crate::arc::{arc_inner::ArcInner, arc_main::Arc, header_slice::HeaderSlice, 
 /// - `H`: The type of the header data (can be any type: `String`, `u32`, custom structs, etc.)
 /// - `T`: The type of elements in the slice (must not be a zero-sized type)
 #[repr(transparent)]
-pub(crate) struct ThinArc<H, T> {
+pub(super) struct ThinArc<H, T> {
     /// Pointer to the heap-allocated data containing reference count, header, and slice.
     /// This is the only field, making ThinArc exactly one pointer in size.
     pub(super) pointer: ptr::NonNull<ArcInner<HeaderSlice<H, [T; 0]>>>,
@@ -206,7 +206,7 @@ impl<H, T> ThinArc<H, T> {
     /// });
     /// ```
     #[inline]
-    pub(crate) fn with_arc<F, U>(&self, f: F) -> U
+    pub(super) fn with_arc<F, U>(&self, f: F) -> U
     where
         F: FnOnce(&Arc<HeaderSlice<H, [T]>>) -> U,
     {
@@ -261,7 +261,7 @@ impl<H, T> ThinArc<H, T> {
     /// ```text
     /// [reference_count][header_data][slice_length][element_0][element_1]...[element_n]
     /// ```
-    pub(crate) fn from_header_and_iter<I>(header: H, mut items: I) -> Self
+    pub(super) fn from_header_and_iter<I>(header: H, mut items: I) -> Self
     where
         I: Iterator<Item = T> + ExactSizeIterator,
     {

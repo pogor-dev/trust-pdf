@@ -61,7 +61,7 @@ use std::sync::atomic;
 /// };
 /// ```
 #[repr(C)]
-pub(crate) struct ArcInner<T: ?Sized> {
+pub(super) struct ArcInner<T: ?Sized> {
     /// The atomic reference count.
     ///
     /// This tracks how many `Arc<T>` instances are currently pointing to this allocation.
@@ -72,14 +72,14 @@ pub(crate) struct ArcInner<T: ?Sized> {
     /// - Incremented: When `Arc::clone()` is called
     /// - Decremented: When `Arc::drop()` is called  
     /// - Memory freed: When this reaches 0
-    pub(crate) count: atomic::AtomicUsize,
+    pub(super) count: atomic::AtomicUsize,
 
     /// The actual data being shared.
     ///
     /// This is the data that all `Arc<T>` instances pointing to this allocation
     /// will provide access to. It's the last field so that it can be a dynamically
     /// sized type (DST) like slices or trait objects.
-    pub(crate) data: T,
+    pub(super) data: T,
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}

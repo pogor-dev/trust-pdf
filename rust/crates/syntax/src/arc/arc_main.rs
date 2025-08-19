@@ -112,14 +112,14 @@ use crate::arc::{MAX_REFCOUNT, arc_inner::ArcInner};
 ///
 /// [`Arc`]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html
 #[repr(transparent)]
-pub(crate) struct Arc<T: ?Sized> {
+pub(super) struct Arc<T: ?Sized> {
     /// Pointer to the heap-allocated `ArcInner<T>` containing both the reference count and data.
     /// This is wrapped in `NonNull` to enable niche optimization and guarantee non-null.
-    pub(crate) pointer: ptr::NonNull<ArcInner<T>>,
+    pub(super) pointer: ptr::NonNull<ArcInner<T>>,
 
     /// Zero-sized type marker that tells Rust about our ownership of `T`.
     /// This enables proper drop checking and variance but takes no space.
-    pub(crate) phantom: PhantomData<T>,
+    pub(super) phantom: PhantomData<T>,
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for Arc<T> {}
@@ -133,7 +133,7 @@ impl<T> Arc<T> {
     ///
     /// It is recommended to use OffsetArc for this
     #[inline]
-    pub(crate) unsafe fn from_raw(ptr: *const T) -> Self {
+    pub(super) unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `ArcInner` we need
         // to subtract the offset of the `data` field from the pointer.
         unsafe {
@@ -203,7 +203,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(!Arc::ptr_eq(&arc1, &arc3)); // Different objects
     /// ```
     #[inline]
-    pub(crate) fn ptr_eq(this: &Self, other: &Self) -> bool {
+    pub(super) fn ptr_eq(this: &Self, other: &Self) -> bool {
         std::ptr::addr_eq(this.ptr(), other.ptr())
     }
 
@@ -216,7 +216,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// The returned pointer is only valid as long as at least one `Arc` pointing
     /// to this data exists.
-    pub(crate) fn ptr(&self) -> *mut ArcInner<T> {
+    pub(super) fn ptr(&self) -> *mut ArcInner<T> {
         self.pointer.as_ptr()
     }
 }
@@ -306,7 +306,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(Arc::get_mut(&mut arc).is_none()); // Can't get mutable access
     /// ```
     #[inline]
-    pub(crate) fn get_mut(this: &mut Self) -> Option<&mut T> {
+    pub(super) fn get_mut(this: &mut Self) -> Option<&mut T> {
         if this.is_unique() {
             unsafe {
                 // SAFETY: We verified that the reference count is 1, so no other
@@ -341,7 +341,7 @@ impl<T: ?Sized> Arc<T> {
     /// Uses `Acquire` ordering to ensure proper synchronization. This is necessary
     /// to prevent race conditions where another thread might be in the process
     /// of dropping their reference.
-    pub(crate) fn is_unique(&self) -> bool {
+    pub(super) fn is_unique(&self) -> bool {
         // See the extensive discussion in [1] for why this needs to be Acquire.
         //
         // [1] https://github.com/servo/servo/issues/21186

@@ -100,12 +100,12 @@ use crate::arc::{arc_inner::ArcInner, arc_main::Arc, thin_arc::ThinArc, thin_to_
 /// ```
 #[derive(Debug, Eq, PartialEq, Hash, PartialOrd)]
 #[repr(C)]
-pub(crate) struct HeaderSlice<H, T: ?Sized> {
+pub(super) struct HeaderSlice<H, T: ?Sized> {
     /// The header data of type `H`.
     ///
     /// This can be any type - commonly strings, enums, or structs containing metadata.
     /// It's stored first in the layout, immediately followed by the length and slice data.
-    pub(crate) header: H,
+    pub(super) header: H,
 
     /// The length of the slice.
     ///
@@ -136,7 +136,7 @@ impl<H, T> HeaderSlice<H, [T]> {
     /// assert_eq!(slice.len(), 3);
     /// assert_eq!(slice[0], 1);
     /// ```
-    pub(crate) fn slice(&self) -> &[T] {
+    pub(super) fn slice(&self) -> &[T] {
         &self.slice
     }
 }
@@ -169,7 +169,7 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
     /// // let thin_arc: ThinArc<String, i32> = Arc::into_thin(arc);
     /// ```
     #[inline]
-    pub(crate) fn into_thin(a: Self) -> ThinArc<H, T> {
+    pub(super) fn into_thin(a: Self) -> ThinArc<H, T> {
         assert_eq!(
             a.length,
             a.slice.len(),
@@ -213,7 +213,7 @@ impl<H, T> Arc<HeaderSlice<H, [T]>> {
     /// // let arc: Arc<HeaderSlice<String, [i32]>> = Arc::from_thin(thin_arc);
     /// ```
     #[inline]
-    pub(crate) fn from_thin(a: ThinArc<H, T>) -> Self {
+    pub(super) fn from_thin(a: ThinArc<H, T>) -> Self {
         let ptr = thin_to_thick(a.pointer.as_ptr());
         mem::forget(a);
         unsafe {
