@@ -271,7 +271,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open(&mut self, data: T) -> Result<F::Pointer, Error<F::Error>> {
+    pub fn open_node(&mut self, data: T) -> Result<F::Pointer, Error<F::Error>> {
         let id = self.insert(data, Span::point(self.cursor))?;
         self.parent = Some(id);
         Ok(id)
@@ -320,7 +320,7 @@ where
     /// assert_eq!(tree, expected);
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn open_with(
+    pub fn open_node_with(
         &mut self,
         data: T,
         span: Span<F::Index>,
@@ -356,7 +356,7 @@ where
     /// tree.close()?;
     /// # Ok::<_, Box<dyn core::error::Error>>(())
     /// ```
-    pub fn close(&mut self) -> Result<(), Error<F::Error>> {
+    pub fn close_node(&mut self) -> Result<(), Error<F::Error>> {
         let head = self.parent.take().ok_or(Error::CloseError)?;
 
         self.sibling = Some(head);

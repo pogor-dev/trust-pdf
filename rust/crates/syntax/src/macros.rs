@@ -84,9 +84,9 @@ macro_rules! tree {
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* } $(,)?) => {{
-        $b.open($expr)?;
+        $b.open_node($expr)?;
         $crate::tree!(@o $b, $($tt)*);
-        $b.close()?;
+        $b.close_node()?;
     }};
 
     (@o $b:ident, ($expr:expr, ($start:expr, $end:expr)) => { $($tt:tt)* }, $($rest:tt)*) => {{
@@ -97,9 +97,9 @@ macro_rules! tree {
     }};
 
     (@o $b:ident, $expr:expr => { $($tt:tt)* }, $($rest:tt)*) => {{
-        $b.open($expr)?;
+        $b.open_node($expr)?;
         $crate::tree!(@o $b, $($tt)*);
-        $b.close()?;
+        $b.close_node()?;
         $crate::tree!(@o $b, $($rest)*);
     }};
 
