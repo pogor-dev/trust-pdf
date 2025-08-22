@@ -1,5 +1,15 @@
-use std::{cell::Cell, rc::Rc};
+use core::cell::Cell;
 
+use alloc::rc::Rc;
+
+/// The identifier of a node as returned by functions such as
+/// [`Builder::checkpoint`].
+///
+/// This can be used as a checkpoint in [`Builder::close_at`], and a checkpoint
+/// can be fetched up front from [`Builder::checkpoint`].
+///
+/// [`Builder::close_at`]: crate::Builder::close_at
+/// [`Builder::checkpoint`]: crate::Builder::checkpoint
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Checkpoint<P>(Rc<Cell<Inner<P>>>)
