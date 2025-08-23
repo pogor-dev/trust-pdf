@@ -17,7 +17,6 @@ autobenches = false
 # Non-local crates
 iai-callgrind = { workspace = true, optional = true }
 iai-callgrind-macros = { workspace = true, optional = true }
-rustc-hash.workspace = true
 
 [dev-dependencies]
 # Unit test dependencies go here (lightweight only)
