@@ -508,6 +508,17 @@ where
         Ok(id)
     }
 
+    // pub fn open_token(&mut self, value: T, len: F::Length) -> Result<F::Pointer, Error<F::Error>> {}
+
+    // pub fn open_token_with(
+    //     &mut self,
+    //     value: T,
+    //     span: Span<F::Index>,
+    // ) -> Result<F::Pointer, Error<F::Error>> {
+    // }
+
+    // pub fn close_token(&mut self) -> Result<(), Error<F::Error>> {}
+
     /// Declare a token with the specified `value` and an empty length.
     ///
     /// A token is always a terminating element without children.

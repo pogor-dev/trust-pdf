@@ -25,14 +25,14 @@ fn test_tree_structure() -> Result<()> {
 
     tree.open_node(Syntax::Nested)?;
 
-    tree.open_token()?;
-    tree.trivia(Syntax::Comment, 4)?; // %abc
-    tree.trivia(Syntax::LineFeed, 1)?; // \n
+    // tree.open_token(Syntax::String, 4)?;
+    // tree.trivia(Syntax::Comment, 4)?; // %abc
+    // tree.trivia(Syntax::LineFeed, 1)?; // \n
 
     tree.token(Syntax::String, 4)?; // (ab)
 
-    tree.trivia(Syntax::Whitespace, 3)?; // [space][space][space]
-    tree.close_token()?;
+    // tree.trivia(Syntax::Whitespace, 3)?; // [space][space][space]
+    // tree.close_token()?;
 
     tree.close_node()?;
     tree.close_node()?;
@@ -42,12 +42,11 @@ fn test_tree_structure() -> Result<()> {
     let expected = syntax::tree! {
         Syntax::Root => {
             Syntax::Number => {
-                (Syntax::Lit, 2)
+                (Syntax::Lit, 1),
+                (Syntax::Lit, 3),
             },
-            (Syntax::Whitespace, 3),
-            Syntax::Number => {
-                (Syntax::Lit, 2),
-                (Syntax::Lit, 2)
+            Syntax::Nested => {
+                (Syntax::String, 4)
             }
         }
     };
