@@ -23,9 +23,6 @@ rustc-hash.workspace = true
 # Unit test dependencies go here (lightweight only)
 
 [features]
-default = ["alloc", "std"]
-alloc = []
-std = []
 # Feature flag for benchmark dependencies
 bench = ["dep:iai-callgrind", "dep:iai-callgrind-macros"]
 
