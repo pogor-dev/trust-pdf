@@ -17,6 +17,7 @@ lexer = { path = "./crates/lexer", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 
 # Non-local crates
+bumpalo = "3.19.0"
 cargo-deny = "0.18.3"
 countme = "3.0.1"
 hashbrown = "0.15.5"

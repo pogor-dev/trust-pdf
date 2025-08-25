@@ -15,6 +15,7 @@ autobenches = false
 # Local crates
 
 # Non-local crates
+bumpalo = { workspace = true }
 iai-callgrind = { workspace = true, optional = true }
 iai-callgrind-macros = { workspace = true, optional = true }
 
