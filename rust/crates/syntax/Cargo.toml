@@ -16,11 +16,13 @@ autobenches = false
 
 # Non-local crates
 bumpalo = { workspace = true }
+hashbrown = { workspace = true }
 iai-callgrind = { workspace = true, optional = true }
 iai-callgrind-macros = { workspace = true, optional = true }
+rustc-hash = { workspace = true }
 
 [dev-dependencies]
-# Unit test dependencies go here (lightweight only)
+rstest = { workspace = true }
 
 [features]
 # Feature flag for benchmark dependencies
