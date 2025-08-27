@@ -36,7 +36,7 @@ impl GreenNode for SyntaxToken<'_> {
 
     #[inline]
     fn full_text(&self) -> &[u8] {
-        &self.text
+        &self.text // TODO: review with trivia
     }
 
     #[inline]
