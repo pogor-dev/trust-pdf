@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use crate::{SyntaxKind, syntax_kind_facts};
+use crate::{GreenNode, SyntaxKind, syntax_kind_facts};
 
 pub struct SyntaxToken<'a> {
     kind: SyntaxKind,
@@ -21,20 +21,52 @@ impl<'a> SyntaxToken<'a> {
         let full_width = text.len();
         Self { kind, full_width, text }
     }
+}
 
+impl GreenNode for SyntaxToken<'_> {
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    fn kind(&self) -> SyntaxKind {
         self.kind
     }
 
     #[inline]
-    pub fn text(&self) -> &[u8] {
+    fn text(&self) -> &[u8] {
         &self.text
     }
 
     #[inline]
-    pub fn full_width(&self) -> usize {
+    fn full_text(&self) -> &[u8] {
+        &self.text
+    }
+
+    #[inline]
+    fn full_width(&self) -> usize {
         self.full_width
+    }
+
+    #[inline]
+    fn is_token(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn get_leading_trivia(&self) -> Option<&dyn GreenNode> {
+        todo!()
+    }
+
+    #[inline]
+    fn get_trailing_trivia(&self) -> Option<&dyn GreenNode> {
+        todo!()
+    }
+
+    #[inline]
+    fn get_leading_trivia_width(&self) -> usize {
+        todo!()
+    }
+
+    #[inline]
+    fn get_trailing_trivia_width(&self) -> usize {
+        todo!()
     }
 }
 

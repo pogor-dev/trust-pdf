@@ -4,6 +4,8 @@
 pub enum SyntaxKind {
     None = 0,
 
+    List = 1,
+
     // keywords
     TrueKeyword,
     FalseKeyword,
