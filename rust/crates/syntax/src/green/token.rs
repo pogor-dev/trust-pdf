@@ -1,26 +1,25 @@
-use crate::{SyntaxKind, syntax_kind_facts};
+use std::sync::LazyLock;
 
-const FIRST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::TrueKeyword;
-const LAST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::EndOfFileToken;
+use crate::{SyntaxKind, syntax_kind_facts};
 
 pub struct SyntaxToken<'a> {
     kind: SyntaxKind,
     full_width: usize,
-    // TODO: Consider using a more efficient representation
-    // TODO: arena maybe?
-    text: Option<&'a [u8]>,
+    text: &'a [u8],
 }
 
 impl<'a> SyntaxToken<'a> {
     #[inline]
-    pub fn new_by_kind(kind: SyntaxKind) -> Self {
+    pub fn new_with_kind(kind: SyntaxKind) -> Self {
         let text = syntax_kind_facts::get_text(kind);
         let full_width = text.len();
-        Self {
-            kind,
-            full_width,
-            text: Some(text),
-        }
+        Self { kind, full_width, text }
+    }
+
+    #[inline]
+    pub fn new_with_text(kind: SyntaxKind, text: &'a [u8]) -> Self {
+        let full_width = text.len();
+        Self { kind, full_width, text }
     }
 
     #[inline]
@@ -30,7 +29,7 @@ impl<'a> SyntaxToken<'a> {
 
     #[inline]
     pub fn text(&self) -> &[u8] {
-        self.text.unwrap_or(&[])
+        &self.text
     }
 
     #[inline]
@@ -38,6 +37,28 @@ impl<'a> SyntaxToken<'a> {
         self.full_width
     }
 }
+
+const FIRST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::TrueKeyword;
+const LAST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::EndOfFileToken;
+
+static S_TOKENS_WITH_NO_TRIVIA: LazyLock<Vec<SyntaxToken<'static>>> = LazyLock::new(|| {
+    let size = (LAST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) - (FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) + 1;
+    let mut tokens_no_trivia = Vec::with_capacity(size);
+
+    for kind_value in FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as u16..=LAST_TOKEN_WITH_WELL_KNOWN_TEXT as u16 {
+        // Safe conversion from u16 to SyntaxKind since we're iterating within the valid range
+        let kind = unsafe { std::mem::transmute::<u16, SyntaxKind>(kind_value) };
+        tokens_no_trivia.push(SyntaxToken::new_with_kind(kind));
+    }
+
+    tokens_no_trivia
+});
+
+// static S_TOKENS_WITH_ELASTIC_TRIVIA: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
+// static S_TOKENS_WITH_SINGLE_TRAILING_SPACE: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
+// static S_TOKENS_WITH_SINGLE_TRAILING_CRLF: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
+// static S_MISSING_TOKENS_WITH_NO_TRIVIA: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
+// static S_MISSING_IDENTIFIER_TOKEN: LazyLock<SyntaxToken> = LazyLock::new();
 
 #[cfg(test)]
 mod tests {
@@ -140,16 +161,16 @@ mod tests {
     #[case::name_literal_token(SyntaxKind::NameLiteralToken, b"")]
     #[case::string_literal_token(SyntaxKind::StringLiteralToken, b"")]
     #[case::hex_string_literal_token(SyntaxKind::HexStringLiteralToken, b"")]
-    fn test_new_by_kind_should_get_interned_text(#[case] kind: SyntaxKind, #[case] expected_text: &[u8]) {
-        let token = SyntaxToken::new_by_kind(kind);
+    fn test_new_with_kind_should_get_interned_text(#[case] kind: SyntaxKind, #[case] expected_text: &[u8]) {
+        let token = SyntaxToken::new_with_kind(kind);
         assert_eq!(token.kind(), kind);
         assert_eq!(token.text(), expected_text);
         assert_eq!(token.full_width(), expected_text.len());
     }
 
     #[test]
-    fn test_new_by_kind_when_call_multiple_times_text_should_return_same_slice() {
-        let token = SyntaxToken::new_by_kind(SyntaxKind::TrueKeyword);
+    fn test_new_with_kind_when_call_multiple_times_text_should_return_same_slice() {
+        let token = SyntaxToken::new_with_kind(SyntaxKind::TrueKeyword);
         let text1 = token.text();
         let text2 = token.text();
         assert_eq!(text1, text2);
