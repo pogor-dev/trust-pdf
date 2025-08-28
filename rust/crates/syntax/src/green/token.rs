@@ -1,42 +1,61 @@
 use std::{fmt, io, sync::LazyLock};
 
-use crate::{GreenNode, SyntaxKind, syntax_kind_facts};
+use crate::{GreenNode, SyntaxKind, TokenText, green::trivia::SyntaxTrivia, syntax_kind_facts};
 
-pub struct SyntaxToken<'a> {
+pub struct SyntaxToken<T: GreenNode> {
     kind: SyntaxKind,
     full_width: usize,
-    text: &'a [u8],
+    text: TokenText,
+    leading_trivia: Option<T>,
+    trailing_trivia: Option<T>,
 }
 
-impl<'a> SyntaxToken<'a> {
+impl<T: GreenNode> SyntaxToken<T> {
     #[inline]
     pub fn new_with_kind(kind: SyntaxKind) -> Self {
         let text = syntax_kind_facts::get_text(kind);
+        let text = TokenText::Interned(text);
+
         let full_width = text.len();
-        Self { kind, full_width, text }
+        Self {
+            kind,
+            full_width,
+            text,
+            leading_trivia: None,
+            trailing_trivia: None,
+        }
     }
 
     #[inline]
-    pub fn new_with_text(kind: SyntaxKind, text: &'a [u8]) -> Self {
+    pub fn new_with_text(kind: SyntaxKind, text: Vec<u8>) -> Self {
         let full_width = text.len();
-        Self { kind, full_width, text }
+        let text = TokenText::Owned(text);
+        Self {
+            kind,
+            full_width,
+            text,
+            leading_trivia: None,
+            trailing_trivia: None,
+        }
     }
 }
 
-impl GreenNode for SyntaxToken<'_> {
+impl<T: GreenNode> GreenNode for SyntaxToken<T> {
     #[inline]
     fn kind(&self) -> SyntaxKind {
         self.kind
     }
 
     #[inline]
-    fn to_string(&self) -> &[u8] {
-        &self.text
+    fn to_string<GreenToken>(&self) -> Vec<u8> {
+        self.text.to_vec()
     }
 
     #[inline]
-    fn to_full_string(&self) -> &[u8] {
-        &self.text // TODO: review with trivia
+    fn to_full_string<GreenToken>(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        let _ = self.write_token_to::<Self, Vec<u8>>(&mut result, true, true);
+        result
     }
 
     #[inline]
@@ -50,38 +69,52 @@ impl GreenNode for SyntaxToken<'_> {
     }
 
     #[inline]
-    fn leading_trivia<GreenNode>(&self) -> Option<&GreenNode> {
-        todo!()
+    fn leading_trivia<U: GreenNode>(&self) -> Option<&U> {
+        // Safety: This is safe if T and U are the same type at runtime
+        // The caller is responsible for ensuring type compatibility
+        if let Some(leading) = &self.leading_trivia {
+            let ptr = leading as *const T as *const U;
+            return Some(unsafe { &*ptr });
+        } else {
+            None
+        }
     }
 
     #[inline]
-    fn trailing_trivia<GreenNode>(&self) -> Option<&GreenNode> {
-        todo!()
+    fn trailing_trivia<U: GreenNode>(&self) -> Option<&U> {
+        // Safety: This is safe if T and U are the same type at runtime
+        // The caller is responsible for ensuring type compatibility
+        if let Some(trailing) = &self.trailing_trivia {
+            let ptr = trailing as *const T as *const U;
+            return Some(unsafe { &*ptr });
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn leading_trivia_width(&self) -> usize {
-        todo!()
+        self.leading_trivia::<T>().map(|leading| leading.full_width()).unwrap_or(0)
     }
 
     #[inline]
     fn trailing_trivia_width(&self) -> usize {
-        todo!()
+        self.trailing_trivia::<T>().map(|trailing| trailing.full_width()).unwrap_or(0)
     }
 
     #[inline]
-    fn write_token_to<T: GreenNode, W: io::Write>(&self, writer: &mut W, leading: bool, trailing: bool) -> io::Result<()> {
+    fn write_token_to<U: GreenNode, W: io::Write>(&self, writer: &mut W, leading: bool, trailing: bool) -> io::Result<()> {
         if leading {
-            if let Some(trivia) = self.leading_trivia::<T>() {
-                writer.write_all(trivia.to_full_string())?;
+            if let Some(trivia) = self.leading_trivia::<U>() {
+                writer.write_all(&trivia.to_full_string::<U>())?;
             }
         }
 
-        writer.write_all(self.text)?;
+        writer.write_all(&self.text.as_slice())?;
 
         if trailing {
-            if let Some(trivia) = self.trailing_trivia::<T>() {
-                writer.write_all(trivia.to_full_string())?;
+            if let Some(trivia) = self.trailing_trivia::<U>() {
+                writer.write_all(&trivia.to_full_string::<U>())?;
             }
         }
 
@@ -89,52 +122,58 @@ impl GreenNode for SyntaxToken<'_> {
     }
 }
 
-impl Clone for SyntaxToken<'_> {
+impl<T: GreenNode> Clone for SyntaxToken<T> {
     fn clone(&self) -> Self {
         Self {
             kind: self.kind,
             full_width: self.full_width,
-            text: self.text,
+            text: self.text.clone(),
+            leading_trivia: self.leading_trivia.clone(),
+            trailing_trivia: self.trailing_trivia.clone(),
         }
     }
 }
 
-impl PartialEq for SyntaxToken<'_> {
+impl<T: GreenNode> PartialEq for SyntaxToken<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && self.full_width == other.full_width && self.text == other.text
+        self.kind == other.kind
+            && self.full_width == other.full_width
+            && self.text == other.text
+            && self.leading_trivia == other.leading_trivia
+            && self.trailing_trivia == other.trailing_trivia
     }
 }
 
-impl Eq for SyntaxToken<'_> {}
+impl<T: GreenNode> Eq for SyntaxToken<T> {}
 
-unsafe impl Send for SyntaxToken<'_> {}
-unsafe impl Sync for SyntaxToken<'_> {}
+unsafe impl<T: GreenNode> Send for SyntaxToken<T> {}
+unsafe impl<T: GreenNode> Sync for SyntaxToken<T> {}
 
-impl fmt::Debug for SyntaxToken<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<T: GreenNode> fmt::Debug for SyntaxToken<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SyntaxToken")
             .field("kind", &self.kind())
-            .field("full_text", &String::from_utf8_lossy(self.to_full_string()))
+            .field("full_text", &String::from_utf8_lossy(&self.to_full_string::<SyntaxToken<SyntaxTrivia>>()))
             .field("full_width", &self.full_width())
             .finish()
     }
 }
 
-const FIRST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::TrueKeyword;
-const LAST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::EndOfFileToken;
+// const FIRST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::TrueKeyword;
+// const LAST_TOKEN_WITH_WELL_KNOWN_TEXT: SyntaxKind = SyntaxKind::EndOfFileToken;
 
-static S_TOKENS_WITH_NO_TRIVIA: LazyLock<Vec<SyntaxToken<'static>>> = LazyLock::new(|| {
-    let size = (LAST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) - (FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) + 1;
-    let mut tokens_no_trivia = Vec::with_capacity(size);
+// static S_TOKENS_WITH_NO_TRIVIA: LazyLock<Vec<SyntaxToken>> = LazyLock::new(|| {
+//     let size = (LAST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) - (FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as usize) + 1;
+//     let mut tokens_no_trivia = Vec::with_capacity(size);
 
-    for kind_value in FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as u16..=LAST_TOKEN_WITH_WELL_KNOWN_TEXT as u16 {
-        // Safe conversion from u16 to SyntaxKind since we're iterating within the valid range
-        let kind = unsafe { std::mem::transmute::<u16, SyntaxKind>(kind_value) };
-        tokens_no_trivia.push(SyntaxToken::new_with_kind(kind));
-    }
+//     for kind_value in FIRST_TOKEN_WITH_WELL_KNOWN_TEXT as u16..=LAST_TOKEN_WITH_WELL_KNOWN_TEXT as u16 {
+//         // Safe conversion from u16 to SyntaxKind since we're iterating within the valid range
+//         let kind = unsafe { std::mem::transmute::<u16, SyntaxKind>(kind_value) };
+//         tokens_no_trivia.push(SyntaxToken::new_with_kind(kind));
+//     }
 
-    tokens_no_trivia
-});
+//     tokens_no_trivia
+// });
 
 // static S_TOKENS_WITH_ELASTIC_TRIVIA: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
 // static S_TOKENS_WITH_SINGLE_TRAILING_SPACE: LazyLock<Vec<Option<SyntaxToken>>> = LazyLock::new();
@@ -144,6 +183,8 @@ static S_TOKENS_WITH_NO_TRIVIA: LazyLock<Vec<SyntaxToken<'static>>> = LazyLock::
 
 #[cfg(test)]
 mod tests {
+    use crate::green::trivia::SyntaxTrivia;
+
     use super::*;
     use rstest::*;
 
@@ -244,17 +285,17 @@ mod tests {
     #[case::string_literal_token(SyntaxKind::StringLiteralToken, b"")]
     #[case::hex_string_literal_token(SyntaxKind::HexStringLiteralToken, b"")]
     fn test_new_with_kind_should_get_interned_text(#[case] kind: SyntaxKind, #[case] expected_text: &[u8]) {
-        let token = SyntaxToken::new_with_kind(kind);
+        let token = SyntaxToken::<SyntaxTrivia>::new_with_kind(kind);
         assert_eq!(token.kind(), kind);
-        assert_eq!(token.to_string(), expected_text);
+        assert_eq!(token.to_string::<SyntaxToken<SyntaxTrivia>>(), expected_text);
         assert_eq!(token.full_width(), expected_text.len());
     }
 
     #[test]
     fn test_new_with_kind_when_call_multiple_times_text_should_return_same_slice() {
-        let token = SyntaxToken::new_with_kind(SyntaxKind::TrueKeyword);
-        let text1 = token.to_string();
-        let text2 = token.to_string();
+        let token = SyntaxToken::<SyntaxTrivia>::new_with_kind(SyntaxKind::TrueKeyword);
+        let text1 = token.to_string::<SyntaxToken<SyntaxTrivia>>();
+        let text2 = token.to_string::<SyntaxToken<SyntaxTrivia>>();
         assert_eq!(text1, text2);
     }
 }

@@ -5,9 +5,17 @@ use crate::SyntaxKind;
 pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     fn kind(&self) -> SyntaxKind;
 
-    fn to_string(&self) -> &[u8];
+    fn to_string<T: GreenNode>(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        let _ = self.write_to::<T, Vec<u8>>(&mut result, false, false);
+        result
+    }
 
-    fn to_full_string(&self) -> &[u8];
+    fn to_full_string<T: GreenNode>(&self) -> Vec<u8> {
+        let mut result = Vec::new();
+        let _ = self.write_to::<T, Vec<u8>>(&mut result, true, true);
+        result
+    }
 
     #[inline]
     fn width(&self) -> usize {
@@ -41,13 +49,37 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
         self.kind() == SyntaxKind::List
     }
 
-    fn leading_trivia<T: GreenNode>(&self) -> Option<&T>;
+    fn leading_trivia<T: GreenNode>(&self) -> Option<&T> {
+        None
+    }
 
-    fn trailing_trivia<T: GreenNode>(&self) -> Option<&T>;
+    fn trailing_trivia<T: GreenNode>(&self) -> Option<&T> {
+        None
+    }
 
-    fn leading_trivia_width(&self) -> usize;
+    fn leading_trivia_width(&self) -> usize {
+        if self.full_width() != 0 {
+            if let Some(first_terminal) = self.get_first_terminal() {
+                first_terminal.leading_trivia_width()
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    }
 
-    fn trailing_trivia_width(&self) -> usize;
+    fn trailing_trivia_width(&self) -> usize {
+        if self.full_width() != 0 {
+            if let Some(last_terminal) = self.get_last_terminal() {
+                last_terminal.trailing_trivia_width()
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    }
 
     #[inline]
     fn has_leading_trivia(&self) -> bool {
@@ -65,7 +97,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     }
 
     #[inline]
-    fn write_trivia_to<W: io::Write>(&self, _writer: &mut W) -> io::Result<()> {
+    fn write_trivia_to<T: GreenNode, W: io::Write>(&self, _writer: &mut W) -> io::Result<()> {
         Ok(())
     }
 
@@ -84,7 +116,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
             }
 
             if current_node.is_trivia() {
-                current_node.write_trivia_to::<W>(writer)?;
+                current_node.write_trivia_to::<T, W>(writer)?;
                 continue;
             }
 
@@ -130,5 +162,62 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
             }
         }
         0 // If no children found
+    }
+
+    // Default implementations for terminal finding
+    fn get_first_terminal(&self) -> Option<&Self> {
+        let mut node: Option<&Self> = Some(self);
+
+        loop {
+            let current = node?;
+
+            // Find first non-null child
+            let mut first_child = None;
+            let slot_count = current.slot_count();
+
+            for i in 0..slot_count {
+                if let Some(child) = current.slot::<Self>(i) {
+                    first_child = Some(child);
+                    break;
+                }
+            }
+
+            node = first_child;
+
+            // Optimization: if no children or reached terminal, stop
+            if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
+                break;
+            }
+        }
+
+        node
+    }
+
+    fn get_last_terminal(&self) -> Option<&Self> {
+        let mut node: Option<&Self> = Some(self);
+
+        loop {
+            let current = node?;
+
+            // Find last non-null child
+            let mut last_child = None;
+            let slot_count = current.slot_count();
+
+            for i in (0..slot_count).rev() {
+                if let Some(child) = current.slot::<Self>(i) {
+                    last_child = Some(child);
+                    break;
+                }
+            }
+
+            node = last_child;
+
+            // Optimization: if no children or reached terminal, stop
+            if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
+                break;
+            }
+        }
+
+        node
     }
 }
