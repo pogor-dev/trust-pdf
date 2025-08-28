@@ -17,7 +17,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     fn full_width(&self) -> usize;
 
     #[inline]
-    fn get_slot<T: GreenNode>(&self, _index: usize) -> Option<&T> {
+    fn slot<T: GreenNode>(&self, _index: usize) -> Option<&T> {
         None
     }
 
@@ -93,7 +93,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
 
             // Push children in reverse order (since stack is LIFO)
             for i in (first_index..=last_index).rev() {
-                if let Some(child) = current_node.get_slot::<Self>(i) {
+                if let Some(child) = current_node.slot::<Self>(i) {
                     let first = i == first_index;
                     let last = i == last_index;
 
@@ -113,7 +113,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
         Self: Sized,
     {
         for i in 0..node.slot_count() {
-            if node.get_slot::<Self>(i).is_some() {
+            if node.slot::<Self>(i).is_some() {
                 return i;
             }
         }
@@ -125,7 +125,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
         Self: Sized,
     {
         for i in (0..node.slot_count()).rev() {
-            if node.get_slot::<Self>(i).is_some() {
+            if node.slot::<Self>(i).is_some() {
                 return i;
             }
         }
