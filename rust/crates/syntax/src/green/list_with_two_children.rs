@@ -2,22 +2,22 @@ use std::fmt;
 
 use crate::{GreenNode, SyntaxKind, green::list::SyntaxList};
 
-pub struct SyntaxListWithTwoChildren<T: GreenNode> {
-    child0: T,
-    child1: T,
+pub struct SyntaxListWithTwoChildren {
+    child0: Box<dyn GreenNode>,
+    child1: Box<dyn GreenNode>,
     full_width: usize,
 }
 
-impl<T: GreenNode> SyntaxListWithTwoChildren<T> {
-    pub fn new(child0: T, child1: T) -> Self {
+impl SyntaxListWithTwoChildren {
+    pub fn new(child0: Box<dyn GreenNode>, child1: Box<dyn GreenNode>) -> Self {
         let full_width = child0.full_width() + child1.full_width();
         Self { child0, child1, full_width }
     }
 }
 
-impl<T: GreenNode> SyntaxList for SyntaxListWithTwoChildren<T> {}
+impl SyntaxList for SyntaxListWithTwoChildren {}
 
-impl<T: GreenNode> GreenNode for SyntaxListWithTwoChildren<T> {
+impl GreenNode for SyntaxListWithTwoChildren {
     fn kind(&self) -> SyntaxKind {
         <Self as SyntaxList>::kind(self)
     }
@@ -30,7 +30,7 @@ impl<T: GreenNode> GreenNode for SyntaxListWithTwoChildren<T> {
         2
     }
 
-    fn slot<U: GreenNode>(&self, index: usize) -> Option<&U> {
+    fn slot(&self, index: usize) -> Option<&U> {
         match index {
             0 => {
                 // Safety: This is safe if T and U are the same type at runtime
@@ -47,7 +47,7 @@ impl<T: GreenNode> GreenNode for SyntaxListWithTwoChildren<T> {
     }
 }
 
-impl<T: GreenNode> Clone for SyntaxListWithTwoChildren<T> {
+impl Clone for SyntaxListWithTwoChildren {
     fn clone(&self) -> Self {
         Self {
             child0: self.child0.clone(),
@@ -57,18 +57,18 @@ impl<T: GreenNode> Clone for SyntaxListWithTwoChildren<T> {
     }
 }
 
-impl<T: GreenNode> PartialEq for SyntaxListWithTwoChildren<T> {
+impl PartialEq for SyntaxListWithTwoChildren {
     fn eq(&self, other: &Self) -> bool {
         self.full_width == other.full_width && self.child0 == other.child0 && self.child1 == other.child1
     }
 }
 
-impl<T: GreenNode> Eq for SyntaxListWithTwoChildren<T> {}
+impl Eq for SyntaxListWithTwoChildren {}
 
-unsafe impl<T: GreenNode> Send for SyntaxListWithTwoChildren<T> {}
-unsafe impl<T: GreenNode> Sync for SyntaxListWithTwoChildren<T> {}
+unsafe impl Send for SyntaxListWithTwoChildren {}
+unsafe impl Sync for SyntaxListWithTwoChildren {}
 
-impl<T: GreenNode> fmt::Debug for SyntaxListWithTwoChildren<T> {
+impl fmt::Debug for SyntaxListWithTwoChildren {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyntaxListWithTwoChildren")
             .field("child0", &self.child0)
