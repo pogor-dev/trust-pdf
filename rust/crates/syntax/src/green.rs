@@ -20,6 +20,83 @@ pub enum ItemOrList<Item, List> {
     List(List),
 }
 
+impl<Item, List> ItemOrList<Item, List> {
+    fn get_first_non_null_child_index(node: &Self) -> u8 {
+        for i in 0..node.slot_count() {
+            if node.slot(i).is_some() {
+                return i;
+            }
+        }
+        0 // If no children found
+    }
+
+    fn get_last_non_null_child_index(node: &Self) -> u8 {
+        for i in (0..node.slot_count()).rev() {
+            if node.slot(i).is_some() {
+                return i;
+            }
+        }
+        0 // If no children found
+    }
+
+    // Default implementations for terminal finding
+    fn get_first_terminal(&self) -> Option<&Self::GreenNodeType> {
+        let mut node: Option<&Self::GreenNodeType> = Some(self);
+
+        loop {
+            let current = node?;
+
+            // Find first non-null child
+            let mut first_child = None;
+            let slot_count = current.slot_count();
+
+            for i in 0..slot_count {
+                if let Some(child) = current.slot(i) {
+                    first_child = Some(child);
+                    break;
+                }
+            }
+
+            node = first_child;
+
+            // Optimization: if no children or reached terminal, stop
+            if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
+                break;
+            }
+        }
+
+        node
+    }
+
+    fn get_last_terminal(&self) -> Option<&GreenToken<'a>> {
+        let mut node: Option<&Self> = Some(self);
+
+        loop {
+            let current = node?;
+
+            // Find last non-null child
+            let mut last_child = None;
+            let slot_count = current.slot_count();
+
+            for i in (0..slot_count).rev() {
+                if let Some(child) = current.slot(i) {
+                    last_child = Some(child);
+                    break;
+                }
+            }
+
+            node = last_child;
+
+            // Optimization: if no children or reached terminal, stop
+            if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
+                break;
+            }
+        }
+
+        node
+    }
+}
+
 impl<'a, Item, List> GreenNode<'a> for ItemOrList<Item, List>
 where
     Item: GreenNode<'a>,
