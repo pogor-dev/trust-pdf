@@ -1,22 +1,28 @@
-use std::ops::{Add, Sub};
+use std::{
+    borrow::Cow,
+    ops::{Add, Sub},
+};
 
-use crate::SyntaxKind;
+use crate::{GreenTrivia, SyntaxKind};
+
+pub(super) type Trivia<'a> = ItemOrList<GreenTrivia<'a>, GreenTrivia<'a>>; // TODO: list type
+pub(super) type Node = ItemOrList<GreenElement, GreenElement>;
 
 /// Immutable syntax tree node representing PDF syntactic elements with full fidelity
 ///
 /// Green nodes capture the complete structure of PDF files including semantically
 /// significant whitespace required by ISO 32000-2. This enables round-trip editing
 /// and incremental parsing while preserving PDF format correctness.
-pub trait GreenNode<Size = u64>
+pub trait GreenNode<'a, Size = u64>
 where
     // we can use arithmetic operations on Size
     Size: Copy + Add<Output = Size> + Sub<Output = Size> + Eq + Default,
 {
     fn kind(&self) -> SyntaxKind;
 
-    // fn to_string(&self) -> Cow<'a, [u8]>;
+    fn to_string(&self) -> Cow<'a, [u8]>;
 
-    // fn to_full_string(&self) -> Cow<'a, [u8]>;
+    fn to_full_string(&self) -> Cow<'a, [u8]>;
 
     #[inline]
     fn width(&self) -> Size {
@@ -25,7 +31,9 @@ where
 
     fn full_width(&self) -> Size;
 
-    // fn slot(&self, _index: Size) -> Option<&Self::GreenNodeType>;
+    /// Get the child node at the given slot index, if it exists.
+    /// For now is supposed we should not exceed 256 (1 byte) slots.
+    fn slot(&self, index: u8) -> Option<Node>;
 
     fn slot_count(&self) -> Size;
 
@@ -44,9 +52,9 @@ where
         self.kind() == SyntaxKind::List
     }
 
-    // fn leading_trivia(&self) -> Option<&Self::GreenNodeType>;
+    fn leading_trivia(&'_ self) -> Option<Trivia<'_>>;
 
-    // fn trailing_trivia(&self) -> Option<&Self::GreenNodeType>;
+    fn trailing_trivia(&'_ self) -> Option<Trivia<'_>>;
 
     fn leading_trivia_width(&self) -> Size;
 
@@ -72,6 +80,17 @@ where
     // fn get_last_non_null_child_index(node: &Self) -> Size;
 
     // // Default implementations for terminal finding
-    // fn get_first_terminal(&self) -> Option<&Self::GreenNodeType>;
-    // fn get_last_terminal(&self) -> Option<&Self::GreenNodeType>;
+    // fn get_first_terminal(&self) -> Option<GreenElement>;
+    // fn get_last_terminal(&self) -> Option<GreenElement>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ItemOrList<Item, List> {
+    Item(Item),
+    List(List),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GreenElement {
+    Node1,
 }
