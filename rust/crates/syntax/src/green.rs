@@ -13,11 +13,7 @@ type Node<'a> = ItemOrList<GreenElement<'a>, GreenList<'a>>;
 type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, Token<'a>>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ItemOrList<Item, List>
-where
-    Item: for<'a> GreenNode<'a>,
-    List: for<'a> GreenNode<'a>,
-{
+pub enum ItemOrList<Item, List> {
     /// Single syntax element
     Item(Item),
     /// Collection of syntax elements
@@ -26,8 +22,8 @@ where
 
 impl<'a, Item, List> GreenNode<'a> for ItemOrList<Item, List>
 where
-    Item: for<'b> GreenNode<'b>,
-    List: for<'b> GreenNode<'b>,
+    Item: GreenNode<'a>,
+    List: GreenNode<'a>,
 {
     #[inline]
     fn kind(&self) -> crate::SyntaxKind {
@@ -99,11 +95,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EitherNodeOrToken<Node, Token>
-where
-    Node: for<'a> GreenNode<'a>,
-    Token: for<'a> GreenNode<'a>,
-{
+pub enum EitherNodeOrToken<Node, Token> {
     /// Leaf token (keywords, literals, operators, names)
     Token(Token),
     /// Structural node with potential children (objects, dictionaries, arrays)
@@ -112,8 +104,8 @@ where
 
 impl<'a, Node, Token> GreenNode<'a> for EitherNodeOrToken<Node, Token>
 where
-    Node: for<'b> GreenNode<'b>,
-    Token: for<'b> GreenNode<'b>,
+    Node: GreenNode<'a>,
+    Token: GreenNode<'a>,
 {
     #[inline]
     fn kind(&self) -> crate::SyntaxKind {

@@ -40,15 +40,15 @@ impl<'a> GreenNode<'a> for SyntaxListWithTwoChildren<'a> {
         todo!()
     }
 
-    fn slot(&self, _index: u8) -> Option<NodeOrToken> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
-    fn leading_trivia(&'_ self) -> Option<super::Trivia<'_>> {
+    fn leading_trivia(&self) -> Option<super::Trivia<'a>> {
         todo!()
     }
 
-    fn trailing_trivia(&'_ self) -> Option<super::Trivia<'_>> {
+    fn trailing_trivia(&self) -> Option<super::Trivia<'a>> {
         todo!()
     }
 

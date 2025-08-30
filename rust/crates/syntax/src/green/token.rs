@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, fmt, hash};
 
 use crate::{
     GreenNode, SyntaxKind,
@@ -68,7 +68,7 @@ impl<'a> GreenNode<'a> for GreenToken<'a> {
     }
 
     #[inline]
-    fn slot(&'_ self, _index: u8) -> Option<NodeOrToken<'_>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
@@ -78,23 +78,25 @@ impl<'a> GreenNode<'a> for GreenToken<'a> {
     }
 
     #[inline]
-    fn leading_trivia(&'_ self) -> Option<Trivia<'_>> {
+    fn leading_trivia(&self) -> Option<Trivia<'a>> {
         self.leading_trivia.cloned()
     }
 
     #[inline]
-    fn trailing_trivia(&'_ self) -> Option<Trivia<'_>> {
+    fn trailing_trivia(&self) -> Option<Trivia<'a>> {
         self.trailing_trivia.cloned()
     }
 
     #[inline]
     fn leading_trivia_width(&self) -> u64 {
-        self.leading_trivia.full_width()
+        self.leading_trivia
+            .map(|trivia: &'a super::ItemOrList<super::GreenTrivia<'a>, super::GreenList<'a>>| trivia.full_width())
+            .unwrap_or_default()
     }
 
     #[inline]
     fn trailing_trivia_width(&self) -> u64 {
-        self.trailing_trivia.full_width()
+        self.trailing_trivia.map(|trivia| trivia.full_width()).unwrap_or_default()
     }
 }
 
@@ -107,6 +109,14 @@ impl Clone for GreenToken<'_> {
             leading_trivia: self.leading_trivia.clone(),
             trailing_trivia: self.trailing_trivia.clone(),
         }
+    }
+}
+
+impl hash::Hash for GreenToken<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.full_width().hash(state);
+        self.to_full_string().hash(state);
     }
 }
 

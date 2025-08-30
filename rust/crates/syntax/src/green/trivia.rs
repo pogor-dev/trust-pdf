@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, fmt, hash};
 
 use crate::{
     GreenNode, SyntaxKind,
@@ -64,7 +64,7 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
     }
 
     #[inline]
-    fn slot(&self, _index: u8) -> Option<NodeOrToken<'_>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         None
     }
 
@@ -86,6 +86,14 @@ impl Clone for GreenTrivia<'_> {
             width: self.width,
             text: self.text.clone(),
         }
+    }
+}
+
+impl hash::Hash for GreenTrivia<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+        self.width.hash(state);
+        self.text.hash(state);
     }
 }
 
