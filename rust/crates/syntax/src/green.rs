@@ -20,8 +20,12 @@ pub enum ItemOrList<Item, List> {
     List(List),
 }
 
-impl<Item, List> ItemOrList<Item, List> {
-    fn get_first_non_null_child_index(node: &Self) -> u8 {
+impl<'a, Item, List> ItemOrList<Item, List>
+where
+    Item: GreenNode<'a>,
+    List: GreenNode<'a>,
+{
+    pub fn get_first_non_null_child_index(node: &Self) -> u8 {
         for i in 0..node.slot_count() {
             if node.slot(i).is_some() {
                 return i;
@@ -30,7 +34,7 @@ impl<Item, List> ItemOrList<Item, List> {
         0 // If no children found
     }
 
-    fn get_last_non_null_child_index(node: &Self) -> u8 {
+    pub fn get_last_non_null_child_index(node: &Self) -> u8 {
         for i in (0..node.slot_count()).rev() {
             if node.slot(i).is_some() {
                 return i;
@@ -39,9 +43,8 @@ impl<Item, List> ItemOrList<Item, List> {
         0 // If no children found
     }
 
-    // Default implementations for terminal finding
-    fn get_first_terminal(&self) -> Option<&Self::GreenNodeType> {
-        let mut node: Option<&Self::GreenNodeType> = Some(self);
+    pub fn get_first_terminal(&self) -> Option<&GreenToken<'a>> {
+        let mut node: Option<&ItemOrList<Item, List>> = Some(self);
 
         loop {
             let current = node?;
@@ -58,34 +61,6 @@ impl<Item, List> ItemOrList<Item, List> {
             }
 
             node = first_child;
-
-            // Optimization: if no children or reached terminal, stop
-            if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
-                break;
-            }
-        }
-
-        node
-    }
-
-    fn get_last_terminal(&self) -> Option<&GreenToken<'a>> {
-        let mut node: Option<&Self> = Some(self);
-
-        loop {
-            let current = node?;
-
-            // Find last non-null child
-            let mut last_child = None;
-            let slot_count = current.slot_count();
-
-            for i in (0..slot_count).rev() {
-                if let Some(child) = current.slot(i) {
-                    last_child = Some(child);
-                    break;
-                }
-            }
-
-            node = last_child;
 
             // Optimization: if no children or reached terminal, stop
             if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
@@ -141,7 +116,7 @@ where
     }
 
     #[inline]
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
@@ -213,7 +188,7 @@ where
     }
 
     #[inline]
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
@@ -264,7 +239,7 @@ impl<'a> GreenNode<'a> for GreenElement<'a> {
         todo!()
     }
 
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
@@ -311,7 +286,7 @@ impl<'a> GreenNode<'a> for GreenList<'a> {
         todo!()
     }
 
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
