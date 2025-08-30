@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt};
 
 use crate::{
     GreenNode, SyntaxKind,
-    green::node::{Node, Trivia},
+    green::{NodeOrToken, Trivia},
 };
 
 pub struct GreenTrivia<'a> {
@@ -44,7 +44,7 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
     }
 
     #[inline]
-    fn slot_count(&self) -> u16 {
+    fn slot_count(&self) -> u8 {
         0
     }
 
@@ -64,7 +64,7 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
     }
 
     #[inline]
-    fn slot(&self, _index: u8) -> Option<Node> {
+    fn slot(&'_ self, _index: u8) -> Option<NodeOrToken<'_>> {
         None
     }
 

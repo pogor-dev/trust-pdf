@@ -3,10 +3,10 @@ use std::{
     ops::{Add, Sub},
 };
 
-use crate::{GreenTrivia, SyntaxKind};
-
-pub(super) type Trivia<'a> = ItemOrList<GreenTrivia<'a>, GreenTrivia<'a>>; // TODO: list type
-pub(super) type Node = ItemOrList<GreenElement, GreenElement>;
+use crate::{
+    SyntaxKind,
+    green::{NodeOrToken, Trivia},
+};
 
 /// Immutable syntax tree node representing PDF syntactic elements with full fidelity
 ///
@@ -32,10 +32,12 @@ where
     fn full_width(&self) -> Size;
 
     /// Get the child node at the given slot index, if it exists.
-    /// For now is supposed we should not exceed 256 (1 byte) slots.
-    fn slot(&self, index: u8) -> Option<Node>;
+    /// We expect up to 256 (1 byte) slots.
+    fn slot(&self, index: u8) -> Option<NodeOrToken>;
 
-    fn slot_count(&self) -> Size;
+    /// Get the number of child slots this node has.
+    /// We expect up to 256 (1 byte) slots.
+    fn slot_count(&self) -> u8;
 
     #[inline]
     fn is_token(&self) -> bool {
@@ -82,15 +84,4 @@ where
     // // Default implementations for terminal finding
     // fn get_first_terminal(&self) -> Option<GreenElement>;
     // fn get_last_terminal(&self) -> Option<GreenElement>;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ItemOrList<Item, List> {
-    Item(Item),
-    List(List),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GreenElement {
-    Node1,
 }
