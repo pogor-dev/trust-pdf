@@ -1,26 +1,22 @@
-use std::{fmt, io};
+use std::{borrow::Cow, fmt, io};
 
-use crate::{GreenNode, SyntaxKind, TokenText};
+use crate::{GreenNode, SyntaxKind};
 
-pub struct SyntaxTrivia {
+pub struct SyntaxTrivia<'a> {
     kind: SyntaxKind,
     full_width: usize,
-    text: TokenText,
+    text: Cow<'a, [u8]>,
 }
 
-impl SyntaxTrivia {
+impl<'a> SyntaxTrivia<'a> {
     #[inline]
-    pub fn new_with_text(kind: SyntaxKind, text: Vec<u8>) -> Self {
+    pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
         let full_width = text.len();
-        Self {
-            kind,
-            full_width,
-            text: TokenText::Owned(text),
-        }
+        Self { kind, full_width, text }
     }
 }
 
-impl GreenNode for SyntaxTrivia {
+impl<'a> GreenNode for SyntaxTrivia<'a> {
     type GreenNodeType = dyn GreenNode;
 
     #[inline]
@@ -29,13 +25,13 @@ impl GreenNode for SyntaxTrivia {
     }
 
     #[inline]
-    fn to_string(&self) -> Vec<u8> {
-        self.text.to_vec()
+    fn to_string(&self) -> Cow<'a, [u8]> {
+        self.text.clone()
     }
 
     #[inline]
-    fn to_full_string(&self) -> Vec<u8> {
-        self.text.to_vec()
+    fn to_full_string(&self) -> Cow<'a, [u8]> {
+        self.text.clone()
     }
 
     #[inline]
@@ -105,7 +101,7 @@ impl GreenNode for SyntaxTrivia {
     fn write_to<W: io::Write>(&self, writer: &mut W, leading: bool, trailing: bool) -> io::Result<()>
     where
         Self: Sized,
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         // Use explicit stack to avoid stack overflow on deeply nested structures
         let mut stack: Vec<(&Self, bool, bool)> = Vec::new();
@@ -168,7 +164,7 @@ impl GreenNode for SyntaxTrivia {
 
     fn get_first_terminal(&self) -> Option<&Self::GreenNodeType>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut node: Option<&Self::GreenNodeType> = Some(self);
 
@@ -199,7 +195,7 @@ impl GreenNode for SyntaxTrivia {
 
     fn get_last_terminal(&self) -> Option<&Self::GreenNodeType>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut node: Option<&Self::GreenNodeType> = Some(self);
 
@@ -229,7 +225,7 @@ impl GreenNode for SyntaxTrivia {
     }
 }
 
-impl Clone for SyntaxTrivia {
+impl Clone for SyntaxTrivia<'_> {
     fn clone(&self) -> Self {
         Self {
             kind: self.kind,
@@ -239,18 +235,18 @@ impl Clone for SyntaxTrivia {
     }
 }
 
-impl PartialEq for SyntaxTrivia {
+impl PartialEq for SyntaxTrivia<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind && self.full_width == other.full_width && self.text == other.text
     }
 }
 
-impl Eq for SyntaxTrivia {}
+impl Eq for SyntaxTrivia<'_> {}
 
-unsafe impl Send for SyntaxTrivia {}
-unsafe impl Sync for SyntaxTrivia {}
+unsafe impl Send for SyntaxTrivia<'_> {}
+unsafe impl Sync for SyntaxTrivia<'_> {}
 
-impl fmt::Debug for SyntaxTrivia {
+impl fmt::Debug for SyntaxTrivia<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SyntaxTrivia")
             .field("kind", &self.kind())
@@ -270,7 +266,7 @@ mod tests {
     #[case::comment(SyntaxKind::CommentTrivia, b"% Comment 1")]
     #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n")]
     fn test_to_string(#[case] kind: SyntaxKind, #[case] text: &[u8]) {
-        let token = SyntaxTrivia::new_with_text(kind, text.to_vec());
+        let token = SyntaxTrivia::new_with_text(kind, text.into());
         assert_eq!(token.to_string(), text);
         assert_eq!(token.to_full_string(), text);
     }
@@ -280,32 +276,32 @@ mod tests {
     #[case::comment(SyntaxKind::CommentTrivia, b"% Comment 1")]
     #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n")]
     fn test_width(#[case] kind: SyntaxKind, #[case] text: &[u8]) {
-        let token = SyntaxTrivia::new_with_text(kind, text.to_vec());
+        let token = SyntaxTrivia::new_with_text(kind, text.into());
         assert_eq!(token.width(), text.len());
         assert_eq!(token.full_width(), text.len());
     }
 
     #[rstest]
     fn test_is_trivia() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert!(token.is_trivia());
     }
 
     #[rstest]
     fn test_is_not_token() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert!(!token.is_token());
     }
 
     #[rstest]
     fn test_is_not_list() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert!(!token.is_list());
     }
 
     #[rstest]
     fn test_no_nested_trivia() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert!(!token.has_leading_trivia());
         assert!(!token.has_trailing_trivia());
         assert_eq!(token.leading_trivia_width(), 0);
@@ -319,19 +315,19 @@ mod tests {
     #[case(1)]
     #[case(2)]
     fn test_slot_with_any_index_expect_none(#[case] index: usize) {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert_eq!(token.slot(index), None);
     }
 
     #[rstest]
     fn test_slot_count_expect_zero() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         assert_eq!(token.slot_count(), 0);
     }
 
     #[rstest]
     fn test_clone() {
-        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".to_vec());
+        let token = SyntaxTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
         let cloned = token.clone();
         assert_eq!(token, cloned);
     }
@@ -342,8 +338,8 @@ mod tests {
     #[case::different_kind_same_text(SyntaxKind::WhitespaceTrivia, SyntaxKind::CommentTrivia, b" ", b" ", false)]
     #[case::different_kind_different_text(SyntaxKind::WhitespaceTrivia, SyntaxKind::CommentTrivia, b" ", b"  ", false)]
     fn test_eq(#[case] kind: SyntaxKind, #[case] expected_kind: SyntaxKind, #[case] text: &[u8], #[case] expected_text: &[u8], #[case] expected: bool) {
-        let token = SyntaxTrivia::new_with_text(kind, text.to_vec());
-        let other = SyntaxTrivia::new_with_text(expected_kind, expected_text.to_vec());
+        let token = SyntaxTrivia::new_with_text(kind, text.into());
+        let other = SyntaxTrivia::new_with_text(expected_kind, expected_text.into());
         assert_eq!(token == other, expected);
     }
 
@@ -356,7 +352,7 @@ mod tests {
     )]
     #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n", "SyntaxTrivia { kind: EndOfLineTrivia, full_width: 2, text: \"\\r\\n\" }")]
     fn test_debug(#[case] kind: SyntaxKind, #[case] text: &[u8], #[case] expected: &str) {
-        let token = SyntaxTrivia::new_with_text(kind, text.to_vec());
+        let token = SyntaxTrivia::new_with_text(kind, text.into());
         assert_eq!(format!("{:?}", token), expected);
     }
 }

@@ -1,35 +1,33 @@
-use std::{fmt, io, sync::LazyLock};
+use std::{borrow::Cow, fmt, io};
 
-use crate::{GreenNode, SyntaxKind, TokenText, green::trivia::SyntaxTrivia, syntax_kind_facts};
+use crate::{GreenNode, SyntaxKind, green::trivia::SyntaxTrivia, syntax_kind_facts};
 
-pub struct SyntaxToken<T: GreenNode> {
+pub struct SyntaxToken<'a, T: GreenNode> {
     kind: SyntaxKind,
     full_width: usize,
-    text: TokenText,
+    text: Cow<'a, [u8]>,
     leading_trivia: Option<T>,
     trailing_trivia: Option<T>,
 }
 
-impl<T: GreenNode> SyntaxToken<T> {
+impl<'a, T: GreenNode> SyntaxToken<'a, T> {
     #[inline]
     pub fn new_with_kind(kind: SyntaxKind) -> Self {
         let text = syntax_kind_facts::get_text(kind);
-        let text = TokenText::Interned(text);
 
         let full_width = text.len();
         Self {
             kind,
             full_width,
-            text,
+            text: text.into(),
             leading_trivia: None,
             trailing_trivia: None,
         }
     }
 
     #[inline]
-    pub fn new_with_text(kind: SyntaxKind, text: Vec<u8>) -> Self {
+    pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
         let full_width = text.len();
-        let text = TokenText::Owned(text);
         Self {
             kind,
             full_width,
@@ -40,22 +38,24 @@ impl<T: GreenNode> SyntaxToken<T> {
     }
 }
 
-impl<T: GreenNode> GreenNode for SyntaxToken<T> {
+impl<'a, T: GreenNode> GreenNode for SyntaxToken<'a, T> {
+    type GreenNodeType = dyn GreenNode;
+
     #[inline]
     fn kind(&self) -> SyntaxKind {
         self.kind
     }
 
     #[inline]
-    fn to_string<GreenToken>(&self) -> Vec<u8> {
-        self.text.to_vec()
+    fn to_string<'a>(&self) -> Cow<'a, [u8]> {
+        self.text.clone()
     }
 
     #[inline]
-    fn to_full_string<GreenToken>(&self) -> Vec<u8> {
+    fn to_full_string<'a, GreenToken>(&self) -> Cow<'a, [u8]> {
         let mut result = Vec::new();
         let _ = self.write_token_to::<Self, Vec<u8>>(&mut result, true, true);
-        result
+        result.into()
     }
 
     #[inline]

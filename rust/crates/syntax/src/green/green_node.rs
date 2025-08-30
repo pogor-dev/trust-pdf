@@ -1,34 +1,34 @@
-use std::{fmt, io};
+use std::{borrow::Cow, fmt, io};
 
 use crate::SyntaxKind;
 
-pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
+pub trait GreenNode<'a>: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     type GreenNodeType: GreenNode;
 
     fn kind(&self) -> SyntaxKind;
 
-    fn to_string(&self) -> Vec<u8>
+    fn to_string(&self) -> Cow<'a, [u8]>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut result = Vec::new();
         let _ = self.write_to(&mut result, false, false);
-        result
+        result.into()
     }
 
-    fn to_full_string(&self) -> Vec<u8>
+    fn to_full_string(&self) -> Cow<'a, [u8]>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut result = Vec::new();
         let _ = self.write_to(&mut result, true, true);
-        result
+        result.into()
     }
 
     #[inline]
     fn width(&self) -> usize
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         self.full_width() - self.leading_trivia_width() - self.trailing_trivia_width()
     }
@@ -70,7 +70,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
 
     fn leading_trivia_width(&self) -> usize
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         if self.full_width() != 0 {
             self.get_first_terminal()
@@ -83,7 +83,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
 
     fn trailing_trivia_width(&self) -> usize
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         if self.full_width() != 0 {
             self.get_last_terminal().map(|last_terminal| last_terminal.trailing_trivia_width()).unwrap_or(0)
@@ -95,7 +95,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     #[inline]
     fn has_leading_trivia(&self) -> bool
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         self.leading_trivia_width() != 0
     }
@@ -103,7 +103,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     #[inline]
     fn has_trailing_trivia(&self) -> bool
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         self.trailing_trivia_width() != 0
     }
@@ -121,7 +121,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     fn write_to<W: io::Write>(&self, writer: &mut W, leading: bool, trailing: bool) -> io::Result<()>
     where
         Self: Sized,
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         // Use explicit stack to avoid stack overflow on deeply nested structures
         let mut stack: Vec<(&Self, bool, bool)> = Vec::new();
@@ -185,7 +185,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
     // Default implementations for terminal finding
     fn get_first_terminal(&self) -> Option<&Self::GreenNodeType>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut node: Option<&Self::GreenNodeType> = Some(self);
 
@@ -216,7 +216,7 @@ pub trait GreenNode: fmt::Debug + Eq + PartialEq + Clone + Send + Sync {
 
     fn get_last_terminal(&self) -> Option<&Self::GreenNodeType>
     where
-        Self: GreenNode<GreenNodeType = Self>,
+        Self: GreenNode<'a>,
     {
         let mut node: Option<&Self::GreenNodeType> = Some(self);
 
