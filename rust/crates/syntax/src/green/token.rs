@@ -1,24 +1,27 @@
 use std::{borrow::Cow, fmt};
 
-use crate::{GreenNode, SyntaxKind, green::Trivia, syntax_kind_facts};
+use crate::{
+    GreenNode, SyntaxKind,
+    green::{NodeOrToken, Trivia},
+    syntax_kind_facts,
+};
 
 pub struct GreenToken<'a> {
     kind: SyntaxKind,
-    full_width: usize,
+    width: usize,
     text: Cow<'a, [u8]>,
-    leading_trivia: Option<Trivia<'a>>,
-    trailing_trivia: Option<Trivia<'a>>,
+    leading_trivia: Option<&'a Trivia<'a>>,
+    trailing_trivia: Option<&'a Trivia<'a>>,
 }
 
 impl<'a> GreenToken<'a> {
     #[inline]
     pub fn new_with_kind(kind: SyntaxKind) -> Self {
         let text = syntax_kind_facts::get_text(kind);
-
-        let full_width = text.len();
+        let width = text.len();
         Self {
             kind,
-            full_width,
+            width,
             text: text.into(),
             leading_trivia: None,
             trailing_trivia: None,
@@ -27,10 +30,10 @@ impl<'a> GreenToken<'a> {
 
     #[inline]
     pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
-        let full_width = text.len();
+        let width = text.len();
         Self {
             kind,
-            full_width,
+            width,
             text,
             leading_trivia: None,
             trailing_trivia: None,
@@ -39,44 +42,59 @@ impl<'a> GreenToken<'a> {
 }
 
 impl<'a> GreenNode<'a> for GreenToken<'a> {
+    #[inline]
     fn kind(&self) -> SyntaxKind {
-        todo!()
+        self.kind
     }
 
+    #[inline]
     fn to_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        self.text.clone()
     }
 
+    #[inline]
     fn to_full_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        self.text.clone() // TODO: Trivia
     }
 
+    #[inline]
+    fn is_token(&self) -> bool {
+        true
+    }
+
+    #[inline]
     fn full_width(&self) -> u64 {
+        self.width as u64 + self.leading_trivia_width() + self.trailing_trivia_width()
+    }
+
+    #[inline]
+    fn slot(&'_ self, _index: u8) -> Option<NodeOrToken<'_>> {
         todo!()
     }
 
-    fn slot(&'_ self, _index: u8) -> Option<super::NodeOrToken<'_>> {
-        todo!()
-    }
-
+    #[inline]
     fn slot_count(&self) -> u8 {
         todo!()
     }
 
+    #[inline]
     fn leading_trivia(&'_ self) -> Option<Trivia<'_>> {
-        todo!()
+        self.leading_trivia.cloned()
     }
 
+    #[inline]
     fn trailing_trivia(&'_ self) -> Option<Trivia<'_>> {
-        todo!()
+        self.trailing_trivia.cloned()
     }
 
+    #[inline]
     fn leading_trivia_width(&self) -> u64 {
-        todo!()
+        self.leading_trivia.full_width()
     }
 
+    #[inline]
     fn trailing_trivia_width(&self) -> u64 {
-        todo!()
+        self.trailing_trivia.full_width()
     }
 }
 
@@ -84,7 +102,7 @@ impl Clone for GreenToken<'_> {
     fn clone(&self) -> Self {
         Self {
             kind: self.kind,
-            full_width: self.full_width,
+            width: self.width,
             text: self.text.clone(),
             leading_trivia: self.leading_trivia.clone(),
             trailing_trivia: self.trailing_trivia.clone(),
@@ -95,7 +113,7 @@ impl Clone for GreenToken<'_> {
 impl PartialEq for GreenToken<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.kind == other.kind
-            && self.full_width == other.full_width
+            && self.width == other.width
             && self.text == other.text
             && self.leading_trivia == other.leading_trivia
             && self.trailing_trivia == other.trailing_trivia
@@ -222,6 +240,8 @@ mod tests {
         let token = GreenToken::new_with_kind(kind);
         assert_eq!(token.kind(), kind);
         assert_eq!(token.to_string(), expected_text);
+        assert_eq!(token.to_full_string(), expected_text);
+        assert_eq!(token.width(), expected_text.len() as u64);
         assert_eq!(token.full_width(), expected_text.len() as u64);
     }
 

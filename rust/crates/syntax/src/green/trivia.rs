@@ -10,7 +10,7 @@ pub struct GreenTrivia<'a> {
     /// Full width of the trivia in the document,
     /// `u8` could not be enough for some cases (e.g., large comments), but
     /// `u16` should be enough for any trivia
-    full_width: u16,
+    width: u16,
     text: Cow<'a, [u8]>,
 }
 
@@ -18,7 +18,7 @@ impl<'a> GreenTrivia<'a> {
     #[inline]
     pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
         let full_width = text.len() as u16;
-        Self { kind, full_width, text }
+        Self { kind, width: full_width, text }
     }
 }
 
@@ -50,7 +50,7 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
 
     #[inline]
     fn full_width(&self) -> u16 {
-        self.full_width as u16
+        self.width as u16
     }
 
     #[inline]
@@ -64,7 +64,7 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
     }
 
     #[inline]
-    fn slot(&'_ self, _index: u8) -> Option<NodeOrToken<'_>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken<'_>> {
         None
     }
 
@@ -83,7 +83,7 @@ impl Clone for GreenTrivia<'_> {
     fn clone(&self) -> Self {
         Self {
             kind: self.kind,
-            full_width: self.full_width,
+            width: self.width,
             text: self.text.clone(),
         }
     }
@@ -91,7 +91,7 @@ impl Clone for GreenTrivia<'_> {
 
 impl PartialEq for GreenTrivia<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && self.full_width == other.full_width && self.text == other.text
+        self.kind == other.kind && self.width == other.width && self.text == other.text
     }
 }
 
