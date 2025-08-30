@@ -10,6 +10,7 @@ pub trait SyntaxList<'a>: GreenNode<'a> {
     }
 }
 
+#[derive(Hash)]
 pub struct SyntaxListWithTwoChildren<'a> {
     child0: &'a NodeOrToken<'a>,
     child1: &'a NodeOrToken<'a>,

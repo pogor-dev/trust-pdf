@@ -1,5 +1,7 @@
 use std::{
     borrow::Cow,
+    fmt,
+    hash::Hash,
     ops::{Add, Sub},
 };
 
@@ -13,7 +15,7 @@ use crate::{
 /// Green nodes capture the complete structure of PDF files including semantically
 /// significant whitespace required by ISO 32000-2. This enables round-trip editing
 /// and incremental parsing while preserving PDF format correctness.
-pub trait GreenNode<'a, Size = u64>
+pub trait GreenNode<'a, Size = u64>: Eq + PartialEq + Clone + Hash + fmt::Debug + Send + Sync
 where
     // we can use arithmetic operations on Size
     Size: Copy + Add<Output = Size> + Sub<Output = Size> + Eq + Default,
