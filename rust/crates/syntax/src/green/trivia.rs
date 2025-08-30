@@ -8,21 +8,20 @@ use crate::{
 pub struct GreenTrivia<'a> {
     kind: SyntaxKind,
     /// Full width of the trivia in the document,
-    /// `u8` could not be enough for some cases (e.g., large comments), but
-    /// `u16` should be enough for any trivia
-    width: u16,
+    /// Using `u64` to match the default Size type parameter of GreenNode trait
+    width: u64,
     text: Cow<'a, [u8]>,
 }
 
 impl<'a> GreenTrivia<'a> {
     #[inline]
     pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
-        let full_width = text.len() as u16;
+        let full_width = text.len() as u64;
         Self { kind, width: full_width, text }
     }
 }
 
-impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
+impl<'a> GreenNode<'a, u64> for GreenTrivia<'a> {
     #[inline]
     fn kind(&self) -> SyntaxKind {
         self.kind
@@ -49,17 +48,17 @@ impl<'a> GreenNode<'a, u16> for GreenTrivia<'a> {
     }
 
     #[inline]
-    fn full_width(&self) -> u16 {
-        self.width as u16
+    fn full_width(&self) -> u64 {
+        self.width
     }
 
     #[inline]
-    fn leading_trivia_width(&self) -> u16 {
+    fn leading_trivia_width(&self) -> u64 {
         0
     }
 
     #[inline]
-    fn trailing_trivia_width(&self) -> u16 {
+    fn trailing_trivia_width(&self) -> u64 {
         0
     }
 
@@ -148,8 +147,8 @@ mod tests {
     #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n")]
     fn test_width(#[case] kind: SyntaxKind, #[case] text: &[u8]) {
         let token = GreenTrivia::new_with_text(kind, text.into());
-        assert_eq!(token.width(), text.len() as u16);
-        assert_eq!(token.full_width(), text.len() as u16);
+        assert_eq!(token.width(), text.len() as u64);
+        assert_eq!(token.full_width(), text.len() as u64);
     }
 
     #[rstest]

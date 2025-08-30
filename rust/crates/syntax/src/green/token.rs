@@ -89,9 +89,7 @@ impl<'a> GreenNode<'a> for GreenToken<'a> {
 
     #[inline]
     fn leading_trivia_width(&self) -> u64 {
-        self.leading_trivia
-            .map(|trivia: &'a super::ItemOrList<super::GreenTrivia<'a>, super::GreenList<'a>>| trivia.full_width())
-            .unwrap_or_default()
+        self.leading_trivia.map(|trivia| trivia.full_width()).unwrap_or_default()
     }
 
     #[inline]
