@@ -3,6 +3,8 @@ mod node;
 mod token;
 mod trivia;
 
+use std::borrow::Cow;
+
 pub use self::{list::SyntaxListWithTwoChildren, node::GreenNode, token::GreenToken, trivia::GreenTrivia};
 
 type Trivia<'a> = ItemOrList<GreenTrivia<'a>, GreenList>;
@@ -22,27 +24,77 @@ where
     List(List),
 }
 
-impl<Item, List> ItemOrList<Item, List>
+impl<'a, Item, List> GreenNode<'a> for ItemOrList<Item, List>
 where
-    Item: for<'a> GreenNode<'a>,
-    List: for<'a> GreenNode<'a>,
+    Item: for<'b> GreenNode<'b>,
+    List: for<'b> GreenNode<'b>,
 {
     #[inline]
-    pub fn is_item(&self) -> bool {
-        matches!(self, ItemOrList::Item(_))
+    fn kind(&self) -> crate::SyntaxKind {
+        todo!()
     }
 
     #[inline]
-    pub fn is_list(&self) -> bool {
-        matches!(self, ItemOrList::List(_))
+    fn to_string(&self) -> Cow<'a, [u8]> {
+        todo!()
     }
 
     #[inline]
-    pub fn full_width(&self) -> u64 {
+    fn to_full_string(&self) -> Cow<'a, [u8]> {
+        todo!()
+    }
+
+    #[inline]
+    fn full_width(&self) -> u64 {
         match self {
             ItemOrList::Item(item) => item.full_width(),
             ItemOrList::List(list) => list.full_width(),
         }
+    }
+
+    #[inline]
+    fn is_token(&self) -> bool {
+        if let ItemOrList::Item(item) = self { item.is_token() } else { false }
+    }
+
+    #[inline]
+    fn is_trivia(&self) -> bool {
+        if let ItemOrList::Item(item) = self { item.is_trivia() } else { false }
+    }
+
+    #[inline]
+    fn is_list(&self) -> bool {
+        matches!(self, ItemOrList::List(_))
+    }
+
+    #[inline]
+    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+        todo!()
+    }
+
+    #[inline]
+    fn slot_count(&self) -> u8 {
+        todo!()
+    }
+
+    #[inline]
+    fn leading_trivia(&self) -> Option<Trivia<'a>> {
+        todo!()
+    }
+
+    #[inline]
+    fn trailing_trivia(&self) -> Option<Trivia<'a>> {
+        todo!()
+    }
+
+    #[inline]
+    fn leading_trivia_width(&self) -> u64 {
+        todo!()
+    }
+
+    #[inline]
+    fn trailing_trivia_width(&self) -> u64 {
+        todo!()
     }
 }
 
@@ -58,27 +110,66 @@ where
     Node(Node),
 }
 
-impl<Node, Token> EitherNodeOrToken<Node, Token>
+impl<'a, Node, Token> GreenNode<'a> for EitherNodeOrToken<Node, Token>
 where
-    Node: for<'a> GreenNode<'a>,
-    Token: for<'a> GreenNode<'a>,
+    Node: for<'b> GreenNode<'b>,
+    Token: for<'b> GreenNode<'b>,
 {
     #[inline]
-    pub fn is_token(&self) -> bool {
-        matches!(self, EitherNodeOrToken::Token(_))
+    fn kind(&self) -> crate::SyntaxKind {
+        todo!()
     }
 
     #[inline]
-    pub fn is_node(&self) -> bool {
-        matches!(self, EitherNodeOrToken::Node(_))
+    fn to_string(&self) -> Cow<'a, [u8]> {
+        todo!()
     }
 
     #[inline]
-    pub fn full_width(&self) -> u64 {
+    fn to_full_string(&self) -> Cow<'a, [u8]> {
+        todo!()
+    }
+
+    #[inline]
+    fn full_width(&self) -> u64 {
         match self {
             EitherNodeOrToken::Token(token) => token.full_width(),
             EitherNodeOrToken::Node(node) => node.full_width(),
         }
+    }
+
+    #[inline]
+    fn is_token(&self) -> bool {
+        matches!(self, EitherNodeOrToken::Token(_))
+    }
+
+    #[inline]
+    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+        todo!()
+    }
+
+    #[inline]
+    fn slot_count(&self) -> u8 {
+        todo!()
+    }
+
+    #[inline]
+    fn leading_trivia(&self) -> Option<Trivia<'a>> {
+        todo!()
+    }
+
+    fn trailing_trivia(&self) -> Option<Trivia<'a>> {
+        todo!()
+    }
+
+    #[inline]
+    fn leading_trivia_width(&self) -> u64 {
+        todo!()
+    }
+
+    #[inline]
+    fn trailing_trivia_width(&self) -> u64 {
+        todo!()
     }
 }
 

@@ -33,7 +33,7 @@ where
 
     /// Get the child node at the given slot index, if it exists.
     /// We expect up to 256 (1 byte) slots.
-    fn slot(&self, index: u8) -> Option<NodeOrToken>;
+    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>>;
 
     /// Get the number of child slots this node has.
     /// We expect up to 256 (1 byte) slots.
@@ -54,9 +54,9 @@ where
         self.kind() == SyntaxKind::List
     }
 
-    fn leading_trivia(&'_ self) -> Option<Trivia<'_>>;
+    fn leading_trivia(&self) -> Option<Trivia<'a>>;
 
-    fn trailing_trivia(&'_ self) -> Option<Trivia<'_>>;
+    fn trailing_trivia(&self) -> Option<Trivia<'a>>;
 
     fn leading_trivia_width(&self) -> Size;
 
