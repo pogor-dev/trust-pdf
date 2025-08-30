@@ -4,21 +4,50 @@ use crate::{GreenNode, SyntaxKind};
 
 pub struct GreenTrivia<'a> {
     kind: SyntaxKind,
-    full_width: usize,
+    /// Full width of the trivia in the document,
+    /// `u8` could not be enough for some cases (e.g., large comments), but
+    /// `u16` should be enough for any trivia
+    full_width: u16,
     text: Cow<'a, [u8]>,
 }
 
 impl<'a> GreenTrivia<'a> {
     #[inline]
     pub fn new_with_text(kind: SyntaxKind, text: Cow<'a, [u8]>) -> Self {
-        let full_width = text.len();
+        let full_width = text.len() as u16;
         Self { kind, full_width, text }
     }
 }
 
-impl GreenNode for GreenTrivia<'_> {
+impl GreenNode<u16> for GreenTrivia<'_> {
+    #[inline]
     fn kind(&self) -> SyntaxKind {
         self.kind
+    }
+
+    #[inline]
+    fn is_trivia(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn slot_count(&self) -> u16 {
+        0
+    }
+
+    #[inline]
+    fn full_width(&self) -> u16 {
+        self.full_width as u16
+    }
+
+    #[inline]
+    fn leading_trivia_width(&self) -> u16 {
+        0
+    }
+
+    #[inline]
+    fn trailing_trivia_width(&self) -> u16 {
+        0
     }
 }
 
@@ -46,44 +75,44 @@ mod tests {
     //     assert_eq!(token.to_full_string(), text);
     // }
 
-    // #[rstest]
-    // #[case::whitespace(SyntaxKind::WhitespaceTrivia, b" ")]
-    // #[case::comment(SyntaxKind::CommentTrivia, b"% Comment 1")]
-    // #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n")]
-    // fn test_width(#[case] kind: SyntaxKind, #[case] text: &[u8]) {
-    //     let token = GreenTrivia::new_with_text(kind, text.into());
-    //     assert_eq!(token.width(), text.len());
-    //     assert_eq!(token.full_width(), text.len());
-    // }
+    #[rstest]
+    #[case::whitespace(SyntaxKind::WhitespaceTrivia, b" ")]
+    #[case::comment(SyntaxKind::CommentTrivia, b"% Comment 1")]
+    #[case::end_of_line(SyntaxKind::EndOfLineTrivia, b"\r\n")]
+    fn test_width(#[case] kind: SyntaxKind, #[case] text: &[u8]) {
+        let token = GreenTrivia::new_with_text(kind, text.into());
+        assert_eq!(token.width(), text.len() as u16);
+        assert_eq!(token.full_width(), text.len() as u16);
+    }
 
-    // #[rstest]
-    // fn test_is_trivia() {
-    //     let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
-    //     assert!(token.is_trivia());
-    // }
+    #[rstest]
+    fn test_is_trivia() {
+        let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
+        assert!(token.is_trivia());
+    }
 
-    // #[rstest]
-    // fn test_is_not_token() {
-    //     let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
-    //     assert!(!token.is_token());
-    // }
+    #[rstest]
+    fn test_is_not_token() {
+        let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
+        assert!(!token.is_token());
+    }
 
-    // #[rstest]
-    // fn test_is_not_list() {
-    //     let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
-    //     assert!(!token.is_list());
-    // }
+    #[rstest]
+    fn test_is_not_list() {
+        let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
+        assert!(!token.is_list());
+    }
 
-    // #[rstest]
-    // fn test_no_nested_trivia() {
-    //     let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
-    //     assert!(!token.has_leading_trivia());
-    //     assert!(!token.has_trailing_trivia());
-    //     assert_eq!(token.leading_trivia_width(), 0);
-    //     assert_eq!(token.trailing_trivia_width(), 0);
-    //     assert_eq!(token.leading_trivia(), None);
-    //     assert_eq!(token.trailing_trivia(), None);
-    // }
+    #[rstest]
+    fn test_no_nested_trivia() {
+        let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
+        assert!(!token.has_leading_trivia());
+        assert!(!token.has_trailing_trivia());
+        assert_eq!(token.leading_trivia_width(), 0);
+        assert_eq!(token.trailing_trivia_width(), 0);
+        // assert_eq!(token.leading_trivia(), None);
+        // assert_eq!(token.trailing_trivia(), None);
+    }
 
     // #[rstest]
     // #[case(0)]
@@ -94,11 +123,11 @@ mod tests {
     //     assert_eq!(token.slot(index), None);
     // }
 
-    // #[rstest]
-    // fn test_slot_count_expect_zero() {
-    //     let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
-    //     assert_eq!(token.slot_count(), 0);
-    // }
+    #[rstest]
+    fn test_slot_count_expect_zero() {
+        let token = GreenTrivia::new_with_text(SyntaxKind::WhitespaceTrivia, b" ".into());
+        assert_eq!(token.slot_count(), 0);
+    }
 
     // #[rstest]
     // fn test_clone() {
