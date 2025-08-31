@@ -16,6 +16,7 @@ type ReprThin = HeaderSlice<GreenTriviaListHead, [GreenTrivia; 0]>;
 
 #[derive(PartialEq, Eq, Hash)]
 struct GreenTriviaListHead {
+    text_len: u32,
     _c: Count<GreenTriviaList>,
 }
 
@@ -36,7 +37,7 @@ impl GreenTriviaListData {
     /// It is expected to have up to 65535 bytes (e.g. long comments)
     #[inline]
     pub fn full_len(&self) -> u32 {
-        self.text().len() as u32
+        self.data.header.text_len.into()
     }
 }
 
@@ -76,14 +77,17 @@ impl GreenTriviaList {
         I: IntoIterator<Item = GreenTrivia>,
         I::IntoIter: ExactSizeIterator,
     {
-        let head = GreenTriviaListHead { _c: Count::new() };
-        let ptr = ThinArc::from_header_and_iter(head, pieces.into_iter());
+        let pieces_vec: Vec<GreenTrivia> = pieces.into_iter().collect();
+        let text_len = pieces_vec.iter().map(|p| p.full_len() as u32).sum();
+        let head = GreenTriviaListHead { text_len, _c: Count::new() };
+        let ptr = ThinArc::from_header_and_iter(head, pieces_vec.into_iter());
         GreenTriviaList { ptr }
     }
 
     /// Creates a single piece of trivia from the given text.
     pub fn new_single(kind: SyntaxKind, text: &[u8]) -> Self {
-        let head = GreenTriviaListHead { _c: Count::new() };
+        let text_len = text.len() as u32;
+        let head = GreenTriviaListHead { text_len, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, std::iter::once(GreenTrivia::new(kind, text)));
         GreenTriviaList { ptr }
     }

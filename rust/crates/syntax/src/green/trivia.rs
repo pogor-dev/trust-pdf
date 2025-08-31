@@ -67,6 +67,7 @@ impl fmt::Display for GreenTriviaData {
     }
 }
 
+// TODO: check if trivia piece is not too fragmented
 #[derive(Eq, PartialEq, Hash, Clone)]
 #[repr(transparent)]
 pub struct GreenTrivia {

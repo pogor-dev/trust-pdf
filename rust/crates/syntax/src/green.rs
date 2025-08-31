@@ -2,6 +2,7 @@ mod list;
 mod node;
 mod node_trait;
 mod token;
+mod token2;
 mod trivia;
 mod trivia2;
 mod trivia_list;
@@ -14,6 +15,7 @@ pub use self::{
     node::GreenNode,
     node_trait::GreenNodeTrait,
     token::GreenToken,
+    token2::GreenToken2,
     trivia::GreenTrivia,
     trivia_list::GreenTriviaList,
     trivia2::GreenTrivia2,
@@ -22,7 +24,7 @@ pub use self::{
 
 type Trivia<'a> = ItemOrList<GreenTrivia2<'a>, GreenList<'a>>;
 type Node<'a> = ItemOrList<GreenNode<'a>, GreenList<'a>>;
-type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, GreenToken<'a>>;
+type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, GreenToken2<'a>>;
 
 fn get_first_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 {
     for i in 0..node.slot_count() {
@@ -42,7 +44,7 @@ fn get_last_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 {
     0 // If no children found
 }
 
-fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken<'a>> {
+fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken2<'a>> {
     for i in 0..node.slot_count() {
         if let Some(child) = node.slot(i) {
             match child {
@@ -64,7 +66,7 @@ fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken<
     None
 }
 
-fn get_last_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken<'a>> {
+fn get_last_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken2<'a>> {
     for i in (0..node.slot_count()).rev() {
         if let Some(child) = node.slot(i) {
             match child {
