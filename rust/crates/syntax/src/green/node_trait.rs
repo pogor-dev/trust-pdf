@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     SyntaxKind,
-    green::{GreenToken, NodeOrToken, Trivia},
+    green::{NodeOrToken, Trivia},
 };
 
 /// Immutable syntax tree node representing PDF syntactic elements with full fidelity

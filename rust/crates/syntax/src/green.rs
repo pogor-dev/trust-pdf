@@ -1,14 +1,14 @@
 mod item_or_list;
 mod list;
-mod node;
 mod node_or_token;
+mod node_trait;
 mod token;
 mod trivia;
 
 use std::borrow::Cow;
 
 pub use self::{
-    item_or_list::ItemOrList, list::SyntaxListWithTwoChildren, node::GreenNode, node_or_token::EitherNodeOrToken, token::GreenToken, trivia::GreenTrivia,
+    item_or_list::ItemOrList, list::SyntaxListWithTwoChildren, node_or_token::EitherNodeOrToken, node_trait::GreenNode, token::GreenToken, trivia::GreenTrivia,
 };
 
 type Trivia<'a> = ItemOrList<GreenTrivia<'a>, GreenList<'a>>;
