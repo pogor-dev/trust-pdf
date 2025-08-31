@@ -5,6 +5,8 @@ mod token;
 mod trivia;
 mod utils;
 
+use std::io;
+
 pub use self::{
     list::{GreenList, SyntaxList, SyntaxListWithTwoChildren},
     node::GreenNode,
@@ -78,4 +80,41 @@ pub fn get_last_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenTok
         }
     }
     None
+}
+
+fn write_to<'a, T: GreenNodeTrait<'a>, W: io::Write>(node: &T, writer: &mut W, leading: bool, trailing: bool) -> io::Result<()> {
+    // Use explicit stack to avoid stack overflow on deeply nested structures
+    let mut stack: Vec<(&NodeOrToken<'a>, bool, bool)> = Vec::new();
+    stack.push((&node, leading, trailing));
+
+    while let Some((current_node, current_leading, current_trailing)) = stack.pop() {
+        if current_node.is_token() {
+            current_node.write_token_to(writer, current_leading, current_trailing)?;
+            continue;
+        }
+
+        // TODO: this will never happen?
+        if current_node.is_trivia() {
+            current_node.write_trivia_to(writer)?;
+            continue;
+        }
+
+        let first_index = get_first_non_null_child_index(current_node);
+        let last_index = get_last_non_null_child_index(current_node);
+
+        // Push children in reverse order (since stack is LIFO)
+        for i in (first_index..=last_index).rev() {
+            if let Some(child) = current_node.slot(i) {
+                let first = i == first_index;
+                let last = i == last_index;
+
+                let child_leading = current_leading || !first;
+                let child_trailing = current_trailing || !last;
+
+                stack.push((&child, child_leading, child_trailing));
+            }
+        }
+    }
+
+    Ok(())
 }
