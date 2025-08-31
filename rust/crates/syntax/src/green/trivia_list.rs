@@ -5,8 +5,9 @@ use std::{
 };
 
 use crate::{
-    GreenTrivia,
+    GreenTrivia, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
+    green::byte_to_string,
 };
 use countme::Count;
 
@@ -14,19 +15,28 @@ type Repr = HeaderSlice<GreenTriviaListHead, [GreenTrivia]>;
 type ReprThin = HeaderSlice<GreenTriviaListHead, [GreenTrivia; 0]>;
 
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct GreenTriviaListHead {
+struct GreenTriviaListHead {
     _c: Count<GreenTriviaList>,
 }
 
 #[repr(transparent)]
-pub(crate) struct GreenTriviaListData {
+pub struct GreenTriviaListData {
     data: ReprThin,
 }
 
 impl GreenTriviaListData {
     #[inline]
-    pub fn header(&self) -> &GreenTriviaListHead {
-        &self.data.header
+    pub fn text(&self) -> &[u8] {
+        // TODO: fix
+        &[]
+        // self.data.slice()
+    }
+
+    /// Returns the full length of the trivia.
+    /// It is expected to have up to 65535 bytes (e.g. long comments)
+    #[inline]
+    pub fn full_len(&self) -> u32 {
+        self.text().len() as u32
     }
 }
 
@@ -43,40 +53,39 @@ impl ToOwned for GreenTriviaListData {
 
 impl fmt::Debug for GreenTriviaListData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTriviaList")
-            .field("kind", &self.kind())
-            .field("text", &self.text())
-            .finish()
+        f.debug_struct("GreenTriviaList").field("text", &self.text()).finish()
     }
 }
 
 impl fmt::Display for GreenTriviaListData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.text())
+        byte_to_string(self.text(), f)
     }
 }
 
 #[derive(Eq, PartialEq, Hash, Clone)]
 #[repr(transparent)]
 pub struct GreenTriviaList {
-    ptr: Option<ThinArc<GreenTriviaListHead, GreenTrivia>>,
+    ptr: ThinArc<GreenTriviaListHead, GreenTrivia>,
 }
 
 impl GreenTriviaList {
     /// Creates a new trivia containing the passed in pieces
-    pub fn new<I>(pieces: I) -> Self
+    pub fn new_list<I>(pieces: I) -> Self
     where
         I: IntoIterator<Item = GreenTrivia>,
         I::IntoIter: ExactSizeIterator,
     {
-        let data = ThinArc::from_header_and_iter(GreenTriviaListHead { _c: Count::new() }, pieces.into_iter());
-
-        GreenTriviaList { ptr: Some(data) }
+        let head = GreenTriviaListHead { _c: Count::new() };
+        let ptr = ThinArc::from_header_and_iter(head, pieces.into_iter());
+        GreenTriviaList { ptr }
     }
 
-    /// Creates an empty trivia
-    pub fn empty() -> Self {
-        GreenTriviaList { ptr: None }
+    /// Creates a single piece of trivia from the given text.
+    pub fn new_single(kind: SyntaxKind, text: &[u8]) -> Self {
+        let head = GreenTriviaListHead { _c: Count::new() };
+        let ptr = ThinArc::from_header_and_iter(head, std::iter::once(GreenTrivia::new(kind, text)));
+        GreenTriviaList { ptr }
     }
 
     #[inline]
@@ -99,7 +108,7 @@ impl GreenTriviaList {
     pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaListData>) -> GreenTriviaList {
         let arc = unsafe {
             let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaListHead, u8>>(arc)
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaListHead, GreenTrivia>>(arc)
         };
         GreenTriviaList { ptr: arc }
     }

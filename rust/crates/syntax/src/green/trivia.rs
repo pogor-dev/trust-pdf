@@ -15,22 +15,17 @@ type Repr = HeaderSlice<GreenTriviaHead, [u8]>;
 type ReprThin = HeaderSlice<GreenTriviaHead, [u8; 0]>;
 
 #[derive(PartialEq, Eq, Hash)]
-pub(crate) struct GreenTriviaHead {
+struct GreenTriviaHead {
     kind: SyntaxKind,
     _c: Count<GreenTrivia>,
 }
 
 #[repr(transparent)]
-pub(crate) struct GreenTriviaData {
+pub struct GreenTriviaData {
     data: ReprThin,
 }
 
 impl GreenTriviaData {
-    #[inline]
-    pub fn header(&self) -> &GreenTriviaHead {
-        &self.data.header
-    }
-
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
