@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt};
 
 use crate::{
     GreenNodeTrait, SyntaxKind,
-    green::{NodeOrToken, Trivia, item_or_list::IsGreenList},
+    green::{NodeOrToken, Trivia, utils::IsGreenList},
 };
 
 /// A trait representing a syntax list node.
