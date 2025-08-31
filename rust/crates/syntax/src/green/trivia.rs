@@ -1,7 +1,7 @@
 use std::{borrow::Cow, fmt, hash};
 
 use crate::{
-    GreenNode, SyntaxKind,
+    GreenNodeTrait, SyntaxKind,
     green::{NodeOrToken, Trivia},
 };
 
@@ -21,7 +21,7 @@ impl<'a> GreenTrivia<'a> {
     }
 }
 
-impl<'a> GreenNode<'a, u64> for GreenTrivia<'a> {
+impl<'a> GreenNodeTrait<'a, u64> for GreenTrivia<'a> {
     #[inline]
     fn kind(&self) -> SyntaxKind {
         self.kind

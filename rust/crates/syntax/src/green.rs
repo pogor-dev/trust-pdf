@@ -10,15 +10,14 @@ use std::borrow::Cow;
 
 pub use self::{
     elements::GreenElement,
-    item_or_list::ItemOrList,
+    item_or_list::{IsGreenList, ItemOrList},
     list::{GreenList, SyntaxList, SyntaxListWithTwoChildren},
     node_or_token::EitherNodeOrToken,
-    node_trait::GreenNode,
+    node_trait::GreenNodeTrait,
     token::GreenToken,
     trivia::GreenTrivia,
 };
 
 type Trivia<'a> = ItemOrList<GreenTrivia<'a>, GreenList<'a>>;
-type Token<'a> = ItemOrList<GreenToken<'a>, GreenList<'a>>;
 type Node<'a> = ItemOrList<GreenElement<'a>, GreenList<'a>>;
-type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, Token<'a>>;
+type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, GreenToken<'a>>;

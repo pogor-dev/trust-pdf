@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    GreenNode,
+    GreenNodeTrait,
     green::{NodeOrToken, Trivia},
 };
 
@@ -13,10 +13,10 @@ pub enum EitherNodeOrToken<Node, Token> {
     Node(Node),
 }
 
-impl<'a, Node, Token> GreenNode<'a> for EitherNodeOrToken<Node, Token>
+impl<'a, Node, Token> GreenNodeTrait<'a> for EitherNodeOrToken<Node, Token>
 where
-    Node: GreenNode<'a>,
-    Token: GreenNode<'a>,
+    Node: GreenNodeTrait<'a>,
+    Token: GreenNodeTrait<'a>,
 {
     #[inline]
     fn kind(&self) -> crate::SyntaxKind {

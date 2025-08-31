@@ -1,9 +1,14 @@
 use std::borrow::Cow;
 
 use crate::{
-    GreenNode, GreenToken,
+    GreenNodeTrait,
     green::{NodeOrToken, Trivia},
 };
+
+/// Marker trait to indicate that a type represents a list node
+///
+/// This trait should only be implemented by types where `is_list()` returns `true`
+pub trait IsGreenList<'a>: GreenNodeTrait<'a> {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ItemOrList<Item, List> {
@@ -15,26 +20,26 @@ pub enum ItemOrList<Item, List> {
 
 impl<'a, Item, List> ItemOrList<Item, List>
 where
-    Item: GreenNode<'a>,
-    List: GreenNode<'a>,
+    Item: GreenNodeTrait<'a>,
+    List: IsGreenList<'a>,
 {
-    pub fn get_first_non_null_child_index(node: &Self) -> u8 {
-        for i in 0..node.slot_count() {
-            if node.slot(i).is_some() {
-                return i;
-            }
-        }
-        0 // If no children found
-    }
+    // pub fn get_first_non_null_child_index(node: &Self) -> u8 {
+    //     for i in 0..node.slot_count() {
+    //         if node.slot(i).is_some() {
+    //             return i;
+    //         }
+    //     }
+    //     0 // If no children found
+    // }
 
-    pub fn get_last_non_null_child_index(node: &Self) -> u8 {
-        for i in (0..node.slot_count()).rev() {
-            if node.slot(i).is_some() {
-                return i;
-            }
-        }
-        0 // If no children found
-    }
+    // pub fn get_last_non_null_child_index(node: &Self) -> u8 {
+    //     for i in (0..node.slot_count()).rev() {
+    //         if node.slot(i).is_some() {
+    //             return i;
+    //         }
+    //     }
+    //     0 // If no children found
+    // }
 
     // pub fn get_first_terminal(&self) -> Option<&Item> {
     //     let mut node = Some(self);
@@ -69,10 +74,10 @@ where
     // }
 }
 
-impl<'a, Item, List> GreenNode<'a> for ItemOrList<Item, List>
+impl<'a, Item, List> GreenNodeTrait<'a> for ItemOrList<Item, List>
 where
-    Item: GreenNode<'a>,
-    List: GreenNode<'a>,
+    Item: GreenNodeTrait<'a>,
+    List: IsGreenList<'a>,
 {
     #[inline]
     fn kind(&self) -> crate::SyntaxKind {

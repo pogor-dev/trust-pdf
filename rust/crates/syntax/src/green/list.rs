@@ -1,13 +1,13 @@
 use std::{borrow::Cow, fmt};
 
 use crate::{
-    GreenNode, SyntaxKind,
-    green::{NodeOrToken, Trivia},
+    GreenNodeTrait, SyntaxKind,
+    green::{NodeOrToken, Trivia, item_or_list::IsGreenList},
 };
 
 /// A trait representing a syntax list node.
 /// We expect up to 256 slots (1 byte)
-pub trait SyntaxList<'a>: GreenNode<'a> {
+pub trait SyntaxList<'a>: GreenNodeTrait<'a> {
     fn kind(&self) -> SyntaxKind {
         SyntaxKind::List
     }
@@ -22,7 +22,7 @@ pub struct SyntaxListWithTwoChildren<'a> {
 
 impl<'a> SyntaxList<'a> for SyntaxListWithTwoChildren<'a> {}
 
-impl<'a> GreenNode<'a> for SyntaxListWithTwoChildren<'a> {
+impl<'a> GreenNodeTrait<'a> for SyntaxListWithTwoChildren<'a> {
     fn kind(&self) -> SyntaxKind {
         <Self as SyntaxList>::kind(self)
     }
@@ -99,43 +99,60 @@ pub enum GreenList<'a> {
     ListWithTwoChildren(SyntaxListWithTwoChildren<'a>),
 }
 
-impl<'a> GreenNode<'a> for GreenList<'a> {
+impl<'a> IsGreenList<'a> for GreenList<'a> {}
+
+impl<'a> GreenNodeTrait<'a> for GreenList<'a> {
+    #[inline]
     fn kind(&self) -> crate::SyntaxKind {
-        todo!()
+        SyntaxKind::List
     }
 
+    #[inline]
+    fn is_list(&self) -> bool {
+        true
+    }
+
+    #[inline]
     fn to_string(&self) -> Cow<'a, [u8]> {
         todo!()
     }
 
+    #[inline]
     fn to_full_string(&self) -> Cow<'a, [u8]> {
         todo!()
     }
 
+    #[inline]
     fn full_width(&self) -> u64 {
         todo!()
     }
 
+    #[inline]
     fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
         todo!()
     }
 
+    #[inline]
     fn slot_count(&self) -> u8 {
         todo!()
     }
 
+    #[inline]
     fn leading_trivia(&self) -> Option<Trivia<'a>> {
         todo!()
     }
 
+    #[inline]
     fn trailing_trivia(&self) -> Option<Trivia<'a>> {
         todo!()
     }
 
+    #[inline]
     fn leading_trivia_width(&self) -> u64 {
         todo!()
     }
 
+    #[inline]
     fn trailing_trivia_width(&self) -> u64 {
         todo!()
     }

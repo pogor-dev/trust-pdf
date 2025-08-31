@@ -1,16 +1,16 @@
 use std::borrow::Cow;
 
 use crate::{
-    GreenNode,
+    GreenNodeTrait,
     green::{GreenList, NodeOrToken, Trivia},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GreenElement<'a> {
-    GreenList(GreenList<'a>),
+    GreenList(GreenList<'a>), // TODO: Redundant?
 }
 
-impl<'a> GreenNode<'a> for GreenElement<'a> {
+impl<'a> GreenNodeTrait<'a> for GreenElement<'a> {
     fn kind(&self) -> crate::SyntaxKind {
         todo!()
     }
