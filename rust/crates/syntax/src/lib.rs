@@ -1,3 +1,4 @@
+mod arc;
 mod green;
 mod syntax_kind;
 
