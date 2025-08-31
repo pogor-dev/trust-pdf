@@ -48,14 +48,14 @@
 //! );
 //! ```
 
-use std::ptr;
-
-use crate::arc::{arc_inner::ArcInner, header_slice::HeaderSlice};
-
 mod arc_inner;
 mod arc_main;
 mod header_slice;
 mod thin_arc;
+
+use std::ptr;
+
+pub(crate) use {arc_inner::ArcInner, arc_main::Arc, header_slice::HeaderSlice, thin_arc::ThinArc};
 
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
