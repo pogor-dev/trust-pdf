@@ -36,27 +36,46 @@ pub fn get_last_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 
     0 // If no children found
 }
 
-pub fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<&GreenToken> {
-    // let mut node = Some(node);
+pub fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken<'a>> {
+    for i in 0..node.slot_count() {
+        if let Some(child) = node.slot(i) {
+            match child {
+                EitherNodeOrToken::Token(token) => {
+                    return Some(token);
+                }
+                EitherNodeOrToken::Node(node_data) => {
+                    let result = match node_data {
+                        ItemOrList::Item(item) => get_first_terminal(&item),
+                        ItemOrList::List(list) => get_first_terminal(&list),
+                    };
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+    None
+}
 
-    // loop {
-    //     let current = node?;
-    //     let mut first_child = None;
-
-    //     for i in 0..current.slot_count() {
-    //         if let Some(child) = current.slot(i) {
-    //             first_child = Some(child);
-    //             break;
-    //         }
-    //     }
-
-    //     node = first_child;
-
-    //     // Optimization: if no children or reached terminal, stop
-    //     if node.map(|n| n.slot_count()).unwrap_or(0) == 0 {
-    //         break;
-    //     }
-    // }
-
+pub fn get_last_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken<'a>> {
+    for i in (0..node.slot_count()).rev() {
+        if let Some(child) = node.slot(i) {
+            match child {
+                EitherNodeOrToken::Token(token) => {
+                    return Some(token);
+                }
+                EitherNodeOrToken::Node(node_data) => {
+                    let result = match node_data {
+                        ItemOrList::Item(item) => get_last_terminal(&item),
+                        ItemOrList::List(list) => get_last_terminal(&list),
+                    };
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+            }
+        }
+    }
     None
 }

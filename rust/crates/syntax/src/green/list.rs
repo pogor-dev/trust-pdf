@@ -5,8 +5,6 @@ use crate::{
     green::{NodeOrToken, Trivia, utils::IsGreenList},
 };
 
-/// A trait representing a syntax list node.
-/// We expect up to 256 slots (1 byte)
 pub trait SyntaxList<'a>: GreenNodeTrait<'a> {
     fn kind(&self) -> SyntaxKind {
         SyntaxKind::List

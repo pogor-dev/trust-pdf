@@ -33,12 +33,18 @@ where
 
     #[inline]
     fn to_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        match self {
+            ItemOrList::Item(item) => item.to_string(),
+            ItemOrList::List(list) => list.to_string(),
+        }
     }
 
     #[inline]
     fn to_full_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        match self {
+            ItemOrList::Item(item) => item.to_full_string(),
+            ItemOrList::List(list) => list.to_full_string(),
+        }
     }
 
     #[inline]
@@ -137,17 +143,26 @@ where
 {
     #[inline]
     fn kind(&self) -> crate::SyntaxKind {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.kind(),
+            EitherNodeOrToken::Node(node) => node.kind(),
+        }
     }
 
     #[inline]
     fn to_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.to_string(),
+            EitherNodeOrToken::Node(node) => node.to_string(),
+        }
     }
 
     #[inline]
     fn to_full_string(&self) -> Cow<'a, [u8]> {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.to_full_string(),
+            EitherNodeOrToken::Node(node) => node.to_full_string(),
+        }
     }
 
     #[inline]
@@ -165,31 +180,49 @@ where
 
     #[inline]
     fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(_) => None,
+            EitherNodeOrToken::Node(node) => node.slot(_index),
+        }
     }
 
     #[inline]
     fn slot_count(&self) -> u8 {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(_) => 0,
+            EitherNodeOrToken::Node(node) => node.slot_count(),
+        }
     }
 
     #[inline]
     fn leading_trivia(&self) -> Option<Trivia<'a>> {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.leading_trivia(),
+            EitherNodeOrToken::Node(node) => node.leading_trivia(),
+        }
     }
 
     #[inline]
     fn trailing_trivia(&self) -> Option<Trivia<'a>> {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.trailing_trivia(),
+            EitherNodeOrToken::Node(node) => node.trailing_trivia(),
+        }
     }
 
     #[inline]
     fn leading_trivia_width(&self) -> u64 {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.leading_trivia_width(),
+            EitherNodeOrToken::Node(node) => node.leading_trivia_width(),
+        }
     }
 
     #[inline]
     fn trailing_trivia_width(&self) -> u64 {
-        todo!()
+        match self {
+            EitherNodeOrToken::Token(token) => token.trailing_trivia_width(),
+            EitherNodeOrToken::Node(node) => node.trailing_trivia_width(),
+        }
     }
 }
