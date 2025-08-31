@@ -17,6 +17,7 @@ type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
 #[derive(PartialEq, Eq, Hash)]
 struct GreenTokenHead {
     kind: SyntaxKind,
+    text_len: u32,
     leading_trivia: Option<GreenTrivia>,
     trailing_trivia: Option<GreenTrivia>,
     _c: Count<GreenToken>,
@@ -39,10 +40,9 @@ impl GreenTokenData {
     }
 
     /// Returns the full length of the trivia.
-    /// It is expected to have up to 65535 bytes (e.g. long comments)
     #[inline]
-    pub fn full_len(&self) -> u16 {
-        self.text().len() as u16
+    pub fn full_len(&self) -> u32 {
+        self.data.header.text_len
     }
 }
 
@@ -82,6 +82,7 @@ impl GreenToken {
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenToken {
         let head = GreenTokenHead {
             kind,
+            text_len: text.len() as u32,
             leading_trivia: None,
             trailing_trivia: None,
             _c: Count::new(),
@@ -95,6 +96,7 @@ impl GreenToken {
     pub fn new_with_leading_trivia(kind: SyntaxKind, text: &[u8], leading_trivia: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
+            text_len: (text.len() as u32) + (leading_trivia.full_len() as u32),
             leading_trivia: Some(leading_trivia),
             trailing_trivia: None,
             _c: Count::new(),
@@ -108,6 +110,7 @@ impl GreenToken {
     pub fn new_with_trailing_trivia(kind: SyntaxKind, text: &[u8], trailing_trivia: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
+            text_len: (text.len() as u32) + (trailing_trivia.full_len() as u32),
             leading_trivia: None,
             trailing_trivia: Some(trailing_trivia),
             _c: Count::new(),
@@ -118,11 +121,12 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_trivia(kind: SyntaxKind, text: &[u8], leading_trivia: Option<GreenTrivia>, trailing_trivia: Option<GreenTrivia>) -> GreenToken {
+    pub fn new_with_trivia(kind: SyntaxKind, text: &[u8], leading_trivia: GreenTrivia, trailing_trivia: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
-            leading_trivia,
-            trailing_trivia,
+            text_len: (text.len() as u32) + (leading_trivia.full_len() as u32) + (trailing_trivia.full_len() as u32),
+            leading_trivia: Some(leading_trivia),
+            trailing_trivia: Some(trailing_trivia),
             _c: Count::new(),
         };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
