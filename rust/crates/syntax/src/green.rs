@@ -5,7 +5,7 @@ mod token;
 mod token2;
 mod trivia;
 mod trivia2;
-mod trivia_list;
+mod trivia_piece;
 mod utils;
 
 use std::fmt;
@@ -17,7 +17,7 @@ pub use self::{
     token::GreenToken,
     token2::GreenToken2,
     trivia::GreenTrivia,
-    trivia_list::GreenTriviaList,
+    trivia_piece::GreenTriviaPiece,
     trivia2::GreenTrivia2,
     utils::{EitherNodeOrToken, ItemOrList},
 };

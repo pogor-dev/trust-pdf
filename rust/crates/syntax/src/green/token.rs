@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    GreenTriviaList, SyntaxKind,
+    GreenTrivia, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
     green::byte_to_string,
 };
@@ -18,8 +18,8 @@ type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
 struct GreenTokenHead {
     kind: SyntaxKind,
     full_text_len: u32,
-    leading_token: Option<GreenTriviaList>,
-    trailing_token: Option<GreenTriviaList>,
+    leading_token: Option<GreenTrivia>,
+    trailing_token: Option<GreenTrivia>,
     _c: Count<GreenToken>,
 }
 
@@ -118,7 +118,7 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_leading_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTriviaList) -> GreenToken {
+    pub fn new_with_leading_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
             full_text_len: (text.len() as u32) + (leading_token.full_len() as u32),
@@ -132,7 +132,7 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_trailing_token(kind: SyntaxKind, text: &[u8], trailing_token: GreenTriviaList) -> GreenToken {
+    pub fn new_with_trailing_token(kind: SyntaxKind, text: &[u8], trailing_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
             full_text_len: (text.len() as u32) + (trailing_token.full_len() as u32),
@@ -146,7 +146,7 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTriviaList, trailing_token: GreenTriviaList) -> GreenToken {
+    pub fn new_with_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia, trailing_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
             full_text_len: (text.len() as u32) + (leading_token.full_len() as u32) + (trailing_token.full_len() as u32),
