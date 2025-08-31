@@ -2,6 +2,6 @@ mod green;
 mod syntax_kind;
 
 pub use crate::{
-    green::{EitherNodeOrToken, GreenElement, GreenList, GreenNodeTrait, GreenToken, GreenTrivia, ItemOrList},
+    green::{EitherNodeOrToken, GreenList, GreenNode, GreenNodeTrait, GreenToken, GreenTrivia, ItemOrList},
     syntax_kind::{SyntaxKind, *},
 };

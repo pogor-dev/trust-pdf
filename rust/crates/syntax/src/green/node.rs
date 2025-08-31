@@ -6,11 +6,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GreenElement<'a> {
+pub enum GreenNode<'a> {
     GreenList(GreenList<'a>), // TODO: Redundant?
 }
 
-impl<'a> GreenNodeTrait<'a> for GreenElement<'a> {
+impl<'a> GreenNodeTrait<'a> for GreenNode<'a> {
     fn kind(&self) -> crate::SyntaxKind {
         todo!()
     }
