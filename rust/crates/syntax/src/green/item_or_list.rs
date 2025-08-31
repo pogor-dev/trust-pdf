@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::{
-    GreenNode,
+    GreenNode, GreenToken,
     green::{NodeOrToken, Trivia},
 };
 
@@ -36,17 +36,21 @@ where
         0 // If no children found
     }
 
-    // pub fn get_first_terminal(&self) -> Option<&GreenToken<'a>> {
-    //     let mut node: Option<&ItemOrList<Item, List>> = Some(self);
+    // pub fn get_first_terminal(&self) -> Option<&Item> {
+    //     let mut node = Some(self);
 
     //     loop {
     //         let current = node?;
 
-    //         // Find first non-null child
-    //         let mut first_child = None;
-    //         let slot_count = current.slot_count();
+    //         if let ItemOrList::Item(item) = current
+    //             && item.is_token()
+    //         {
+    //             return Some(item);
+    //         }
 
-    //         for i in 0..slot_count {
+    //         let mut first_child = None;
+
+    //         for i in 0..current.slot_count() {
     //             if let Some(child) = current.slot(i) {
     //                 first_child = Some(child);
     //                 break;
