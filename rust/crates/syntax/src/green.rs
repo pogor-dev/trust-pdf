@@ -1,3 +1,4 @@
+mod element;
 mod list;
 mod node;
 mod node2;
@@ -13,7 +14,7 @@ use std::fmt;
 
 pub use self::{
     list::{GreenList, SyntaxList, SyntaxListWithTwoChildren},
-    node::NodeOrToken,
+    node::GreenNode,
     node_trait::GreenNodeTrait,
     node2::GreenNode2,
     token::GreenToken,

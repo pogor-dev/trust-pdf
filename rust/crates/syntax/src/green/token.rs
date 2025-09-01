@@ -94,7 +94,6 @@ impl fmt::Display for GreenTokenData {
     }
 }
 
-// TODO: check if token piece is not too fragmented
 #[derive(Eq, PartialEq, Hash, Clone)]
 #[repr(transparent)]
 pub struct GreenToken {
