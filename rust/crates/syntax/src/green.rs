@@ -1,95 +1,12 @@
 mod element;
-mod list;
 mod node;
-mod node2;
-mod node_trait;
 mod token;
-mod token2;
 mod trivia;
-mod trivia2;
 mod trivia_piece;
-mod utils;
 
 use std::fmt;
 
-pub use self::{
-    list::{GreenList, SyntaxList, SyntaxListWithTwoChildren},
-    node::GreenNode,
-    node_trait::GreenNodeTrait,
-    node2::GreenNode2,
-    token::GreenToken,
-    token2::GreenToken2,
-    trivia::GreenTrivia,
-    trivia_piece::GreenTriviaPiece,
-    trivia2::GreenTrivia2,
-    utils::{EitherNodeOrToken, ItemOrList},
-};
-
-type Trivia<'a> = ItemOrList<GreenTrivia2<'a>, GreenList<'a>>;
-type Node<'a> = ItemOrList<GreenNode2<'a>, GreenList<'a>>;
-type NodeOrToken2<'a> = EitherNodeOrToken<Node<'a>, GreenToken2<'a>>;
-
-fn get_first_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 {
-    for i in 0..node.slot_count() {
-        if node.slot(i).is_some() {
-            return i;
-        }
-    }
-    0 // If no children found
-}
-
-fn get_last_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 {
-    for i in (0..node.slot_count()).rev() {
-        if node.slot(i).is_some() {
-            return i;
-        }
-    }
-    0 // If no children found
-}
-
-fn get_first_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken2<'a>> {
-    for i in 0..node.slot_count() {
-        if let Some(child) = node.slot(i) {
-            match child {
-                EitherNodeOrToken::Token(token) => {
-                    return Some(token);
-                }
-                EitherNodeOrToken::Node(node_data) => {
-                    let result = match node_data {
-                        ItemOrList::Item(item) => get_first_terminal(&item),
-                        ItemOrList::List(list) => get_first_terminal(&list),
-                    };
-                    if result.is_some() {
-                        return result;
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-fn get_last_terminal<'a, T: GreenNodeTrait<'a>>(node: &T) -> Option<GreenToken2<'a>> {
-    for i in (0..node.slot_count()).rev() {
-        if let Some(child) = node.slot(i) {
-            match child {
-                EitherNodeOrToken::Token(token) => {
-                    return Some(token);
-                }
-                EitherNodeOrToken::Node(node_data) => {
-                    let result = match node_data {
-                        ItemOrList::Item(item) => get_last_terminal(&item),
-                        ItemOrList::List(list) => get_last_terminal(&list),
-                    };
-                    if result.is_some() {
-                        return result;
-                    }
-                }
-            }
-        }
-    }
-    None
-}
+pub use self::{node::GreenNode, token::GreenToken, trivia::GreenTrivia, trivia_piece::GreenTriviaPiece};
 
 /// Converts bytes to a string representation, handling PDF's mixed text encodings.
 ///

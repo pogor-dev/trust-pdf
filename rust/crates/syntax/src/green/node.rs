@@ -33,12 +33,24 @@ impl GreenNodeData {
         self.data.header.kind
     }
 
+    /// Get the child node at the given slot index, if it exists.
+    /// We expect up to 256 (1 byte) slots.
+    fn slot(&self, index: u8) -> Option<GreenElement> {
+        None
+    }
+
+    /// Get the number of child slots this node has.
+    /// We expect up to 256 (1 byte) slots.
+    fn slot_count(&self) -> u8 {
+        0
+    }
+
     #[inline]
     pub fn full_text(&self) -> Vec<u8> {
         let mut combined = Vec::with_capacity(self.full_text_len() as usize);
 
         for element in self.data.slice() {
-            combined.extend_from_slice(element.full_text());
+            // combined.extend_from_slice(element.full_text());
         }
 
         combined
@@ -90,7 +102,7 @@ impl GreenNode {
         I::IntoIter: ExactSizeIterator,
     {
         let pieces_vec: Vec<GreenElement> = pieces.into_iter().collect();
-        let full_text_len = pieces_vec.iter().map(|p| p.full_len() as u32).sum();
+        let full_text_len = 0; // TODO: pieces_vec.iter().map(|p| p.full_len() as u32).sum();
         let head = GreenNodeHead {
             kind,
             full_text_len,
@@ -102,7 +114,7 @@ impl GreenNode {
 
     /// Creates a single piece of node from the given text.
     pub fn new_single(kind: SyntaxKind, piece: GreenElement) -> Self {
-        let full_text_len = piece.full_tesxt_len();
+        let full_text_len = 0; // TODO: piece.full_text_len();
         let head = GreenNodeHead {
             kind,
             full_text_len,
