@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     SyntaxKind,
-    green::{NodeOrToken, Trivia},
+    green::{NodeOrToken2, Trivia},
 };
 
 /// Immutable syntax tree node representing PDF syntactic elements with full fidelity
@@ -35,7 +35,7 @@ where
 
     /// Get the child node at the given slot index, if it exists.
     /// We expect up to 256 (1 byte) slots.
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>>;
+    fn slot(&self, index: u8) -> Option<NodeOrToken2<'a>>;
 
     /// Get the number of child slots this node has.
     /// We expect up to 256 (1 byte) slots.

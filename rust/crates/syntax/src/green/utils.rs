@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::{
     GreenNodeTrait, SyntaxKind,
-    green::{NodeOrToken, Trivia},
+    green::{NodeOrToken2, Trivia},
 };
 
 /// Marker trait to indicate that a type represents a list node
@@ -80,7 +80,7 @@ where
     }
 
     #[inline]
-    fn slot(&self, index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, index: u8) -> Option<NodeOrToken2<'a>> {
         match self {
             ItemOrList::Item(item) => item.slot(index),
             ItemOrList::List(list) => list.slot(index),
@@ -179,7 +179,7 @@ where
     }
 
     #[inline]
-    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken2<'a>> {
         match self {
             EitherNodeOrToken::Token(_) => None,
             EitherNodeOrToken::Node(node) => node.slot(_index),

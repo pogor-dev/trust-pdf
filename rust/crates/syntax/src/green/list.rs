@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt};
 
 use crate::{
     GreenNodeTrait, SyntaxKind,
-    green::{NodeOrToken, Trivia, utils::IsGreenList},
+    green::{NodeOrToken2, Trivia, utils::IsGreenList},
 };
 
 pub trait SyntaxList<'a>: GreenNodeTrait<'a> {
@@ -13,8 +13,8 @@ pub trait SyntaxList<'a>: GreenNodeTrait<'a> {
 
 #[derive(Hash)]
 pub struct SyntaxListWithTwoChildren<'a> {
-    child0: &'a NodeOrToken<'a>,
-    child1: &'a NodeOrToken<'a>,
+    child0: &'a NodeOrToken2<'a>,
+    child1: &'a NodeOrToken2<'a>,
     full_width: u64,
 }
 
@@ -41,7 +41,7 @@ impl<'a> GreenNodeTrait<'a> for SyntaxListWithTwoChildren<'a> {
         todo!()
     }
 
-    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken2<'a>> {
         todo!()
     }
 
@@ -126,7 +126,7 @@ impl<'a> GreenNodeTrait<'a> for GreenList<'a> {
     }
 
     #[inline]
-    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken2<'a>> {
         todo!()
     }
 

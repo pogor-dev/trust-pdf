@@ -1,5 +1,6 @@
 mod list;
 mod node;
+mod node2;
 mod node_trait;
 mod token;
 mod token2;
@@ -12,8 +13,9 @@ use std::fmt;
 
 pub use self::{
     list::{GreenList, SyntaxList, SyntaxListWithTwoChildren},
-    node::GreenNode,
+    node::NodeOrToken,
     node_trait::GreenNodeTrait,
+    node2::GreenNode2,
     token::GreenToken,
     token2::GreenToken2,
     trivia::GreenTrivia,
@@ -23,8 +25,8 @@ pub use self::{
 };
 
 type Trivia<'a> = ItemOrList<GreenTrivia2<'a>, GreenList<'a>>;
-type Node<'a> = ItemOrList<GreenNode<'a>, GreenList<'a>>;
-type NodeOrToken<'a> = EitherNodeOrToken<Node<'a>, GreenToken2<'a>>;
+type Node<'a> = ItemOrList<GreenNode2<'a>, GreenList<'a>>;
+type NodeOrToken2<'a> = EitherNodeOrToken<Node<'a>, GreenToken2<'a>>;
 
 fn get_first_non_null_child_index<'a, T: GreenNodeTrait<'a>>(node: &T) -> u8 {
     for i in 0..node.slot_count() {

@@ -2,7 +2,7 @@ use std::{borrow::Cow, fmt, hash};
 
 use crate::{
     GreenNodeTrait, SyntaxKind,
-    green::{NodeOrToken, Trivia},
+    green::{NodeOrToken2, Trivia},
 };
 
 pub struct GreenTrivia2<'a> {
@@ -63,7 +63,7 @@ impl<'a> GreenNodeTrait<'a, u64> for GreenTrivia2<'a> {
     }
 
     #[inline]
-    fn slot(&self, _index: u8) -> Option<NodeOrToken<'a>> {
+    fn slot(&self, _index: u8) -> Option<NodeOrToken2<'a>> {
         None
     }
 
