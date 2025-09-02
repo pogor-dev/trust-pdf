@@ -13,9 +13,11 @@ use countme::Count;
 
 type Repr = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece]>;
 type ReprThin = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece; 0]>;
+type TriviaPieceRepr = HeaderSlice<GreenTriviaPieceHead, [u8]>;
+type TriviaPieceReprThin = HeaderSlice<GreenTriviaPieceHead, [u8; 0]>;
 
 #[derive(PartialEq, Eq, Hash)]
-struct GreenTriviaHead {
+pub(super) struct GreenTriviaHead {
     text_len: u32,
     _c: Count<GreenTrivia>,
 }
@@ -86,10 +88,8 @@ impl GreenTrivia {
 
     /// Creates a single piece of trivia from the given text.
     pub fn new_single(kind: SyntaxKind, text: &[u8]) -> Self {
-        let text_len = text.len() as u32;
-        let head = GreenTriviaHead { text_len, _c: Count::new() };
-        let ptr = ThinArc::from_header_and_iter(head, std::iter::once(GreenTriviaPiece::new(kind, text)));
-        GreenTrivia { ptr }
+        let piece = GreenTriviaPiece::new(kind, text);
+        GreenTrivia::new_list(std::iter::once(piece))
     }
 
     #[inline]
@@ -152,11 +152,8 @@ impl ops::Deref for GreenTrivia {
     }
 }
 
-type TriviaPieceRepr = HeaderSlice<GreenTriviaPieceHead, [u8]>;
-type TriviaPieceReprThin = HeaderSlice<GreenTriviaPieceHead, [u8; 0]>;
-
 #[derive(PartialEq, Eq, Hash)]
-struct GreenTriviaPieceHead {
+pub(super) struct GreenTriviaPieceHead {
     kind: SyntaxKind,
     _c: Count<GreenTriviaPiece>,
 }

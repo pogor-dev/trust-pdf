@@ -15,7 +15,7 @@ type Repr = HeaderSlice<GreenTokenHead, [u8]>;
 type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
 
 #[derive(PartialEq, Eq, Hash)]
-struct GreenTokenHead {
+pub(super) struct GreenTokenHead {
     kind: SyntaxKind,
     full_text_len: u32,
     leading_token: Option<GreenTrivia>,
