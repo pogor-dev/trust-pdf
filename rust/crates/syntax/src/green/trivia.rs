@@ -80,7 +80,7 @@ impl GreenTrivia {
         I::IntoIter: ExactSizeIterator,
     {
         let pieces_vec: Vec<GreenTriviaPiece> = pieces.into_iter().collect();
-        let text_len = pieces_vec.iter().map(|p| p.len() as u32).sum();
+        let text_len = pieces_vec.iter().map(|p| p.text_len() as u32).sum();
         let head = GreenTriviaHead { text_len, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, pieces_vec.into_iter());
         GreenTrivia { ptr }
@@ -177,7 +177,7 @@ impl GreenTriviaPieceData {
     /// Returns the full length of the trivia piece.
     /// It is expected to have up to 65535 bytes (e.g. long comments)
     #[inline]
-    pub fn len(&self) -> u16 {
+    pub fn text_len(&self) -> u16 {
         self.text().len() as u16
     }
 }
@@ -298,7 +298,7 @@ mod tests {
 
         assert_eq!(trivia_piece.kind(), kind);
         assert_eq!(trivia_piece.text(), text);
-        assert_eq!(trivia_piece.len() as usize, text.len());
+        assert_eq!(trivia_piece.text_len() as usize, text.len());
     }
 
     #[rstest]
