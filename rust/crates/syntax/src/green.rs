@@ -2,11 +2,10 @@ mod element;
 mod node;
 mod token;
 mod trivia;
-mod trivia_piece;
 
 use std::fmt;
 
-pub use self::{node::GreenNode, token::GreenToken, trivia::GreenTrivia, trivia_piece::GreenTriviaPiece};
+pub use self::{node::GreenNode, token::GreenToken, trivia::GreenTrivia};
 
 /// Converts bytes to a string representation, handling PDF's mixed text encodings.
 ///
