@@ -367,4 +367,16 @@ mod tests {
         assert_eq!(borrowed.kind(), kind);
         assert_eq!(borrowed.text(), text);
     }
+
+    #[rstest]
+    fn test_to_owned_for_trivia_piece_data() {
+        use std::borrow::ToOwned;
+        let kind = SyntaxKind(99);
+        let text = b"owned trivia";
+        let trivia_piece = GreenTriviaPiece::new(kind, text);
+        let data: &GreenTriviaPieceData = &trivia_piece;
+        let owned = data.to_owned();
+        assert_eq!(owned.kind(), kind);
+        assert_eq!(owned.text(), text);
+    }
 }
