@@ -19,17 +19,16 @@ fn byte_to_string(bytes: &[u8], f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match std::str::from_utf8(bytes) {
         Ok(text) => write!(f, "{}", text),
         Err(_) => {
-            write!(f, "b\"")?;
             for &byte in bytes {
                 match byte {
                     b' ' | b'!'..=b'~' => write!(f, "{}", byte as char)?,
                     b'\n' => write!(f, "\\n")?,
                     b'\r' => write!(f, "\\r")?,
                     b'\t' => write!(f, "\\t")?,
-                    _ => write!(f, "\\x{:02x}", byte)?,
+                    _ => write!(f, "\\x{:02X}", byte)?,
                 }
             }
-            write!(f, "\"")
+            write!(f, "")
         }
     }
 }
