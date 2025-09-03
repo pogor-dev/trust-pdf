@@ -314,7 +314,7 @@ mod tests {
     #[rstest]
     fn test_from_raw_when_ptr_from_piece_expect_equivalent_piece() {
         let kind = SyntaxKind(3);
-        let text = b"from raw trivia";
+        let text = b"% from raw trivia";
         let trivia_piece = GreenTriviaPiece::new(kind, text);
         let ptr = GreenTriviaPiece::into_raw(trivia_piece.clone());
         let recovered = unsafe { GreenTriviaPiece::from_raw(ptr) };
@@ -361,7 +361,7 @@ mod tests {
     fn test_borrow_for_trivia_piece() {
         use std::borrow::Borrow;
         let kind = SyntaxKind(42);
-        let text = b"borrow trivia";
+        let text = b"% borrow trivia";
         let trivia_piece = GreenTriviaPiece::new(kind, text);
         let borrowed: &GreenTriviaPieceData = trivia_piece.borrow();
         assert_eq!(borrowed.kind(), kind);
@@ -372,7 +372,7 @@ mod tests {
     fn test_to_owned_for_trivia_piece_data() {
         use std::borrow::ToOwned;
         let kind = SyntaxKind(99);
-        let text = b"owned trivia";
+        let text = b"% owned trivia";
         let trivia_piece = GreenTriviaPiece::new(kind, text);
         let data: &GreenTriviaPieceData = &trivia_piece;
         let owned = data.to_owned();
