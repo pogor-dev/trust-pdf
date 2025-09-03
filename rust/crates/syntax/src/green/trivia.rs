@@ -357,6 +357,7 @@ mod trivia_piece_tests {
     #[rstest]
     fn test_borrow_for_trivia_piece() {
         use std::borrow::Borrow;
+
         let kind = SyntaxKind(42);
         let text = b"% borrow trivia";
         let trivia_piece = GreenTriviaPiece::new(kind, text);
@@ -463,6 +464,7 @@ mod trivia_tests {
     #[rstest]
     fn test_borrow_trivia() {
         use std::borrow::Borrow;
+
         let kind1 = SyntaxKind(1);
         let text1 = b"% new trivia 1";
         let piece1 = GreenTriviaPiece::new(kind1, text1);
