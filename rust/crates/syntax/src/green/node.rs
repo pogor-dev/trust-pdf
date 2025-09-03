@@ -94,7 +94,7 @@ impl fmt::Debug for GreenNodeData {
 
 impl fmt::Display for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        byte_to_string(&self.full_text(), f) // TODO: replace with text?
+        write!(f, "{}", byte_to_string(&self.full_text())) // TODO: replace with text?
     }
 }
 

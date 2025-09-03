@@ -11,8 +11,8 @@ use crate::{
 };
 use countme::Count;
 
-type Repr = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece]>;
-type ReprThin = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece; 0]>;
+type TriviaRepr = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece]>;
+type TriviaReprThin = HeaderSlice<GreenTriviaHead, [GreenTriviaPiece; 0]>;
 type TriviaPieceRepr = HeaderSlice<GreenTriviaPieceHead, [u8]>;
 type TriviaPieceReprThin = HeaderSlice<GreenTriviaPieceHead, [u8; 0]>;
 
@@ -24,21 +24,18 @@ pub(super) struct GreenTriviaHead {
 
 #[repr(transparent)]
 pub struct GreenTriviaData {
-    data: ReprThin,
+    data: TriviaReprThin,
 }
 
 impl GreenTriviaData {
     #[inline]
-    pub fn text(&self) -> &[u8] {
-        // TODO: fix
-        &[]
-        // self.data.slice()
+    pub fn text(&self) -> Vec<u8> {
+        self.data.slice().iter().flat_map(|f| f.text()).copied().collect()
     }
 
-    /// Returns the full length of the trivia.
-    /// It is expected to have up to 65535 bytes (e.g. long comments)
+    /// Returns the text length of the trivia.
     #[inline]
-    pub fn full_len(&self) -> u32 {
+    pub fn text_len(&self) -> u32 {
         self.data.header.text_len.into()
     }
 }
@@ -56,13 +53,13 @@ impl ToOwned for GreenTriviaData {
 
 impl fmt::Debug for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTrivia").field("text", &self.text()).finish()
+        f.debug_struct("GreenTrivia").field("text", &byte_to_string(&self.text())).finish()
     }
 }
 
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        byte_to_string(self.text(), f)
+        write!(f, "{}", byte_to_string(&self.text()))
     }
 }
 
@@ -111,8 +108,8 @@ impl GreenTrivia {
     #[inline]
     pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
         let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaHead, GreenTriviaPiece>>(arc)
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const TriviaReprThin);
+            mem::transmute::<Arc<TriviaReprThin>, ThinArc<GreenTriviaHead, GreenTriviaPiece>>(arc)
         };
         GreenTrivia { ptr: arc }
     }
@@ -145,9 +142,9 @@ impl ops::Deref for GreenTrivia {
     #[inline]
     fn deref(&self) -> &GreenTriviaData {
         unsafe {
-            let repr: &Repr = &self.ptr;
-            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
+            let repr: &TriviaRepr = &self.ptr;
+            let repr: &TriviaReprThin = &*(repr as *const TriviaRepr as *const TriviaReprThin);
+            mem::transmute::<&TriviaReprThin, &GreenTriviaData>(repr)
         }
     }
 }
@@ -197,14 +194,14 @@ impl fmt::Debug for GreenTriviaPieceData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaPiece")
             .field("kind", &self.kind())
-            .field("text", &self.text())
+            .field("text", &byte_to_string(self.text()))
             .finish()
     }
 }
 
 impl fmt::Display for GreenTriviaPieceData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        byte_to_string(self.text(), f)
+        write!(f, "{}", byte_to_string(self.text()))
     }
 }
 
@@ -285,7 +282,7 @@ impl ops::Deref for GreenTriviaPiece {
 }
 
 #[cfg(test)]
-mod tests {
+mod trivia_piece_tests {
     use rstest::rstest;
 
     use super::*;
@@ -328,7 +325,7 @@ mod tests {
         let text = b"% debug trivia";
         let trivia_piece = GreenTriviaPiece::new(kind, text);
         let debug_str = format!("{:?}", trivia_piece);
-        let expected = format!("GreenTriviaPiece {{ kind: {:?}, text: {:?} }}", kind, text);
+        let expected = "GreenTriviaPiece { kind: SyntaxKind(4), text: \"% debug trivia\" }";
         assert_eq!(debug_str, expected);
     }
 
@@ -378,5 +375,121 @@ mod tests {
         let owned = data.to_owned();
         assert_eq!(owned.kind(), kind);
         assert_eq!(owned.text(), text);
+    }
+}
+
+#[cfg(test)]
+mod trivia_tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    #[rstest]
+    fn test_single_trivia_creation() {
+        let kind = SyntaxKind(1);
+        let text = b"% new trivia";
+        let trivia = GreenTrivia::new_single(kind, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.text_len() as usize, text.len());
+    }
+
+    #[rstest]
+    fn test_multiple_trivia_creation() {
+        let kind1 = SyntaxKind(1);
+        let text1 = b"% new trivia 1";
+        let piece1 = GreenTriviaPiece::new(kind1, text1);
+
+        let kind2 = SyntaxKind(2);
+        let text2 = b"% new trivia 2";
+        let piece2 = GreenTriviaPiece::new(kind2, text2);
+
+        let combined = GreenTrivia::new_list(vec![piece1, piece2]);
+        assert_eq!(combined.text(), b"% new trivia 1% new trivia 2");
+        assert_eq!(combined.text_len() as usize, combined.text().len());
+    }
+
+    #[rstest]
+    #[allow(useless_ptr_null_checks)]
+    fn test_into_raw_when_valid_trivia_expect_non_null_ptr() {
+        let kind = SyntaxKind(2);
+        let text = b"% raw trivia";
+        let trivia = GreenTrivia::new_single(kind, text);
+        let ptr = GreenTrivia::into_raw(trivia.clone());
+        assert!(!ptr.as_ptr().is_null());
+    }
+
+    #[rstest]
+    fn test_from_raw_when_valid_ptr_expect_green_trivia() {
+        let kind = SyntaxKind(2);
+        let text = b"% raw trivia";
+        let trivia = GreenTrivia::new_single(kind, text);
+        let ptr = GreenTrivia::into_raw(trivia.clone());
+        let trivia_from_raw = unsafe { GreenTrivia::from_raw(ptr) };
+        assert_eq!(trivia_from_raw.text(), text);
+    }
+
+    #[rstest]
+    fn test_fmt_debug_for_trivia() {
+        let kind1 = SyntaxKind(1);
+        let text1 = b"% new trivia 1";
+        let piece1 = GreenTriviaPiece::new(kind1, text1);
+
+        let kind2 = SyntaxKind(2);
+        let text2 = b"% new trivia 2";
+        let piece2 = GreenTriviaPiece::new(kind2, text2);
+
+        let combined = GreenTrivia::new_list(vec![piece1, piece2]);
+        let debug_str = format!("{:?}", combined);
+        let expected = "GreenTrivia { text: \"% new trivia 1% new trivia 2\" }";
+        assert_eq!(debug_str, expected);
+    }
+
+    #[rstest]
+    fn test_fmt_display_for_trivia() {
+        let kind1 = SyntaxKind(1);
+        let text1 = b"% new trivia 1";
+        let piece1 = GreenTriviaPiece::new(kind1, text1);
+
+        let kind2 = SyntaxKind(2);
+        let text2 = b"% new trivia 2";
+        let piece2 = GreenTriviaPiece::new(kind2, text2);
+
+        let combined = GreenTrivia::new_list(vec![piece1, piece2]);
+        let display_str = format!("{}", combined);
+        let expected = "% new trivia 1% new trivia 2";
+        assert_eq!(display_str, expected);
+    }
+
+    #[rstest]
+    fn test_borrow_trivia() {
+        use std::borrow::Borrow;
+        let kind1 = SyntaxKind(1);
+        let text1 = b"% new trivia 1";
+        let piece1 = GreenTriviaPiece::new(kind1, text1);
+
+        let kind2 = SyntaxKind(2);
+        let text2 = b"% new trivia 2";
+        let piece2 = GreenTriviaPiece::new(kind2, text2);
+
+        let combined = GreenTrivia::new_list(vec![piece1, piece2]);
+        let borrowed: &GreenTriviaData = combined.borrow();
+        assert_eq!(borrowed.text(), combined.text());
+    }
+
+    #[rstest]
+    fn test_to_owned_trivia_data() {
+        use std::borrow::ToOwned;
+        let kind1 = SyntaxKind(1);
+        let text1 = b"% new trivia 1";
+        let piece1 = GreenTriviaPiece::new(kind1, text1);
+
+        let kind2 = SyntaxKind(2);
+        let text2 = b"% new trivia 2";
+        let piece2 = GreenTriviaPiece::new(kind2, text2);
+
+        let combined = GreenTrivia::new_list(vec![piece1, piece2]);
+        let data: &GreenTriviaData = &combined;
+        let owned = data.to_owned();
+        assert_eq!(owned.text(), combined.text());
     }
 }

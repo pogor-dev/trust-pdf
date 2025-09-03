@@ -41,21 +41,23 @@ impl GreenTokenData {
 
     #[inline]
     pub fn full_text(&self) -> Vec<u8> {
-        let leading = self.data.header.leading_token.as_ref().map(|t| t.text()).unwrap_or(&[]);
-        let trailing = self.data.header.trailing_token.as_ref().map(|t| t.text()).unwrap_or(&[]);
-        let text = self.text();
-
-        let total_len = leading.len() + text.len() + trailing.len();
-        let mut combined = Vec::with_capacity(total_len);
-
-        if total_len == 0 {
-            return combined;
-        }
-
-        combined.extend_from_slice(leading);
-        combined.extend_from_slice(text);
-        combined.extend_from_slice(trailing);
+        let mut combined = Vec::new();
         combined
+        // let leading = self.data.header.leading_token.as_ref().map(|t| t.text()).unwrap_or(&[]);
+        // let trailing = self.data.header.trailing_token.as_ref().map(|t| t.text()).unwrap_or(&[]);
+        // let text = self.text();
+
+        // let total_len = leading.len() + text.len() + trailing.len();
+        // let mut combined = Vec::with_capacity(total_len);
+
+        // if total_len == 0 {
+        //     return combined;
+        // }
+
+        // combined.extend_from_slice(leading);
+        // combined.extend_from_slice(text);
+        // combined.extend_from_slice(trailing);
+        // combined
     }
 
     /// Returns the length of the token, excluding leading or trailing trivia.
@@ -90,7 +92,7 @@ impl fmt::Debug for GreenTokenData {
 
 impl fmt::Display for GreenTokenData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        byte_to_string(self.text(), f)
+        write!(f, "{}", byte_to_string(self.text()))
     }
 }
 
@@ -120,7 +122,7 @@ impl GreenToken {
     pub fn new_with_leading_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
-            full_text_len: (text.len() as u32) + (leading_token.full_len() as u32),
+            full_text_len: (text.len() as u32) + (leading_token.text_len() as u32),
             leading_token: Some(leading_token),
             trailing_token: None,
             _c: Count::new(),
@@ -134,7 +136,7 @@ impl GreenToken {
     pub fn new_with_trailing_token(kind: SyntaxKind, text: &[u8], trailing_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
-            full_text_len: (text.len() as u32) + (trailing_token.full_len() as u32),
+            full_text_len: (text.len() as u32) + (trailing_token.text_len() as u32),
             leading_token: None,
             trailing_token: Some(trailing_token),
             _c: Count::new(),
@@ -148,7 +150,7 @@ impl GreenToken {
     pub fn new_with_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia, trailing_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
-            full_text_len: (text.len() as u32) + (leading_token.full_len() as u32) + (trailing_token.full_len() as u32),
+            full_text_len: (text.len() as u32) + (leading_token.text_len() as u32) + (trailing_token.text_len() as u32),
             leading_token: Some(leading_token),
             trailing_token: Some(trailing_token),
             _c: Count::new(),
