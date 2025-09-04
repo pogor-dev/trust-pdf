@@ -9,7 +9,7 @@ use countme::Count;
 use crate::{
     GreenToken, NodeOrToken, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{byte_to_string, element::GreenElement},
+    green::{byte_to_string, element::GreenElement, token::GreenTokenData},
 };
 
 type Repr = HeaderSlice<GreenNodeHead, [Slot]>;
@@ -18,7 +18,7 @@ type ReprThin = HeaderSlice<GreenNodeHead, [Slot; 0]>;
 #[derive(PartialEq, Eq, Hash)]
 pub(super) struct GreenNodeHead {
     kind: SyntaxKind,
-    full_text_len: u32, // TODO: limitation 4GB?
+    full_text_len: u32,
     _c: Count<GreenNode>,
 }
 
@@ -48,7 +48,14 @@ impl GreenNodeData {
         let mut combined = Vec::with_capacity(self.full_text_len() as usize);
 
         for element in self.data.slice() {
-            // combined.extend_from_slice(element.full_text());
+            match element {
+                Slot::Node { rel_offset: _, node } => {
+                    combined.extend_from_slice(&node.full_text());
+                }
+                Slot::Token { rel_offset: _, token } => {
+                    combined.extend_from_slice(&token.full_text());
+                }
+            }
         }
 
         combined
@@ -56,12 +63,40 @@ impl GreenNodeData {
 
     #[inline]
     pub fn text_len(&self) -> u32 {
-        0 // TODO: fix
+        self.full_text_len() - self.leading_trivia_len() - self.trailing_trivia_len()
     }
 
     #[inline]
     pub fn full_text_len(&self) -> u32 {
         self.data.header.full_text_len
+    }
+
+    #[inline]
+    pub fn leading_trivia_len(&self) -> u32 {
+        if self.data.header.full_text_len == 0 {
+            return 0;
+        }
+
+        let slot = Slot::Node {
+            rel_offset: 0,
+            node: self.to_owned(),
+        };
+
+        get_first_terminal(&slot).map_or(0, |t| t.leading_trivia_len())
+    }
+
+    #[inline]
+    pub fn trailing_trivia_len(&self) -> u32 {
+        if self.data.header.full_text_len == 0 {
+            return 0;
+        }
+
+        let slot = Slot::Node {
+            rel_offset: 0,
+            node: self.to_owned(),
+        };
+
+        get_last_terminal(&slot).map_or(0, |t| t.trailing_trivia_len())
     }
 
     /// Returns the slots of this node. Every node of a specific kind has the same number of slots
@@ -306,3 +341,39 @@ impl<'a> DoubleEndedIterator for Slots<'a> {
 }
 
 impl iter::FusedIterator for Slots<'_> {}
+
+fn get_first_terminal(node: &Slot) -> Option<&GreenToken> {
+    get_terminal(node, |len| 0..len)
+}
+
+fn get_last_terminal(node: &Slot) -> Option<&GreenToken> {
+    get_terminal(node, |len| (0..len).rev())
+}
+
+fn get_terminal<I>(node: &Slot, indices: impl Fn(usize) -> I) -> Option<&GreenToken>
+where
+    I: Iterator<Item = usize>,
+{
+    let mut node = Some(node);
+
+    loop {
+        let current = node?;
+        let mut next_child = None;
+
+        match current {
+            Slot::Node { node: n, .. } => {
+                let slots = n.slice();
+                for i in indices(slots.len()) {
+                    if let Some(child) = slots.get(i) {
+                        next_child = Some(child);
+                        break;
+                    }
+                }
+                node = next_child;
+            }
+            Slot::Token { token, .. } => {
+                return Some(token);
+            }
+        }
+    }
+}

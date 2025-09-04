@@ -29,13 +29,13 @@ pub struct GreenTriviaData {
 
 impl GreenTriviaData {
     #[inline]
-    pub fn text(&self) -> Vec<u8> {
-        self.data.slice().iter().flat_map(|f| f.text()).copied().collect()
+    pub fn full_text(&self) -> Vec<u8> {
+        self.data.slice().iter().flat_map(|f| f.full_text()).copied().collect()
     }
 
     /// Returns the text length of the trivia.
     #[inline]
-    pub fn text_len(&self) -> u32 {
+    pub fn full_text_len(&self) -> u32 {
         self.data.header.text_len.into()
     }
 }
@@ -53,13 +53,13 @@ impl ToOwned for GreenTriviaData {
 
 impl fmt::Debug for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTrivia").field("text", &byte_to_string(&self.text())).finish()
+        f.debug_struct("GreenTrivia").field("text", &byte_to_string(&self.full_text())).finish()
     }
 }
 
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", byte_to_string(&self.text()))
+        write!(f, "{}", byte_to_string(&self.full_text()))
     }
 }
 
@@ -77,7 +77,7 @@ impl GreenTrivia {
         I::IntoIter: ExactSizeIterator,
     {
         let pieces_vec: Vec<GreenTriviaPiece> = pieces.into_iter().collect();
-        let text_len = pieces_vec.iter().map(|p| p.text_len() as u32).sum();
+        let text_len = pieces_vec.iter().map(|p| p.full_text_len() as u32).sum();
         let head = GreenTriviaHead { text_len, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, pieces_vec.into_iter());
         GreenTrivia { ptr }
@@ -167,15 +167,15 @@ impl GreenTriviaPieceData {
     }
 
     #[inline]
-    pub fn text(&self) -> &[u8] {
+    pub fn full_text(&self) -> &[u8] {
         self.data.slice()
     }
 
     /// Returns the full length of the trivia piece.
     /// It is expected to have up to 65535 bytes (e.g. long comments)
     #[inline]
-    pub fn text_len(&self) -> u16 {
-        self.text().len() as u16
+    pub fn full_text_len(&self) -> u16 {
+        self.full_text().len() as u16
     }
 }
 
@@ -194,14 +194,14 @@ impl fmt::Debug for GreenTriviaPieceData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaPiece")
             .field("kind", &self.kind())
-            .field("text", &byte_to_string(self.text()))
+            .field("text", &byte_to_string(self.full_text()))
             .finish()
     }
 }
 
 impl fmt::Display for GreenTriviaPieceData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", byte_to_string(self.text()))
+        write!(f, "{}", byte_to_string(self.full_text()))
     }
 }
 
@@ -294,8 +294,8 @@ mod trivia_piece_tests {
         let trivia_piece = GreenTriviaPiece::new(kind, text);
 
         assert_eq!(trivia_piece.kind(), kind);
-        assert_eq!(trivia_piece.text(), text);
-        assert_eq!(trivia_piece.text_len() as usize, text.len());
+        assert_eq!(trivia_piece.full_text(), text);
+        assert_eq!(trivia_piece.full_text_len() as usize, text.len());
     }
 
     #[rstest]
@@ -316,7 +316,7 @@ mod trivia_piece_tests {
         let ptr = GreenTriviaPiece::into_raw(trivia_piece.clone());
         let recovered = unsafe { GreenTriviaPiece::from_raw(ptr) };
         assert_eq!(recovered.kind(), kind);
-        assert_eq!(recovered.text(), text);
+        assert_eq!(recovered.full_text(), text);
     }
 
     #[rstest]
@@ -363,7 +363,7 @@ mod trivia_piece_tests {
         let trivia_piece = GreenTriviaPiece::new(kind, text);
         let borrowed: &GreenTriviaPieceData = trivia_piece.borrow();
         assert_eq!(borrowed.kind(), kind);
-        assert_eq!(borrowed.text(), text);
+        assert_eq!(borrowed.full_text(), text);
     }
 
     #[rstest]
@@ -375,7 +375,7 @@ mod trivia_piece_tests {
         let data: &GreenTriviaPieceData = &trivia_piece;
         let owned = data.to_owned();
         assert_eq!(owned.kind(), kind);
-        assert_eq!(owned.text(), text);
+        assert_eq!(owned.full_text(), text);
     }
 }
 
@@ -390,8 +390,8 @@ mod trivia_tests {
         let kind = SyntaxKind(1);
         let text = b"% new trivia";
         let trivia = GreenTrivia::new_single(kind, text);
-        assert_eq!(trivia.text(), text);
-        assert_eq!(trivia.text_len() as usize, text.len());
+        assert_eq!(trivia.full_text(), text);
+        assert_eq!(trivia.full_text_len() as usize, text.len());
     }
 
     #[rstest]
@@ -405,8 +405,8 @@ mod trivia_tests {
         let piece2 = GreenTriviaPiece::new(kind2, text2);
 
         let combined = GreenTrivia::new_list(vec![piece1, piece2]);
-        assert_eq!(combined.text(), b"% new trivia 1% new trivia 2");
-        assert_eq!(combined.text_len() as usize, combined.text().len());
+        assert_eq!(combined.full_text(), b"% new trivia 1% new trivia 2");
+        assert_eq!(combined.full_text_len() as usize, combined.full_text().len());
     }
 
     #[rstest]
@@ -426,7 +426,7 @@ mod trivia_tests {
         let trivia = GreenTrivia::new_single(kind, text);
         let ptr = GreenTrivia::into_raw(trivia.clone());
         let trivia_from_raw = unsafe { GreenTrivia::from_raw(ptr) };
-        assert_eq!(trivia_from_raw.text(), text);
+        assert_eq!(trivia_from_raw.full_text(), text);
     }
 
     #[rstest]
@@ -475,7 +475,7 @@ mod trivia_tests {
 
         let combined = GreenTrivia::new_list(vec![piece1, piece2]);
         let borrowed: &GreenTriviaData = combined.borrow();
-        assert_eq!(borrowed.text(), combined.text());
+        assert_eq!(borrowed.full_text(), combined.full_text());
     }
 
     #[rstest]
@@ -492,6 +492,6 @@ mod trivia_tests {
         let combined = GreenTrivia::new_list(vec![piece1, piece2]);
         let data: &GreenTriviaData = &combined;
         let owned = data.to_owned();
-        assert_eq!(owned.text(), combined.text());
+        assert_eq!(owned.full_text(), combined.full_text());
     }
 }
