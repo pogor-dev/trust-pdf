@@ -357,3 +357,103 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use crate::{GreenTrivia, green::node};
+
+    use super::*;
+
+    fn create_whitespace_trivia() -> GreenTrivia {
+        GreenTrivia::new_single(SyntaxKind(0), b" ")
+    }
+
+    fn create_eol_trivia() -> GreenTrivia {
+        GreenTrivia::new_single(SyntaxKind(1), b"\n")
+    }
+
+    #[rstest]
+    fn test_new_single_token() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.kind(), SyntaxKind(3));
+    }
+
+    #[rstest]
+    fn test_new_single_nested_node() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let parent_node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Node(child_node.clone()));
+        assert_eq!(parent_node.kind(), SyntaxKind(3));
+    }
+
+    #[rstest]
+    fn test_new_list_tokens() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        assert_eq!(node.kind(), SyntaxKind(3));
+    }
+
+    #[rstest]
+    fn test_new_list_nested_nodes() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let parent_node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Node(child_node.clone())]);
+        assert_eq!(parent_node.kind(), SyntaxKind(3));
+    }
+
+    #[rstest]
+    #[allow(useless_ptr_null_checks)]
+    fn test_into_raw_pointer() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let ptr: ptr::NonNull<GreenNodeData> = GreenNode::into_raw(node.clone());
+        assert!(!ptr.as_ptr().is_null());
+    }
+    #[rstest]
+    fn test_from_raw_pointer() {
+        let kind = SyntaxKind(3);
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(kind, NodeOrToken::Token(token.clone()));
+        let ptr: ptr::NonNull<GreenNodeData> = GreenNode::into_raw(node.clone());
+        let recovered = unsafe { GreenNode::from_raw(ptr) };
+        assert_eq!(recovered.kind(), kind);
+    }
+
+    #[rstest]
+    fn test_fmt_debug() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let formatted = format!("{:?}", node);
+        assert!(formatted.contains("GreenNode"));
+    }
+
+    #[rstest]
+    fn test_fmt_display() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let formatted = format!("{}", node);
+        assert!(formatted.contains("GreenNode"));
+    }
+
+    #[rstest]
+    fn test_borrowing() {
+        use std::borrow::Borrow;
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let borrowed = node.borrow();
+        let data: &GreenNodeData = &borrowed;
+        let owned = data.to_owned();
+        assert_eq!(owned.kind(), borrowed.kind());
+    }
+
+    #[rstest]
+    fn test_kind() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.kind(), SyntaxKind(3));
+    }
+}
