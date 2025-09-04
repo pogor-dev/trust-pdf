@@ -9,7 +9,7 @@ use countme::Count;
 use crate::{
     GreenToken, NodeOrToken, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{byte_to_string, element::GreenElement, token::GreenTokenData},
+    green::element::GreenElement,
 };
 
 type Repr = HeaderSlice<GreenNodeHead, [Slot]>;
@@ -36,29 +36,6 @@ impl GreenNodeData {
     #[inline]
     pub(crate) fn slice(&self) -> &[Slot] {
         self.data.slice()
-    }
-
-    #[inline]
-    pub fn text(&self) -> &[u8] {
-        &[] // TODO: fix
-    }
-
-    #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
-        let mut combined = Vec::with_capacity(self.full_text_len() as usize);
-
-        for element in self.data.slice() {
-            match element {
-                Slot::Node { rel_offset: _, node } => {
-                    combined.extend_from_slice(&node.full_text());
-                }
-                Slot::Token { rel_offset: _, token } => {
-                    combined.extend_from_slice(&token.full_text());
-                }
-            }
-        }
-
-        combined
     }
 
     #[inline]
@@ -122,14 +99,17 @@ impl fmt::Debug for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenNode")
             .field("kind", &self.kind())
-            .field("text", &self.full_text()) // TODO: replace with text?
+            .field("full_text_len", &self.full_text_len())
             .finish()
     }
 }
 
 impl fmt::Display for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", byte_to_string(&self.full_text())) // TODO: replace with text?
+        for child in self.slots() {
+            write!(f, "{}", child)?;
+        }
+        Ok(())
     }
 }
 
@@ -349,7 +329,7 @@ fn get_first_terminal(node: &Slot) -> Option<&GreenToken> {
 fn get_last_terminal(node: &Slot) -> Option<&GreenToken> {
     get_terminal(node, |len| (0..len).rev())
 }
-
+/// Performs a depth-first search for the first/last terminal token in the given node.
 fn get_terminal<I>(node: &Slot, indices: impl Fn(usize) -> I) -> Option<&GreenToken>
 where
     I: Iterator<Item = usize>,
