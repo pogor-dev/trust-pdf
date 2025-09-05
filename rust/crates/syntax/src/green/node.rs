@@ -7,7 +7,7 @@ use std::{
 use countme::Count;
 
 use crate::{
-    GreenToken, NodeOrToken, SyntaxKind,
+    GreenToken, GreenTrivia, NodeOrToken, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
     green::element::GreenElement,
 };
@@ -49,6 +49,20 @@ impl GreenNodeData {
     }
 
     #[inline]
+    pub fn leading_trivia(&self) -> Option<GreenTrivia> {
+        if self.data.header.full_text_len == 0 {
+            return None;
+        }
+
+        let slot = Slot::Node {
+            rel_offset: 0,
+            node: self.to_owned(),
+        };
+
+        get_first_terminal(&slot).and_then(|t| t.leading_trivia()).cloned()
+    }
+
+    #[inline]
     pub fn leading_trivia_len(&self) -> u32 {
         if self.data.header.full_text_len == 0 {
             return 0;
@@ -60,6 +74,20 @@ impl GreenNodeData {
         };
 
         get_first_terminal(&slot).map_or(0, |t| t.leading_trivia_len())
+    }
+
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<GreenTrivia> {
+        if self.data.header.full_text_len == 0 {
+            return None;
+        }
+
+        let slot = Slot::Node {
+            rel_offset: 0,
+            node: self.to_owned(),
+        };
+
+        get_last_terminal(&slot).and_then(|t| t.trailing_trivia()).cloned()
     }
 
     #[inline]
@@ -359,10 +387,8 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod node_tests {
     use rstest::rstest;
-
-    use crate::{GreenTrivia, green::node};
 
     use super::*;
 
@@ -428,7 +454,7 @@ mod tests {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
         let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
         let formatted = format!("{:?}", node);
-        assert!(formatted.contains("GreenNode"));
+        assert_eq!(formatted, "GreenNode { kind: SyntaxKind(3), full_text_len: 7 }");
     }
 
     #[rstest]
@@ -436,7 +462,16 @@ mod tests {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
         let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
         let formatted = format!("{}", node);
-        assert!(formatted.contains("GreenNode"));
+        assert_eq!(formatted, " token\n");
+    }
+
+    #[rstest]
+    fn test_fmt_display_nested_node() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let parent_node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Node(child_node.clone()));
+        let formatted = format!("{}", parent_node);
+        assert_eq!(formatted, " token\n");
     }
 
     #[rstest]
@@ -455,5 +490,154 @@ mod tests {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
         let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
         assert_eq!(node.kind(), SyntaxKind(3));
+    }
+
+    #[rstest]
+    fn test_text_len() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.text_len(), 5);
+    }
+
+    #[rstest]
+    fn test_full_text_len() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.full_text_len(), 7); // 1 (whitespace) + 5 (token) + 1 (eol)
+    }
+
+    #[rstest]
+    fn test_leading_trivia_len() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.leading_trivia_len(), 1); // whitespace
+    }
+
+    #[rstest]
+    fn test_leading_trivia_len_empty_node() {
+        let node = GreenNode::new_list(SyntaxKind(3), vec![]);
+        assert_eq!(node.leading_trivia_len(), 0);
+    }
+
+    #[rstest]
+    fn test_trailing_trivia_len() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        assert_eq!(node.trailing_trivia_len(), 1); // eol
+    }
+
+    #[rstest]
+    fn test_trailing_trivia_len_empty_node() {
+        let node = GreenNode::new_list(SyntaxKind(3), vec![]);
+        assert_eq!(node.trailing_trivia_len(), 0);
+    }
+
+    #[rstest]
+    fn test_leading_trivia() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let leading_trivia = node.leading_trivia().unwrap();
+        assert_eq!(leading_trivia.full_text_len(), 1);
+        assert_eq!(leading_trivia.full_text(), b" ");
+    }
+
+    #[rstest]
+    fn test_leading_trivia_empty_node() {
+        let node = GreenNode::new_list(SyntaxKind(3), vec![]);
+        assert!(node.leading_trivia().is_none());
+    }
+
+    #[rstest]
+    fn test_trailing_trivia() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let trailing_trivia = node.trailing_trivia().unwrap();
+        assert_eq!(trailing_trivia.full_text_len(), 1);
+        assert_eq!(trailing_trivia.full_text(), b"\n");
+    }
+
+    #[rstest]
+    fn test_trailing_trivia_empty_node() {
+        let node = GreenNode::new_list(SyntaxKind(3), vec![]);
+        assert!(node.trailing_trivia().is_none());
+    }
+}
+
+#[cfg(test)]
+mod slots_tests {
+    use rstest::rstest;
+
+    use super::*;
+
+    fn create_whitespace_trivia() -> GreenTrivia {
+        GreenTrivia::new_single(SyntaxKind(0), b" ")
+    }
+
+    fn create_eol_trivia() -> GreenTrivia {
+        GreenTrivia::new_single(SyntaxKind(1), b"\n")
+    }
+
+    #[rstest]
+    fn test_slots_iterator() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+
+        assert_eq!(node.slots().count(), 2);
+        assert_eq!(
+            node.slots().last().unwrap(),
+            &Slot::Token {
+                rel_offset: 8,
+                token: token2.clone()
+            }
+        );
+        assert_eq!(
+            node.slots().nth(0).unwrap(),
+            &Slot::Token {
+                rel_offset: 0,
+                token: token1.clone()
+            }
+        );
+        assert_eq!(node.slots().fold(0, |acc, _| acc + 1), 2);
+        assert_eq!(
+            node.slots().next().unwrap(),
+            &Slot::Token {
+                rel_offset: 0,
+                token: token1.clone()
+            }
+        );
+        assert_eq!(node.slots().size_hint(), (2, Some(2)));
+    }
+
+    #[rstest]
+    fn test_slots_double_ended_iterator() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+
+        assert_eq!(
+            node.slots().next_back().unwrap(),
+            &Slot::Token {
+                rel_offset: 8,
+                token: token2.clone()
+            }
+        );
+        assert_eq!(
+            node.slots().nth_back(1).unwrap(),
+            &Slot::Token {
+                rel_offset: 0,
+                token: token1.clone()
+            }
+        );
+        assert_eq!(node.slots().rfold(0, |acc, _| acc + 1), 2);
+    }
+
+    #[rstest]
+    fn test_slots_exact_size_iterator() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+
+        assert_eq!(node.slots().len(), 2);
     }
 }
