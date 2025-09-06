@@ -3,9 +3,13 @@ mod node;
 mod token;
 mod trivia;
 
-use std::fmt;
+pub use self::{
+    node::{GreenNode, GreenNodeData},
+    token::{GreenToken, GreenTokenData},
+    trivia::GreenTrivia,
+};
 
-pub use self::{node::GreenNode, token::GreenToken, trivia::GreenTrivia};
+pub(crate) use self::element::GreenElementRef;
 
 /// SyntaxKind is a type tag for each token or node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

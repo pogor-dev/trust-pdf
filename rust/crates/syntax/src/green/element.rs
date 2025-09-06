@@ -5,8 +5,8 @@ use crate::{
     green::{GreenNode, node::GreenNodeData, token::GreenTokenData},
 };
 
-pub(super) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
-pub(super) type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
+pub(crate) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
+pub(crate) type GreenElementRef<'a> = NodeOrToken<&'a GreenNodeData, &'a GreenTokenData>;
 
 impl GreenElement {
     /// Returns kind of this element.
