@@ -7,7 +7,7 @@ use std::{
 use crate::{
     SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::byte_to_string,
+    byte_to_string,
 };
 use countme::Count;
 

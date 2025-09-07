@@ -2,7 +2,11 @@ use std::borrow::Cow;
 
 use crate::{
     GreenToken, NodeOrToken, SyntaxKind,
-    green::{GreenNode, node::GreenNodeData, token::GreenTokenData},
+    green::{
+        GreenNode,
+        node::{GreenNodeData, Slot},
+        token::GreenTokenData,
+    },
 };
 
 pub(crate) type GreenElement = NodeOrToken<GreenNode, GreenToken>;
@@ -38,6 +42,16 @@ impl From<GreenToken> for GreenElement {
     #[inline]
     fn from(token: GreenToken) -> GreenElement {
         NodeOrToken::Token(token)
+    }
+}
+
+impl From<&Slot> for GreenElement {
+    #[inline]
+    fn from(slot: &Slot) -> Self {
+        match slot {
+            Slot::Node { node, .. } => NodeOrToken::Node(node.to_owned()),
+            Slot::Token { token, .. } => NodeOrToken::Token(token.to_owned()),
+        }
     }
 }
 

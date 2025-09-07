@@ -1,7 +1,9 @@
 use std::{
-    borrow, fmt, iter,
+    borrow::{self, Cow},
+    fmt, iter,
     mem::{self, ManuallyDrop},
-    ops, ptr, slice,
+    ops::{self, Range},
+    ptr, slice,
 };
 
 use countme::Count;
@@ -9,7 +11,7 @@ use countme::Count;
 use crate::{
     GreenToken, GreenTrivia, NodeOrToken, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::element::GreenElement,
+    green::{GreenElementRef, element::GreenElement},
 };
 
 type Repr = HeaderSlice<GreenNodeHead, [Slot]>;
@@ -109,6 +111,69 @@ impl GreenNodeData {
     #[inline]
     pub(crate) fn slots(&self) -> Slots<'_> {
         Slots { raw: self.slice().iter() }
+    }
+
+    pub(crate) fn child_at_range(&self, rel_range: Range<u64>) -> Option<(usize, u64, GreenElementRef<'_>)> {
+        let idx = self
+            .slice()
+            .binary_search_by(|it| {
+                let child_range = it.rel_range();
+                if child_range.end <= rel_range.start {
+                    std::cmp::Ordering::Less
+                } else if child_range.start >= rel_range.end {
+                    std::cmp::Ordering::Greater
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            })
+            // XXX: this handles empty ranges
+            .unwrap_or_else(|it| it.saturating_sub(1));
+        let child = &self.slice().get(idx).filter(|it| {
+            let child_range = it.rel_range();
+            child_range.start <= rel_range.start && rel_range.end <= child_range.end
+        })?;
+        Some((idx, child.rel_offset(), child.as_ref()))
+    }
+
+    #[must_use]
+    pub fn replace_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
+        let mut replacement = Some(new_child);
+        let children = self.slots().enumerate().map(|(i, child)| {
+            if i == index {
+                replacement.take().unwrap()
+            } else {
+                GreenElement::from(child).to_owned()
+            }
+        });
+        GreenNode::new_list(self.kind(), children)
+    }
+
+    #[must_use]
+    pub fn insert_child(&self, index: usize, new_child: GreenElement) -> GreenNode {
+        self.splice_children(index..index, iter::once(new_child))
+    }
+
+    #[must_use]
+    pub fn remove_child(&self, index: usize) -> GreenNode {
+        self.splice_children(index..=index, iter::empty())
+    }
+
+    #[must_use]
+    pub fn splice_children<R, I>(&self, range: R, replace_with: I) -> GreenNode
+    where
+        R: ops::RangeBounds<usize>,
+        I: IntoIterator<Item = GreenElement>,
+    {
+        let mut children: Vec<_> = self.slots().map(|it| GreenElement::from(it).to_owned()).collect();
+        children.splice(range, replace_with);
+        GreenNode::new_list(self.kind(), children)
+    }
+}
+
+impl From<Cow<'_, GreenNodeData>> for GreenNode {
+    #[inline]
+    fn from(cow: Cow<'_, GreenNodeData>) -> Self {
+        cow.into_owned()
     }
 }
 
@@ -253,6 +318,27 @@ impl ops::Deref for GreenNode {
 pub(crate) enum Slot {
     Node { rel_offset: u32, node: GreenNode },
     Token { rel_offset: u32, token: GreenToken },
+}
+
+impl Slot {
+    #[inline]
+    pub(crate) fn as_ref(&self) -> GreenElementRef {
+        match self {
+            Slot::Node { node, .. } => NodeOrToken::Node(node),
+            Slot::Token { token, .. } => NodeOrToken::Token(token),
+        }
+    }
+    #[inline]
+    pub(crate) fn rel_offset(&self) -> u64 {
+        match self {
+            Slot::Node { rel_offset, .. } | Slot::Token { rel_offset, .. } => *rel_offset as u64,
+        }
+    }
+    #[inline]
+    fn rel_range(&self) -> Range<u64> {
+        let len = self.as_ref().text_len();
+        self.rel_offset()..(self.rel_offset() + len as u64)
+    }
 }
 
 impl fmt::Display for Slot {
