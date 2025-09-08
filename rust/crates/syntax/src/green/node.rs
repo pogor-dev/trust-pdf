@@ -128,10 +128,12 @@ impl GreenNodeData {
             })
             // XXX: this handles empty ranges
             .unwrap_or_else(|it| it.saturating_sub(1));
+
         let child = &self.slice().get(idx).filter(|it| {
             let child_range = it.rel_range();
             child_range.start <= rel_range.start && rel_range.end <= child_range.end
         })?;
+
         Some((idx, child.rel_offset(), child.as_ref()))
     }
 
@@ -646,6 +648,41 @@ mod node_tests {
     fn test_trailing_trivia_empty_node() {
         let node = GreenNode::new_list(SyntaxKind(3), vec![]);
         assert!(node.trailing_trivia().is_none());
+    }
+
+    #[rstest]
+    fn test_insert_child() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone())]);
+        let new_node = node.insert_child(1, NodeOrToken::Token(token2.clone()));
+        assert_eq!(new_node.slots().count(), 2);
+    }
+
+    #[rstest]
+    fn test_remove_child() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let new_node = node.remove_child(0);
+        assert_eq!(new_node.slots().count(), 1);
+    }
+
+    #[rstest]
+    fn test_replace_child() {
+        let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
+        let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
+        let token3 = GreenToken::new_with_trivia(SyntaxKind(2), b"token3", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let new_node = node.replace_child(0, NodeOrToken::Token(token3.clone()));
+        assert_eq!(new_node.slots().count(), 2);
+        assert_eq!(
+            new_node.slots().nth(0).unwrap(),
+            &Slot::Token {
+                rel_offset: 0,
+                token: token3.clone()
+            }
+        );
     }
 }
 
