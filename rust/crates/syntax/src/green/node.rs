@@ -113,11 +113,23 @@ impl GreenNodeData {
         Slots { raw: self.slice().iter() }
     }
 
+    /// Finds the child element that contains the given text range using binary search.
+    ///
+    /// Uses range overlap detection to efficiently locate which child contains the target range.
+    /// Essential for position-based queries in syntax trees.
+    ///
+    /// # Range Comparison Logic
+    ///
+    /// |             | Less                     | Greater                 | Equal (Overlap)         | Equal (Contains)         |
+    /// |-------------|--------------------------|-------------------------|-------------------------|--------------------------|
+    /// | child_range |   ███████ [3..8)         |          █████ [20..25) |         ██████ [8..18)  |     ████████████ [5..25) |
+    /// | rel_range   |            ████ [12..18) | ███████ [5..12)         |           ████ [12..18) |         ██ [10..15)      |
+    /// | result      | search ->                | search <-               | found                   | found                    |
     pub(crate) fn child_at_range(&self, rel_range: Range<u64>) -> Option<(usize, u64, GreenElementRef<'_>)> {
         let idx = self
             .slice()
-            .binary_search_by(|it| {
-                let child_range = it.rel_range();
+            .binary_search_by(|child| {
+                let child_range = child.rel_range();
                 if child_range.end <= rel_range.start {
                     std::cmp::Ordering::Less
                 } else if child_range.start >= rel_range.end {
@@ -339,7 +351,9 @@ impl Slot {
     #[inline]
     fn rel_range(&self) -> Range<u64> {
         let len = self.as_ref().text_len();
-        self.rel_offset()..(self.rel_offset() + len as u64)
+        let start = self.rel_offset();
+        let end = start + len as u64;
+        start..end
     }
 }
 
@@ -491,14 +505,14 @@ mod node_tests {
     #[rstest]
     fn test_new_single_token() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.kind(), SyntaxKind(3));
     }
 
     #[rstest]
     fn test_new_single_nested_node() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let child_node = GreenNode::new_single(SyntaxKind(4), GreenElement::from(token.clone()));
         let parent_node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Node(child_node.clone()));
         assert_eq!(parent_node.kind(), SyntaxKind(3));
     }
@@ -507,14 +521,14 @@ mod node_tests {
     fn test_new_list_tokens() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
         assert_eq!(node.kind(), SyntaxKind(3));
     }
 
     #[rstest]
     fn test_new_list_nested_nodes() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let child_node = GreenNode::new_single(SyntaxKind(4), GreenElement::from(token.clone()));
         let parent_node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Node(child_node.clone())]);
         assert_eq!(parent_node.kind(), SyntaxKind(3));
     }
@@ -523,7 +537,7 @@ mod node_tests {
     #[allow(useless_ptr_null_checks)]
     fn test_into_raw_pointer() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let ptr: ptr::NonNull<GreenNodeData> = GreenNode::into_raw(node.clone());
         assert!(!ptr.as_ptr().is_null());
     }
@@ -531,7 +545,7 @@ mod node_tests {
     fn test_from_raw_pointer() {
         let kind = SyntaxKind(3);
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(kind, NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(kind, GreenElement::from(token.clone()));
         let ptr: ptr::NonNull<GreenNodeData> = GreenNode::into_raw(node.clone());
         let recovered = unsafe { GreenNode::from_raw(ptr) };
         assert_eq!(recovered.kind(), kind);
@@ -540,7 +554,7 @@ mod node_tests {
     #[rstest]
     fn test_fmt_debug() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let formatted = format!("{:?}", node);
         assert_eq!(formatted, "GreenNode { kind: SyntaxKind(3), full_text_len: 7 }");
     }
@@ -548,7 +562,7 @@ mod node_tests {
     #[rstest]
     fn test_fmt_display() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let formatted = format!("{}", node);
         assert_eq!(formatted, " token\n");
     }
@@ -556,7 +570,7 @@ mod node_tests {
     #[rstest]
     fn test_fmt_display_nested_node() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let child_node = GreenNode::new_single(SyntaxKind(4), NodeOrToken::Token(token.clone()));
+        let child_node = GreenNode::new_single(SyntaxKind(4), GreenElement::from(token.clone()));
         let parent_node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Node(child_node.clone()));
         let formatted = format!("{}", parent_node);
         assert_eq!(formatted, " token\n");
@@ -566,7 +580,7 @@ mod node_tests {
     fn test_borrowing() {
         use std::borrow::Borrow;
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let borrowed = node.borrow();
         let data: &GreenNodeData = &borrowed;
         let owned = data.to_owned();
@@ -576,28 +590,28 @@ mod node_tests {
     #[rstest]
     fn test_kind() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.kind(), SyntaxKind(3));
     }
 
     #[rstest]
     fn test_text_len() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.text_len(), 5);
     }
 
     #[rstest]
     fn test_full_text_len() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.full_text_len(), 7); // 1 (whitespace) + 5 (token) + 1 (eol)
     }
 
     #[rstest]
     fn test_leading_trivia_len() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.leading_trivia_len(), 1); // whitespace
     }
 
@@ -610,7 +624,7 @@ mod node_tests {
     #[rstest]
     fn test_trailing_trivia_len() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         assert_eq!(node.trailing_trivia_len(), 1); // eol
     }
 
@@ -623,7 +637,7 @@ mod node_tests {
     #[rstest]
     fn test_leading_trivia() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let leading_trivia = node.leading_trivia().unwrap();
         assert_eq!(leading_trivia.full_text_len(), 1);
         assert_eq!(leading_trivia.full_text(), b" ");
@@ -638,7 +652,7 @@ mod node_tests {
     #[rstest]
     fn test_trailing_trivia() {
         let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_single(SyntaxKind(3), NodeOrToken::Token(token.clone()));
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
         let trailing_trivia = node.trailing_trivia().unwrap();
         assert_eq!(trailing_trivia.full_text_len(), 1);
         assert_eq!(trailing_trivia.full_text(), b"\n");
@@ -654,8 +668,8 @@ mod node_tests {
     fn test_insert_child() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone())]);
-        let new_node = node.insert_child(1, NodeOrToken::Token(token2.clone()));
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone())]);
+        let new_node = node.insert_child(1, GreenElement::from(token2.clone()));
         assert_eq!(new_node.slots().count(), 2);
     }
 
@@ -663,7 +677,7 @@ mod node_tests {
     fn test_remove_child() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
         let new_node = node.remove_child(0);
         assert_eq!(new_node.slots().count(), 1);
     }
@@ -673,8 +687,8 @@ mod node_tests {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
         let token3 = GreenToken::new_with_trivia(SyntaxKind(2), b"token3", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
-        let new_node = node.replace_child(0, NodeOrToken::Token(token3.clone()));
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
+        let new_node = node.replace_child(0, GreenElement::from(token3.clone()));
         assert_eq!(new_node.slots().count(), 2);
         assert_eq!(
             new_node.slots().nth(0).unwrap(),
@@ -683,6 +697,83 @@ mod node_tests {
                 token: token3.clone()
             }
         );
+    }
+
+    #[rstest]
+    #[case::empty_range(
+        vec![b"token1".as_slice(), b"token2".as_slice()],
+        0..0,
+        Some((0, 0, 0))
+    )]
+    #[case::range_outside_all_children(
+        vec![b"abc".as_slice(), b"defghijk".as_slice()],
+        12..18,
+        None  // Range 12..18 is outside children ranges 0..3 and 3..11
+    )]
+    #[case::range_contained_in_second_child(
+        vec![b"short".as_slice(), b"verylongtoken".as_slice()],
+        5..12,
+        Some((1, 5, 1))
+    )]
+    #[case::range_extends_beyond_child(
+        vec![b"first".as_slice(), b"overlapping".as_slice()],
+        12..19,
+        None  // Range 12..19 extends beyond child 1 range 5..16
+    )]
+    #[case::range_contained_in_large_token(
+        vec![b"verylongtokenthatcontains".as_slice()],
+        10..15,
+        Some((0, 0, 0))
+    )]
+    #[case::range_contained_in_second_token(
+        vec![b"abc".as_slice(), b"def".as_slice()],
+        4..6,
+        Some((1, 3, 1))  // Range 4..6 is contained in child 1 range 3..6
+    )]
+    #[case::range_spans_multiple_children(
+        vec![b"abc".as_slice(), b"def".as_slice()],
+        2..8,
+        None
+    )]
+    fn test_child_at_range_scenarios(
+        #[case] token_texts: Vec<&[u8]>,
+        #[case] target_range: Range<u64>,
+        #[case] expected: Option<(usize, u64, usize)>, // (index, rel_offset, token_index)
+    ) {
+        // Create tokens with trivia
+        let tokens: Vec<GreenToken> = token_texts.iter().map(|text| GreenToken::new(SyntaxKind(2), text)).collect();
+
+        // Create node with tokens
+        let elements: Vec<GreenElement> = tokens.iter().map(|t| GreenElement::from(t.clone())).collect();
+        let node = GreenNode::new_list(SyntaxKind(3), elements);
+
+        // Test the function
+        let result = node.child_at_range(target_range);
+
+        // Match both actual and expected results
+        match (result, expected) {
+            // Both are Some - compare the values
+            (Some((actual_idx, actual_offset, actual_child)), Some((expected_idx, expected_offset, expected_token_idx))) => {
+                assert_eq!(actual_idx, expected_idx, "Child index mismatch");
+                assert_eq!(actual_offset, expected_offset, "Relative offset mismatch");
+                assert_eq!(
+                    actual_child.to_owned(),
+                    GreenElement::from(tokens[expected_token_idx].clone()),
+                    "Child element mismatch"
+                );
+            }
+            // Both are None - test passes
+            (None, None) => {
+                // Both are None, test passes
+            }
+            // Mismatched results - test fails
+            (Some(actual), None) => {
+                panic!("Expected None, but got Some({:?})", actual);
+            }
+            (None, Some(expected)) => {
+                panic!("Expected Some({:?}), but got None", expected);
+            }
+        }
     }
 }
 
@@ -704,7 +795,7 @@ mod slots_tests {
     fn test_slots_iterator() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
 
         assert_eq!(node.slots().count(), 2);
         assert_eq!(
@@ -736,7 +827,7 @@ mod slots_tests {
     fn test_slots_double_ended_iterator() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
 
         assert_eq!(
             node.slots().next_back().unwrap(),
@@ -759,7 +850,7 @@ mod slots_tests {
     fn test_slots_exact_size_iterator() {
         let token1 = GreenToken::new_with_trivia(SyntaxKind(2), b"token1", create_whitespace_trivia(), create_eol_trivia());
         let token2 = GreenToken::new_with_trivia(SyntaxKind(2), b"token2", create_whitespace_trivia(), create_eol_trivia());
-        let node = GreenNode::new_list(SyntaxKind(3), vec![NodeOrToken::Token(token1.clone()), NodeOrToken::Token(token2.clone())]);
+        let node = GreenNode::new_list(SyntaxKind(3), vec![GreenElement::from(token1.clone()), GreenElement::from(token2.clone())]);
 
         assert_eq!(node.slots().len(), 2);
     }
