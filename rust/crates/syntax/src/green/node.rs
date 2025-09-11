@@ -775,6 +775,15 @@ mod node_tests {
             }
         }
     }
+
+    #[rstest]
+    fn test_cow_from() {
+        let token = GreenToken::new_with_trivia(SyntaxKind(2), b"token", create_whitespace_trivia(), create_eol_trivia());
+        let node = GreenNode::new_single(SyntaxKind(3), GreenElement::from(token.clone()));
+        let cow: Cow<'_, GreenNodeData> = Cow::Borrowed(&node);
+        let owned: GreenNode = cow.into();
+        assert_eq!(owned.kind(), node.kind());
+    }
 }
 
 #[cfg(test)]
