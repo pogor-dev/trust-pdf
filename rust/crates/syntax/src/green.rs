@@ -1,9 +1,13 @@
+mod builder;
+mod cache;
 mod element;
 mod node;
 mod token;
 mod trivia;
 
 pub use self::{
+    builder::{Checkpoint, GreenNodeBuilder},
+    cache::NodeCache,
     node::{GreenNode, GreenNodeData},
     token::{GreenToken, GreenTokenData},
     trivia::GreenTrivia,

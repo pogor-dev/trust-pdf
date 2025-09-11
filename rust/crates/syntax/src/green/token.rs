@@ -147,7 +147,7 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_leading_token(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia) -> GreenToken {
+    pub fn new_with_leading_trivia(kind: SyntaxKind, text: &[u8], leading_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
             full_text_len: (text.len() as u32) + (leading_token.full_text_len() as u32),
@@ -161,7 +161,7 @@ impl GreenToken {
 
     /// Creates new Token.
     #[inline]
-    pub fn new_with_trailing_token(kind: SyntaxKind, text: &[u8], trailing_token: GreenTrivia) -> GreenToken {
+    pub fn new_with_trailing_trivia(kind: SyntaxKind, text: &[u8], trailing_token: GreenTrivia) -> GreenToken {
         let head = GreenTokenHead {
             kind,
             full_text_len: (text.len() as u32) + (trailing_token.full_text_len() as u32),
@@ -267,7 +267,7 @@ mod tests {
         let kind = SyntaxKind(1);
         let text = b"test";
         let leading_trivia = GreenTrivia::new_single(SyntaxKind(2), b" ");
-        let token = GreenToken::new_with_leading_token(kind, text, leading_trivia.clone());
+        let token = GreenToken::new_with_leading_trivia(kind, text, leading_trivia.clone());
         assert_eq!(token.kind(), kind);
         assert_eq!(token.text(), text);
         assert_eq!(token.leading_trivia(), Some(&leading_trivia));
@@ -278,7 +278,7 @@ mod tests {
         let kind = SyntaxKind(1);
         let text = b"test";
         let trailing_trivia = GreenTrivia::new_single(SyntaxKind(3), b"\n");
-        let token = GreenToken::new_with_trailing_token(kind, text, trailing_trivia.clone());
+        let token = GreenToken::new_with_trailing_trivia(kind, text, trailing_trivia.clone());
         assert_eq!(token.kind(), kind);
         assert_eq!(token.text(), text);
         assert_eq!(token.trailing_trivia(), Some(&trailing_trivia));
