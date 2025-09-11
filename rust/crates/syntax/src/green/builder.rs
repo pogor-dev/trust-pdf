@@ -3,22 +3,8 @@ use std::{borrow::Cow, num::NonZeroUsize};
 use crate::{
     NodeOrToken, SyntaxKind,
     cow_mut::CowMut,
-    green::{GreenNode, NodeCache, element::GreenElement},
+    green::{GreenNode, NodeCache, element::GreenElement, trivia::GreenTriviaPiece},
 };
-
-/// A checkpoint for maybe wrapping a node. See `GreenNodeBuilder::checkpoint` for details.
-#[derive(Clone, Copy, Debug)]
-pub struct Checkpoint(NonZeroUsize);
-
-impl Checkpoint {
-    fn new(inner: usize) -> Self {
-        Self(NonZeroUsize::new(inner + 1).unwrap())
-    }
-
-    fn into_inner(self) -> usize {
-        self.0.get() - 1
-    }
-}
 
 /// A builder for a green tree.
 #[derive(Default, Debug)]
@@ -26,8 +12,10 @@ pub struct GreenNodeBuilder<'cache> {
     cache: CowMut<'cache, NodeCache>,
     parents: Vec<(SyntaxKind, usize)>,
     children: Vec<(u64, GreenElement)>,
+    trivia_pieces: Vec<(u64, GreenTriviaPiece)>,
 }
 
+// TODO: add a macro similar to syntree
 impl GreenNodeBuilder<'_> {
     /// Creates new builder.
     pub fn new() -> GreenNodeBuilder<'static> {
@@ -44,11 +32,37 @@ impl GreenNodeBuilder<'_> {
         }
     }
 
+    /// Adds new trivia to the current branch.
+    #[inline]
+    pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) {
+        let (hash, trivia) = self.cache.trivia(kind, text);
+        self.children.push((hash, trivia.into()));
+    }
+
     /// Adds new token to the current branch.
     #[inline]
     pub fn token(&mut self, kind: SyntaxKind, text: &[u8]) {
         let (hash, token) = self.cache.token(kind, text);
         self.children.push((hash, token.into()));
+        // TODO: token adds straight away into children, need to check start_token/finish_token
+        // TODO: if we didn't close token, don't add the token in children, but do it in finish_token
+    }
+
+    /// Start new token and make it current.
+    #[inline]
+    pub fn start_token(&mut self) {
+        // TODO: we don't allow nesting tokens
+        let len = self.children.len();
+        self.parents.push(len);
+    }
+
+    /// Finish current token and restore previous
+    /// branch as current.
+    #[inline]
+    pub fn finish_token(&mut self) {
+        let (kind, first_child) = self.parents.pop().unwrap();
+        let (hash, node) = self.cache.node(kind, &mut self.children, first_child);
+        self.children.push((hash, node.into()));
     }
 
     /// Start new node and make it current.
@@ -121,5 +135,19 @@ impl GreenNodeBuilder<'_> {
             NodeOrToken::Node(node) => node,
             NodeOrToken::Token(_) => panic!(),
         }
+    }
+}
+
+/// A checkpoint for maybe wrapping a node. See `GreenNodeBuilder::checkpoint` for details.
+#[derive(Clone, Copy, Debug)]
+pub struct Checkpoint(NonZeroUsize);
+
+impl Checkpoint {
+    fn new(inner: usize) -> Self {
+        Self(NonZeroUsize::new(inner + 1).unwrap())
+    }
+
+    fn into_inner(self) -> usize {
+        self.0.get() - 1
     }
 }
