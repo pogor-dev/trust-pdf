@@ -4,7 +4,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use crate::{
     GreenToken, GreenTrivia, NodeOrToken, SyntaxKind,
-    green::{GreenElementRef, GreenNode, GreenNodeData, GreenTokenData, Slot, element::GreenElement},
+    green::{GreenElementRef, GreenNode, GreenNodeData, GreenTokenData, Slot, element::GreenElement, trivia::GreenTriviaPiece},
 };
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -16,7 +16,7 @@ struct NoHash<T>(T);
 pub struct NodeCache {
     nodes: HashMap<NoHash<GreenNode>, ()>,
     tokens: HashMap<NoHash<GreenToken>, ()>,
-    trivias: HashMap<NoHash<GreenTrivia>, ()>,
+    trivias: HashMap<NoHash<GreenTriviaPiece>, ()>,
 }
 
 impl NodeCache {
@@ -96,12 +96,44 @@ impl NodeCache {
 
         (hash, token)
     }
+
+    pub(crate) fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaPiece) {
+        let hash = {
+            let mut h = FxHasher::default();
+            kind.hash(&mut h);
+            text.hash(&mut h);
+            h.finish()
+        };
+
+        let entry = self
+            .trivias
+            .raw_entry_mut()
+            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.full_text() == text);
+
+        let trivia = match entry {
+            RawEntryMut::Occupied(entry) => entry.key().0.clone(),
+            RawEntryMut::Vacant(entry) => {
+                let trivia = GreenTriviaPiece::new(kind, text);
+                entry.insert_with_hasher(hash, NoHash(trivia.clone()), (), |t| trivia_hash(&t.0));
+                trivia
+            }
+        };
+
+        (hash, trivia)
+    }
 }
 
 fn token_hash(token: &GreenTokenData) -> u64 {
     let mut h = FxHasher::default();
     token.kind().hash(&mut h);
     token.full_text().hash(&mut h);
+    h.finish()
+}
+
+fn trivia_hash(trivia: &GreenTriviaPiece) -> u64 {
+    let mut h = FxHasher::default();
+    trivia.kind().hash(&mut h);
+    trivia.full_text().hash(&mut h);
     h.finish()
 }
 

@@ -29,14 +29,16 @@ impl GreenNodeBuilder<'_> {
             cache: CowMut::Borrowed(cache),
             parents: Vec::new(),
             children: Vec::new(),
+            trivia_pieces: Vec::new(),
         }
     }
 
     /// Adds new trivia to the current branch.
     #[inline]
     pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) {
+        // TODO: trivia adds straight away into token, need to check start_token/finish_token
         let (hash, trivia) = self.cache.trivia(kind, text);
-        self.children.push((hash, trivia.into()));
+        self.trivia_pieces.push((hash, trivia));
     }
 
     /// Adds new token to the current branch.
