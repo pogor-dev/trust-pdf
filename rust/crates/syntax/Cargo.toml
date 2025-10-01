@@ -7,7 +7,28 @@ license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 
+# Avoid loading benches from the benches directory so we can add more
+# dependencies in there which would otherwise hog down testing this crate.
+autobenches = false
+
 [dependencies]
 # Local crates
 
 # Non-local crates
+countme = { workspace = true }
+bumpalo = { workspace = true }
+hashbrown = { workspace = true }
+iai-callgrind = { workspace = true, optional = true }
+iai-callgrind-macros = { workspace = true, optional = true }
+rustc-hash = { workspace = true }
+
+[dev-dependencies]
+rstest = { workspace = true }
+
+[features]
+# Feature flag for benchmark dependencies
+bench = ["dep:iai-callgrind", "dep:iai-callgrind-macros"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

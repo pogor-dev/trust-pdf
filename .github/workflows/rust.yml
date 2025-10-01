@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
@@ -44,6 +45,9 @@ jobs:
             rust/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('rust/**/Cargo.lock') }}
 
+      - name: Install cargo-llvm-cov
+        run: cargo +stable install cargo-llvm-cov --locked
+
       - name: Install cargo2junit
         run: cargo install cargo2junit
 
@@ -51,6 +55,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         working-directory: rust
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
+
+      - name: Run Clippy
+        working-directory: rust
+        run: cargo clippy --all --all-features -- -D warnings
+
+      - name: Run Format Check
+        working-directory: rust
+        run: cargo fmt --all --check
 
       - name: Compile (tests)
         working-directory: rust
@@ -84,3 +96,37 @@ jobs:
           name: Tests report ${{ matrix.os }} # Name of the check run which will be created
           path: rust/test-results.xml # Path to test results
           reporter: java-junit # Format of test results
+
+      - name: Generate coverage report
+        working-directory: rust
+        if: success() || failure() # run this step even if previous step failed
+        run: cargo llvm-cov --lcov --output-path coverage.lcov
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Install Bencher CLI
+        uses: bencherdev/bencher@main
+        if: matrix.os == 'ubuntu-latest'
+
+      - name: Track base branch benchmarks with Bencher
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: rust
+        run: |
+          bencher run \
+          --project trust-pdf \
+          --token '${{ secrets.BENCHER_TOKEN }}' \
+          --branch main \
+          --testbed ubuntu-latest \
+          --threshold-measure latency \
+          --threshold-test t_test \
+          --threshold-max-sample-size 64 \
+          --threshold-upper-boundary 0.99 \
+          --thresholds-reset \
+          --err \
+          --adapter json \
+          --github-actions '${{ secrets.GITHUB_TOKEN }}' \
+          bencher mock
