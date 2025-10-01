@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.89.0"
+rust-version = "1.90.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["Victor Pogor", "TRust PDF contributors"]
@@ -20,7 +20,7 @@ semantic = { path = "./crates/semantic", version = "0.1.0" }
 bumpalo = "3.19.0"
 cargo-deny = "0.18.3"
 countme = "3.0.1"
-hashbrown = "0.15.5"
+hashbrown = "0.16.0"
 iai-callgrind = "0.16.1"
 iai-callgrind-macros = "0.6.1"
 rstest = "0.26.1"
