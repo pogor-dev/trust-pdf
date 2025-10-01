@@ -103,7 +103,7 @@ jobs:
         run: cargo llvm-cov --lcov --output-path coverage.lcov
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         if: matrix.os == 'ubuntu-latest'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
