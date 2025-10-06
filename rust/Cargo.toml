@@ -21,6 +21,7 @@ bumpalo = "3.19.0"
 cargo-deny = "0.18.3"
 countme = "3.0.1"
 hashbrown = "0.16.0"
+la-arena = "0.3.1"
 iai-callgrind = "0.16.1"
 iai-callgrind-macros = "0.6.1"
 rstest = "0.26.1"
@@ -30,12 +31,17 @@ rustc-hash = "2.1.1"
 [profile.dev]
 # Faster debug builds
 debug = 1
+opt-level = 1
 incremental = true
 codegen-units = 256
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.test]
 # Optimized test builds
 debug = 1
+opt-level = 1
 incremental = true
 codegen-units = 256
 
