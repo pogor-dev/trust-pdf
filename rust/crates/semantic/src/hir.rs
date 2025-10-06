@@ -84,6 +84,7 @@ pub struct XRefEntry {
 }
 
 /* DOCUMENT STRUCTURE */
+// TODO: Involve Arlington to generate these structures from the PDF spec?
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Catalog {
