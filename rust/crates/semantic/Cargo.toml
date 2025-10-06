@@ -11,3 +11,4 @@ repository.workspace = true
 # Local crates
 
 # Non-local crates
+la-arena.workspace = true
