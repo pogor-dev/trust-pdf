@@ -30,12 +30,17 @@ rustc-hash = "2.1.1"
 [profile.dev]
 # Faster debug builds
 debug = 1
+opt-level = 1
 incremental = true
 codegen-units = 256
+
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.test]
 # Optimized test builds
 debug = 1
+opt-level = 1
 incremental = true
 codegen-units = 256
 
