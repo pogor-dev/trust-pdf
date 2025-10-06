@@ -39,6 +39,7 @@ impl PartialEq for Literal {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Expr {
+    Missing,
     Literal(Literal),
     Array(Box<[ExprId]>),
     Dictionary(Box<[DictionaryEntry]>),
