@@ -16,6 +16,7 @@ autobenches = false
 
 # Non-local crates
 bumpalo.workspace = true
+countme.workspace = true
 hashbrown.workspace = true
 
 [dev-dependencies]
