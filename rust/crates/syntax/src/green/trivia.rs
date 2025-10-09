@@ -10,7 +10,7 @@ pub struct GreenTriviaList<'trivia> {
     full_width: usize,
 }
 
-#[repr(packed)]
+#[repr(C)] // TODO: add a test to ensure size and alignment
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(super) struct GreenTriviaHead {
     kind: SyntaxKind,       // 2 bytes
@@ -24,7 +24,7 @@ pub(super) struct GreenTriviaHead {
 #[repr(C)]
 pub(super) struct GreenTriviaData {
     head: GreenTriviaHead,
-    text: [u8; 0],
+    full_text: [u8; 0],
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -34,14 +34,14 @@ pub struct GreenTrivia {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) struct GreenTriviaInTree {
+pub(super) struct GreenTriviaInTree {
     /// INVARIANT: This points at a valid `GreenTriviaInTree` then `str` with len `text_len`,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenTriviaData>,
 }
 
 impl GreenTriviaInTree {
-    pub(crate) unsafe fn alloc_token_unchecked(arena: &bumpalo::Bump, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {}
+    pub(super) unsafe fn alloc_token_unchecked(arena: &bumpalo::Bump, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {}
 }
 
 // SAFETY: The pointer is valid.
