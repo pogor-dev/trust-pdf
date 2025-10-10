@@ -12,7 +12,7 @@ pub struct DiagnosticInfo {
 impl DiagnosticInfo {
     pub fn new_with_offset_and_length(code: ErrorCode, offset: usize, length: usize) -> Self {
         Self {
-            code: code.clone(),
+            code,
             message: get_error_message(&code),
             severity: get_severity(&code),
             offset,

@@ -49,7 +49,7 @@ pub(super) struct GreenTriviaData {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct GreenTrivia {
-    /// INVARIANT: This points at a valid `GreenTriviaInTree` then `str` with len `text_len`,
+    /// INVARIANT: This points at a valid `GreenTriviaInTree` followed by `text_len` bytes,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenTriviaData>,
 }
@@ -73,9 +73,9 @@ impl GreenTrivia {
     }
 
     #[inline]
-    pub fn text(&self) -> &str {
+    pub fn text(&self) -> &[u8] {
         // SAFETY: `data`'s invariant.
-        unsafe { std::str::from_utf8_unchecked(slice::from_raw_parts(self.text_ptr_mut(), self.header().full_width.into())) }
+        unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.header().full_width.into()) }
     }
 
     #[inline]
@@ -104,7 +104,9 @@ impl GreenTrivia {
 
 impl fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &self.text()).finish()
+        // SAFETY: `text` is guaranteed to be valid UTF-8 by the node invariant.
+        let text = unsafe { std::str::from_utf8_unchecked(self.text()) };
+        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &text).finish()
     }
 }
 
