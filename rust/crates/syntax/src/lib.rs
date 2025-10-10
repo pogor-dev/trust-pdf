@@ -1,7 +1,7 @@
+mod diagnostics;
 mod green;
-mod kind;
 
 pub use crate::{
-    green::{GreenNode, GreenToken, GreenTrivia, GreenTriviaList},
-    kind::SyntaxKind,
+    diagnostics::DiagnosticInfo,
+    green::{GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind},
 };

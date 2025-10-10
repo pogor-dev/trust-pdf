@@ -26,12 +26,12 @@ iai-callgrind = "0.16.1"
 iai-callgrind-macros = "0.6.1"
 rstest = "0.26.1"
 rustc-hash = "2.1.1"
+triomphe = "0.1.15"
 
 # Optimized profiles for faster builds
 [profile.dev]
 # Faster debug builds
 debug = 1
-opt-level = 1
 incremental = true
 codegen-units = 256
 
@@ -41,7 +41,6 @@ opt-level = 3
 [profile.test]
 # Optimized test builds
 debug = 1
-opt-level = 1
 incremental = true
 codegen-units = 256
 

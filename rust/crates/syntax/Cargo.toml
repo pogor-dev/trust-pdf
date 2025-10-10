@@ -15,6 +15,10 @@ autobenches = false
 # Local crates
 
 # Non-local crates
+bumpalo.workspace = true
+countme.workspace = true
+hashbrown.workspace = true
+triomphe.workspace = true
 
 [dev-dependencies]
 rstest = { workspace = true }
