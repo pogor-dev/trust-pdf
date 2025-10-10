@@ -1,9 +1,49 @@
 use bumpalo::Bump;
 use hashbrown::HashMap;
+use triomphe::{Arc, UniqueArc};
 
-use crate::DiagnosticInfo;
+use crate::{DiagnosticInfo, GreenTrivia, SyntaxKind, green::trivia::GreenTriviaHead};
 
 pub(crate) struct GreenTree {
     arena: Bump,
     diagnostics: HashMap<*const u8, Vec<DiagnosticInfo>>,
+}
+
+// SAFETY: We only mutate when having mutable access, and mutating doesn't invalidate existing pointers.
+unsafe impl Sync for GreenTree {}
+
+impl GreenTree {
+    // This needs to be inside `UniqueArc` because otherwise the `verify_origin()` comparisons
+    // are messed up.
+    #[inline]
+    pub(crate) fn new() -> UniqueArc<Self> {
+        UniqueArc::new(Self {
+            arena: Bump::new(),
+            diagnostics: HashMap::default(),
+        })
+    }
+
+    #[inline]
+    pub(super) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
+        // SAFETY: We have mutable access.
+        unsafe { self.alloc_trivia_unchecked(kind, text) }
+    }
+
+    /// # Safety
+    ///
+    /// You must ensure there is no concurrent allocation.
+    unsafe fn alloc_trivia_unchecked(&self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
+        assert!(text.len() <= u16::MAX.into());
+
+        let layout = GreenTriviaHead::layout(text.len());
+        let trivia = self.arena.alloc_layout(layout);
+        let trivia = GreenTrivia { data: trivia.cast() };
+
+        // SAFETY: The trivia is allocated, we don't need it to be initialized for the writing.
+        unsafe {
+            trivia.header_ptr_mut().write(GreenTriviaHead::new(kind, text));
+            trivia.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
+        }
+        trivia
+    }
 }

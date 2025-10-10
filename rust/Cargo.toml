@@ -26,6 +26,7 @@ iai-callgrind = "0.16.1"
 iai-callgrind-macros = "0.6.1"
 rstest = "0.26.1"
 rustc-hash = "2.1.1"
+triomphe = "0.1.15"
 
 # Optimized profiles for faster builds
 [profile.dev]
