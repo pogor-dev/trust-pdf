@@ -91,7 +91,6 @@ jobs:
 
       - name: Test Report
         uses: dorny/test-reporter@v1
-        if: success() || failure() # run this step even if previous step failed
         with:
           name: Tests report ${{ matrix.os }} # Name of the check run which will be created
           path: rust/test-results.xml # Path to test results
@@ -99,34 +98,33 @@ jobs:
 
       - name: Generate coverage report
         working-directory: rust
-        if: success() || failure() # run this step even if previous step failed
         run: cargo llvm-cov --lcov --output-path coverage.lcov
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v6
+      #   if: matrix.os == 'ubuntu-latest'
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Install Bencher CLI
-        uses: bencherdev/bencher@main
-        if: matrix.os == 'ubuntu-latest'
+      # - name: Install Bencher CLI
+      #   uses: bencherdev/bencher@main
+      #   if: matrix.os == 'ubuntu-latest'
 
-      - name: Track base branch benchmarks with Bencher
-        if: matrix.os == 'ubuntu-latest'
-        working-directory: rust
-        run: |
-          bencher run \
-          --project trust-pdf \
-          --token '${{ secrets.BENCHER_TOKEN }}' \
-          --branch main \
-          --testbed ubuntu-latest \
-          --threshold-measure latency \
-          --threshold-test t_test \
-          --threshold-max-sample-size 64 \
-          --threshold-upper-boundary 0.99 \
-          --thresholds-reset \
-          --err \
-          --adapter json \
-          --github-actions '${{ secrets.GITHUB_TOKEN }}' \
-          bencher mock
+      # - name: Track base branch benchmarks with Bencher
+      #   if: matrix.os == 'ubuntu-latest'
+      #   working-directory: rust
+      #   run: |
+      #     bencher run \
+      #     --project trust-pdf \
+      #     --token '${{ secrets.BENCHER_TOKEN }}' \
+      #     --branch main \
+      #     --testbed ubuntu-latest \
+      #     --threshold-measure latency \
+      #     --threshold-test t_test \
+      #     --threshold-max-sample-size 64 \
+      #     --threshold-upper-boundary 0.99 \
+      #     --thresholds-reset \
+      #     --err \
+      #     --adapter json \
+      #     --github-actions '${{ secrets.GITHUB_TOKEN }}' \
+      #     bencher mock
