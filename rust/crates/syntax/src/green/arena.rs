@@ -71,7 +71,7 @@ impl GreenTree {
             trivia_list.header_ptr_mut().write(GreenTriviaListHead::new(full_width, pieces.len()));
             trivia_list
                 .pieces_ptr_mut()
-                .copy_from_nonoverlapping(pieces.as_ptr().cast::<usize>(), pieces.len());
+                .copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
         }
         trivia_list
     }
