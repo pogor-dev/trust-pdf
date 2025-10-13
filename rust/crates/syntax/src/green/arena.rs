@@ -2,7 +2,10 @@ use bumpalo::Bump;
 use hashbrown::HashMap;
 use triomphe::{Arc, UniqueArc};
 
-use crate::{DiagnosticInfo, GreenTrivia, SyntaxKind, green::trivia::GreenTriviaHead};
+use crate::{
+    DiagnosticInfo, GreenTrivia, GreenTriviaList, SyntaxKind,
+    green::trivia::{GreenTriviaHead, GreenTriviaListHead},
+};
 
 pub(crate) struct GreenTree {
     arena: Bump,
@@ -29,6 +32,12 @@ impl GreenTree {
         unsafe { self.alloc_trivia_unchecked(kind, text) }
     }
 
+    #[inline]
+    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTrivia]) -> GreenTriviaList {
+        // SAFETY: We have mutable access.
+        unsafe { self.alloc_trivia_list_unchecked(pieces) }
+    }
+
     /// # Safety
     ///
     /// You must ensure there is no concurrent allocation.
@@ -45,5 +54,25 @@ impl GreenTree {
             trivia.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
         }
         trivia
+    }
+
+    // # Safety
+    ///
+    /// You must ensure there is no concurrent allocation.
+    unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTrivia]) -> GreenTriviaList {
+        assert!(pieces.len() <= u16::MAX.into());
+        let full_width = pieces.iter().map(|p| p.full_width() as usize).sum::<usize>();
+        let layout = GreenTriviaListHead::layout(pieces.len());
+        let trivia_list = self.arena.alloc_layout(layout);
+        let trivia_list = GreenTriviaList { data: trivia_list.cast() };
+
+        // SAFETY: The trivia list is allocated, we don't need it to be initialized for the writing.
+        unsafe {
+            trivia_list.header_ptr_mut().write(GreenTriviaListHead::new(full_width, pieces.len()));
+            trivia_list
+                .pieces_ptr_mut()
+                .copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
+        }
+        trivia_list
     }
 }
