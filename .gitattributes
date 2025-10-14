@@ -1,0 +1,5 @@
+# Set default behavior for text files
+* text=auto
+
+# Ensure consistent line endings for Rust source files
+*.rs text eol=lf
