@@ -1,6 +1,6 @@
 use bumpalo::Bump;
 use hashbrown::HashMap;
-use triomphe::{Arc, UniqueArc};
+use triomphe::UniqueArc;
 
 use crate::{
     DiagnosticInfo, GreenTrivia, GreenTriviaList, SyntaxKind,
@@ -69,9 +69,7 @@ impl GreenTree {
         // SAFETY: The trivia list is allocated, we don't need it to be initialized for the writing.
         unsafe {
             trivia_list.header_ptr_mut().write(GreenTriviaListHead::new(full_width, pieces.len()));
-            trivia_list
-                .pieces_ptr_mut()
-                .copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
+            trivia_list.pieces_ptr_mut().copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
         }
         trivia_list
     }

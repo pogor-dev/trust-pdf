@@ -25,7 +25,7 @@ impl GreenTriviaListHead {
     #[inline]
     pub(super) fn layout(pieces_len: usize) -> Layout {
         Layout::new::<GreenTriviaListHead>()
-            .extend(Layout::array::<usize>(pieces_len).expect("too big node"))
+            .extend(Layout::array::<GreenTrivia>(pieces_len).expect("too big node"))
             .expect("too big node")
             .0
             .pad_to_align()
@@ -97,9 +97,9 @@ impl GreenTriviaList {
     }
 
     #[inline]
-    pub(super) fn pieces_ptr_mut(&self) -> *mut usize {
+    pub(super) fn pieces_ptr_mut(&self) -> *mut GreenTrivia {
         // SAFETY: `&raw mut` doesn't require the data to be valid, only allocated.
-        unsafe { (&raw mut (*self.data.as_ptr()).pieces).cast::<usize>() }
+        unsafe { (&raw mut (*self.data.as_ptr()).pieces).cast::<GreenTrivia>() }
     }
 }
 
