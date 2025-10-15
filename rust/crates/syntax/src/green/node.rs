@@ -1,14 +1,14 @@
 use crate::{GreenToken, SyntaxKind};
 
 #[derive(Debug)]
-pub struct GreenNode<'node> {
+pub struct GreenNode {
     kind: SyntaxKind,
-    children: Vec<GreenChild<'node>>,
+    children: Vec<GreenChild>,
     full_width: usize,
 }
 
 #[derive(Debug)]
-pub enum GreenChild<'child> {
-    Node(&'child GreenNode<'child>),
-    Token(&'child GreenToken<'child>),
+pub enum GreenChild {
+    Node(GreenNode),
+    Token(GreenToken),
 }

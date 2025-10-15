@@ -3,8 +3,11 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenTrivia, GreenTriviaList, SyntaxKind,
-    green::trivia::{GreenTriviaHead, GreenTriviaListHead},
+    DiagnosticInfo, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind,
+    green::{
+        token::GreenTokenHead,
+        trivia::{GreenTriviaHead, GreenTriviaListHead},
+    },
 };
 
 pub(crate) struct GreenTree {
@@ -27,6 +30,12 @@ impl GreenTree {
     }
 
     #[inline]
+    pub(super) fn alloc_token(&mut self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
+        // SAFETY: We have mutable access.
+        unsafe { self.alloc_token_unchecked(leading, trailing, kind, text) }
+    }
+
+    #[inline]
     pub(super) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_unchecked(kind, text) }
@@ -41,10 +50,29 @@ impl GreenTree {
     /// # Safety
     ///
     /// You must ensure there is no concurrent allocation.
+    unsafe fn alloc_token_unchecked(&self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
+        assert!(text.len() <= u32::MAX as usize);
+
+        let layout = GreenTokenHead::layout(text.len() as u32);
+        let token = self.arena.alloc_layout(layout);
+        let token = GreenToken { data: token.cast() };
+        let full_width = leading.full_width() + text.len() as u32 + trailing.full_width();
+
+        // SAFETY: The token is allocated, we don't need it to be initialized for the writing.
+        unsafe {
+            token.header_ptr_mut().write(GreenTokenHead::new(leading, trailing, full_width, kind));
+            token.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
+        }
+        token
+    }
+
+    /// # Safety
+    ///
+    /// You must ensure there is no concurrent allocation.
     unsafe fn alloc_trivia_unchecked(&self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
         assert!(text.len() <= u16::MAX.into());
 
-        let layout = GreenTriviaHead::layout(text.len());
+        let layout = GreenTriviaHead::layout(text.len() as u16);
         let trivia = self.arena.alloc_layout(layout);
         let trivia = GreenTrivia { data: trivia.cast() };
 
@@ -61,14 +89,17 @@ impl GreenTree {
     /// You must ensure there is no concurrent allocation.
     unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTrivia]) -> GreenTriviaList {
         assert!(pieces.len() <= u16::MAX.into());
-        let full_width = pieces.iter().map(|p| p.full_width() as usize).sum::<usize>();
-        let layout = GreenTriviaListHead::layout(pieces.len());
+        let full_width = pieces.iter().map(|p| p.full_width() as u32).sum::<u32>();
+        let layout = GreenTriviaListHead::layout(pieces.len() as u16);
         let trivia_list = self.arena.alloc_layout(layout);
         let trivia_list = GreenTriviaList { data: trivia_list.cast() };
 
         // SAFETY: The trivia list is allocated, we don't need it to be initialized for the writing.
         unsafe {
-            trivia_list.header_ptr_mut().write(GreenTriviaListHead::new(full_width, pieces.len()));
+            trivia_list
+                .header_ptr_mut()
+                .write(GreenTriviaListHead::new(full_width as u32, pieces.len() as u16));
+
             trivia_list.pieces_ptr_mut().copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
         }
         trivia_list
