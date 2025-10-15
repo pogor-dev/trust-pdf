@@ -14,18 +14,18 @@ pub(super) struct GreenTriviaListHead {
 
 impl GreenTriviaListHead {
     #[inline]
-    pub(super) fn new(full_width: usize, pieces_len: usize) -> Self {
+    pub(super) fn new(full_width: u32, pieces_len: u16) -> Self {
         Self {
-            full_width: full_width as u32,
-            pieces_len: pieces_len as u16,
+            full_width,
+            pieces_len,
             _c: Count::new(),
         }
     }
 
     #[inline]
-    pub(super) fn layout(pieces_len: usize) -> Layout {
+    pub(super) fn layout(pieces_len: u16) -> Layout {
         Layout::new::<GreenTriviaListHead>()
-            .extend(Layout::array::<GreenTrivia>(pieces_len).expect("too big node"))
+            .extend(Layout::array::<GreenTrivia>(pieces_len as usize).expect("too big node"))
             .expect("too big node")
             .0
             .pad_to_align()
@@ -73,12 +73,6 @@ impl GreenTriviaList {
     }
 
     #[inline]
-    fn header(&self) -> &GreenTriviaListHead {
-        // SAFETY: `data`'s invariant.
-        unsafe { &*self.header_ptr_mut() }
-    }
-
-    #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width as u32
     }
@@ -87,6 +81,12 @@ impl GreenTriviaList {
     pub fn pieces(&self) -> &[GreenTrivia] {
         // SAFETY: `data`'s invariant.
         unsafe { slice::from_raw_parts(self.pieces_ptr_mut().cast::<GreenTrivia>(), self.header().pieces_len.into()) }
+    }
+
+    #[inline]
+    fn header(&self) -> &GreenTriviaListHead {
+        // SAFETY: `data`'s invariant.
+        unsafe { &*self.header_ptr_mut() }
     }
 
     /// Does not require the pointer to be valid.
@@ -139,9 +139,9 @@ impl GreenTriviaHead {
     }
 
     #[inline]
-    pub(super) fn layout(text_len: usize) -> Layout {
+    pub(super) fn layout(text_len: u16) -> Layout {
         Layout::new::<GreenTriviaHead>()
-            .extend(Layout::array::<u8>(text_len).expect("too big node"))
+            .extend(Layout::array::<u8>(text_len as usize).expect("too big node"))
             .expect("too big node")
             .0
             .pad_to_align()
@@ -160,7 +160,7 @@ pub(super) struct GreenTriviaData {
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub struct GreenTrivia {
-    /// INVARIANT: This points at a valid `GreenTriviaInTree` followed by `text_len` bytes,
+    /// INVARIANT: This points at a valid `GreenTriviaData` followed by `text_len` bytes,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenTriviaData>,
 }
@@ -179,12 +179,6 @@ impl GreenTrivia {
     }
 
     #[inline]
-    fn header(&self) -> &GreenTriviaHead {
-        // SAFETY: `data`'s invariant.
-        unsafe { &*self.header_ptr_mut() }
-    }
-
-    #[inline]
     pub fn text(&self) -> &[u8] {
         // SAFETY: `data`'s invariant.
         unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.header().full_width.into()) }
@@ -196,8 +190,14 @@ impl GreenTrivia {
     }
 
     #[inline]
-    pub fn full_width(&self) -> usize {
-        self.header().full_width.into()
+    pub fn full_width(&self) -> u16 {
+        self.header().full_width
+    }
+
+    #[inline]
+    fn header(&self) -> &GreenTriviaHead {
+        // SAFETY: `data`'s invariant.
+        unsafe { &*self.header_ptr_mut() }
     }
 
     /// Does not require the pointer to be valid.
