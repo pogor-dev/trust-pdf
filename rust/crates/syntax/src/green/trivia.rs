@@ -74,7 +74,7 @@ impl GreenTriviaList {
 
     #[inline]
     pub fn full_width(&self) -> u32 {
-        self.header().full_width as u32
+        self.header().full_width
     }
 
     #[inline]
