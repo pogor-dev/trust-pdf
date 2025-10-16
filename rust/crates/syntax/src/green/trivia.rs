@@ -7,9 +7,9 @@ use crate::{SyntaxKind, green::arena::GreenTree};
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(super) struct GreenTriviaListHead {
-    full_width: u32, // 4 bytes
-    pieces_len: u16, // 2 bytes
-    _c: Count<GreenTriviaList>,
+    full_width: u32,            // 4 bytes
+    pieces_len: u16,            // 2 bytes
+    _c: Count<GreenTriviaList>, // 0 bytes
 }
 
 impl GreenTriviaListHead {
@@ -62,16 +62,6 @@ impl GreenTriviaList {
         arena.alloc_trivia_list(pieces)
     }
 
-    /// Creates a freestanding single trivia element.
-    ///
-    /// Note: this is expensive. Prefer building your trivia list directly into the tree with [`GreenNodeBuilder`].
-    ///
-    /// [`GreenNodeBuilder`]: crate::GreenNodeBuilder
-    #[inline]
-    pub fn new_single(kind: SyntaxKind, text: &[u8]) -> GreenTriviaList {
-        Self::new(&[GreenTrivia::new(kind, text)])
-    }
-
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
@@ -113,6 +103,15 @@ impl From<GreenTrivia> for GreenTriviaList {
 impl fmt::Debug for GreenTriviaList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaList").field("full_width", &self.full_width()).finish()
+    }
+}
+
+impl fmt::Display for GreenTriviaList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for piece in self.pieces() {
+            write!(f, "{}", piece)?;
+        }
+        Ok(())
     }
 }
 
@@ -219,6 +218,12 @@ impl fmt::Debug for GreenTrivia {
         // SAFETY: `text` is guaranteed to be valid UTF-8 by the node invariant.
         let text = unsafe { std::str::from_utf8_unchecked(self.text()) };
         f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &text).finish()
+    }
+}
+
+impl fmt::Display for GreenTrivia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.text()) })
     }
 }
 
