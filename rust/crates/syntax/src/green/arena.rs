@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) struct GreenTree {
     arena: Bump,
-    diagnostics: HashMap<*const u8, Vec<DiagnosticInfo>>,
+    diagnostics: HashMap<GreenChild, Vec<DiagnosticInfo>>,
 }
 
 // SAFETY: We only mutate when having mutable access, and mutating doesn't invalidate existing pointers.
@@ -65,6 +65,7 @@ impl GreenTree {
         children_len: u16,
         mut children: impl Iterator<Item = GreenChild>,
     ) -> GreenNode {
+        assert!(children_len as usize <= u16::MAX as usize, "too many children");
         let layout = GreenNodeHead::layout(children_len);
         let token = self.arena.alloc_layout(layout);
         let node = GreenNode { data: token.cast() };
@@ -84,7 +85,7 @@ impl GreenTree {
     ///
     /// You must ensure there is no concurrent allocation.
     unsafe fn alloc_token_unchecked(&self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
-        assert!(text.len() <= u32::MAX as usize);
+        assert!(text.len() <= u32::MAX as usize, "token text too long");
 
         let layout = GreenTokenHead::layout(text.len() as u32);
         let token = self.arena.alloc_layout(layout);
@@ -103,7 +104,7 @@ impl GreenTree {
     ///
     /// You must ensure there is no concurrent allocation.
     unsafe fn alloc_trivia_unchecked(&self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
-        assert!(text.len() <= u16::MAX.into());
+        assert!(text.len() <= u16::MAX.into(), "trivia text too long");
 
         let layout = GreenTriviaHead::layout(text.len() as u16);
         let trivia = self.arena.alloc_layout(layout);
@@ -121,7 +122,7 @@ impl GreenTree {
     ///
     /// You must ensure there is no concurrent allocation.
     unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTrivia]) -> GreenTriviaList {
-        assert!(pieces.len() <= u16::MAX.into());
+        assert!(pieces.len() <= u16::MAX.into(), "too many trivia pieces");
         let full_width = pieces.iter().map(|p| p.full_width() as u32).sum::<u32>();
         let layout = GreenTriviaListHead::layout(pieces.len() as u16);
         let trivia_list = self.arena.alloc_layout(layout);
