@@ -1,5 +1,7 @@
 use std::{fmt, ptr::NonNull, slice};
 
+use countme::Count;
+
 use crate::{GreenTriviaList, SyntaxKind, green::arena::GreenTree};
 
 #[repr(C)]
@@ -9,6 +11,7 @@ pub(super) struct GreenTokenHead {
     trailing_trivia: GreenTriviaList, // 8 bytes
     full_width: u32,                  // 4 bytes
     kind: SyntaxKind,                 // 2 bytes
+    _c: Count<GreenToken>,            // 0 bytes
 }
 
 impl GreenTokenHead {
@@ -19,6 +22,7 @@ impl GreenTokenHead {
             trailing_trivia: trailing,
             full_width,
             kind,
+            _c: Count::new(),
         }
     }
 
@@ -104,6 +108,12 @@ impl fmt::Debug for GreenToken {
             .field("kind", &self.kind())
             .field("text", &String::from_utf8_lossy(self.text()))
             .finish()
+    }
+}
+
+impl fmt::Display for GreenToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.text()) }) // TODO: full text
     }
 }
 

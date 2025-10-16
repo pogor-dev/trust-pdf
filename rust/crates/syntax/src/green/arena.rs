@@ -3,8 +3,9 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind,
+    DiagnosticInfo, GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind,
     green::{
+        node::{GreenChild, GreenNodeHead},
         token::GreenTokenHead,
         trivia::{GreenTriviaHead, GreenTriviaListHead},
     },
@@ -30,6 +31,12 @@ impl GreenTree {
     }
 
     #[inline]
+    pub(super) fn alloc_node(&mut self, kind: SyntaxKind, text_len: u32, children_len: u16, children: impl Iterator<Item = GreenChild>) -> GreenNode {
+        // SAFETY: We have mutable access.
+        unsafe { self.alloc_node_unchecked(kind, text_len, children_len, children) }
+    }
+
+    #[inline]
     pub(super) fn alloc_token(&mut self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_token_unchecked(leading, trailing, kind, text) }
@@ -45,6 +52,32 @@ impl GreenTree {
     pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTrivia]) -> GreenTriviaList {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_list_unchecked(pieces) }
+    }
+
+    /// # Safety
+    ///
+    /// You must ensure there is no concurrent allocation.
+    #[inline]
+    pub(crate) unsafe fn alloc_node_unchecked(
+        &self,
+        kind: SyntaxKind,
+        text_len: u32,
+        children_len: u16,
+        mut children: impl Iterator<Item = GreenChild>,
+    ) -> GreenNode {
+        let layout = GreenNodeHead::layout(children_len);
+        let token = self.arena.alloc_layout(layout);
+        let node = GreenNode { data: token.cast() };
+        // SAFETY: The node is allocated, we don't need it to be initialized for the writing.
+        unsafe {
+            node.header_ptr_mut().write(GreenNodeHead::new(kind, text_len, children_len));
+            let children_ptr = node.children_ptr_mut();
+            for child_idx in 0..children_len {
+                children_ptr.add(child_idx.into()).write(children.next().expect("too few children"));
+            }
+        }
+        debug_assert!(children.next().is_none(), "too many children");
+        node
     }
 
     /// # Safety
