@@ -5,7 +5,7 @@ use countme::Count;
 use crate::{GreenToken, SyntaxKind};
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenNodeHead {
     // TODO: change to u64? Do we want to support files > 4GB? Some cfg for that?
     full_width: u32,   // 4 bytes
@@ -37,14 +37,13 @@ impl GreenNodeHead {
 
 /// This is used to store the node in the arena.
 /// The actual text is stored inline after the head.
-#[derive(Debug, Eq, PartialEq, Hash)]
 #[repr(C)]
 pub(super) struct GreenNodeData {
     head: GreenNodeHead,       // 18 bytes
     children: [GreenChild; 0], // 0 bytes, actual children are stored inline after this struct
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct GreenNode {
     /// INVARIANT: This points at a valid `GreenNodeData` followed by `children_len` `GreenChild`s,
@@ -94,6 +93,14 @@ impl GreenNode {
     }
 }
 
+impl PartialEq for GreenNode {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind() && self.full_width() == other.full_width() && self.children() == other.children()
+    }
+}
+
+impl Eq for GreenNode {}
+
 impl fmt::Debug for GreenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenNode")
@@ -117,7 +124,7 @@ impl fmt::Display for GreenNode {
 unsafe impl Send for GreenNode {}
 unsafe impl Sync for GreenNode {}
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum GreenChild {
     Node { node: GreenNode, rel_offset: u32 },
     Token { token: GreenToken, rel_offset: u32 },

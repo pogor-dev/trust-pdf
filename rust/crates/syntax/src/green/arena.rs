@@ -38,9 +38,9 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_token(&mut self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
+    pub(super) fn alloc_token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: GreenTriviaList, trailing_trivia: GreenTriviaList) -> GreenToken {
         // SAFETY: We have mutable access.
-        unsafe { self.alloc_token_unchecked(leading, trailing, kind, text) }
+        unsafe { self.alloc_token_unchecked(kind, text, leading_trivia, trailing_trivia) }
     }
 
     #[inline]
@@ -85,17 +85,19 @@ impl GreenTree {
     /// # Safety
     ///
     /// You must ensure there is no concurrent allocation.
-    unsafe fn alloc_token_unchecked(&self, leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
+    unsafe fn alloc_token_unchecked(&self, kind: SyntaxKind, text: &[u8], leading_trivia: GreenTriviaList, trailing_trivia: GreenTriviaList) -> GreenToken {
         assert!(text.len() <= u32::MAX as usize, "token text too long");
 
         let layout = GreenTokenHead::layout(text.len() as u32);
         let token = self.arena.alloc_layout(layout);
         let token = GreenToken { data: token.cast() };
-        let full_width = leading.full_width() + text.len() as u32 + trailing.full_width();
+        let full_width = leading_trivia.full_width() + text.len() as u32 + trailing_trivia.full_width();
 
         // SAFETY: The token is allocated, we don't need it to be initialized for the writing.
         unsafe {
-            token.header_ptr_mut().write(GreenTokenHead::new(leading, trailing, full_width, kind));
+            token
+                .header_ptr_mut()
+                .write(GreenTokenHead::new(kind, full_width, leading_trivia, trailing_trivia));
             token.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
         }
         token
