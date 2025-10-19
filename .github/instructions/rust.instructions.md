@@ -2,58 +2,43 @@
 applyTo: "**/*.rs,**/Cargo.toml"
 ---
 
-# GitHub Copilot Custom Instructions for PDF Compiler Project
+# Rust-Specific Implementation Instructions
 
-## General Guidelines
+## Rust Project Guidelines
 
-- This project implements a PDF compiler in Rust, conforming to the ISO 32000-2 standard.
-- The architecture is inspired by Rust Analyzer (RA) and Roslyn, aiming for a balance between performance and extensibility.
-- The compiler should support reading, editing, validating, and writing PDF files with full fidelity.
+- Follow Rust 2024 edition conventions and idioms
+- Maintain compatibility with Rust 1.90.0 as specified in `rust-toolchain.toml`
+- Prioritize zero-cost abstractions and memory safety
 
-## Parsing and Syntax Analysis
+## Syntax Tree Implementation
 
-- Utilize a recursive-descent parser to construct a Concrete Syntax Tree (CST) with full fidelity, including all syntactic trivia.
-- Incorporate a modified version of `rowan` (e.g., from the Rome project) to attach trivia to syntax tokens, similar to Roslyn's approach.
-- Ensure the parser supports incremental parsing to accommodate incremental updates to PDF files.
-- Handle PDF-specific syntactic trivia where whitespace and line breaks are semantically significant, such as:
-  - `obj` declarations: newline separates header from body (ISO 32000-2 §7.3.10)
-  - `stream` keyword: newline required after stream (ISO 32000-2 §7.3.8)
-  - `xref` entries: line-based, fixed-width formatting with spaces (ISO 32000-2 §7.5.4)
-  - `startxref`: newline separates keyword and offset (ISO 32000-2 §7.5.5)
-  - Content streams: space-separated tokens only (ISO 32000-2 §8.1.1)
+- Use `GreenNode` for immutable syntax tree storage with inline children allocation
+- Implement `repr(C)` structs for memory layout control in syntax nodes
+- Preserve all trivia (whitespace, comments) in CST for full-fidelity reconstruction
+- Use `countme::Count` for memory usage tracking in data structures
+- Follow the pattern: `GreenNodeHead` + inline `GreenChild` array for efficient storage
 
-## Semantic Analysis
+## Semantic Analysis & HIR
 
-- Implement semantic analysis following the Arlington model to validate the semantics of dictionaries and other PDF structures.
-- Perform type inference where applicable to ensure correctness and adherence to the PDF specification.
-- Decode and analyze PDF streams during the semantic analysis phase, considering memory efficiency.
+- Use typed arena indices (`ExprId`, `CatalogId`, `PageTreeId`) for HIR references
+- Implement `PartialEq` for `Literal` enum with special handling for NaN floats
+- Structure HIR as nested enums: `Expr::Literal`, `Expr::Array`, `Expr::Dictionary`, etc.
+- Use `Box<[T]>` for owned slices in HIR nodes for memory efficiency
 
-## Extensibility and API Design
+## Rust-Specific API Design
 
-- Design the compiler to be highly extensible and pluggable, akin to .NET source generators, to allow for future analyzers and fixers.
-- Provide a rich API to facilitate code generation for each PDF syntax and structure.
-- Ensure the architecture supports deployment in various environments, including:
-  - WebAssembly (WASM) for web applications
-  - .NET via NuGet packages with managed API contracts and unmanaged code for the compiler
-
-## IDE Integration
-
-- Structure the compiler to be IDE-friendly, with considerations for:
-  - Language Server Protocol (LSP) implementation
-  - Syntax highlighting
-  - Code folding (collapse/expand)
-  - Diagnostics (e.g., errors, warnings)
-  - Analyzers and fixers
-  - IntelliSense
-  - Hover previews (e.g., displaying images from encoded streams)
+- Use newtype patterns for strongly typed identifiers (`SyntaxKind(u16)`)
+- Implement `Display`, `Debug`, and common traits for public types
+- Use `inline` attributes for performance-critical accessors in hot paths
+- Design APIs with `NonNull` pointers for unsafe optimizations when needed
+- Structure crate boundaries with clear `lib.rs` re-exports
 
 ## Performance and Dependencies
 
-- Prioritize performance and memory efficiency throughout the compiler's design.
-- Aim for near-zero dependencies, incorporating only essential crates such as:
-  - `hashbrown` for efficient hash maps
-  - `salsa` for incremental computation
-  - Modified `rowan` for syntax tree management
+- Prioritize performance and memory efficiency throughout the compiler's design
+- Follow minimal dependency philosophy - only add essential crates from `workspace.dependencies`
+- Use arena allocation patterns (`la-arena`) for syntax trees and semantic data structures
+- Prefer `triomphe::Arc` over `std::sync::Arc` for reference counting
 
 ## Error Handling
 
@@ -92,7 +77,9 @@ When having multiple structs in a single file, organize them as follows:
   - `<condition>` describes the specific scenario being tested, optional
   - `<expected_result>` describes the expected outcome of the test
 
-## Future Considerations
+## Rust Code Organization
 
-- Design the architecture to accommodate a future PDF viewer, enabling visualization and interaction with PDF files.
-- Ensure that the compiler's extensibility supports the integration of viewing capabilities without significant restructuring.
+- Place primary structs at the top of files, followed by implementations
+- Group related `impl` blocks together for the same struct
+- Use workspace dependencies from `Cargo.toml` rather than adding new ones
+- Follow the pattern: `mod submodule; pub use submodule::PublicType;`
