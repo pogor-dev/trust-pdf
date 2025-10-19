@@ -5,6 +5,7 @@ use triomphe::UniqueArc;
 use crate::{
     DiagnosticInfo, GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind,
     green::{
+        GreenElement,
         node::{GreenChild, GreenNodeHead},
         token::GreenTokenHead,
         trivia::{GreenTriviaHead, GreenTriviaListHead},
@@ -13,7 +14,7 @@ use crate::{
 
 pub(crate) struct GreenTree {
     arena: Bump,
-    diagnostics: HashMap<GreenChild, Vec<DiagnosticInfo>>,
+    diagnostics: HashMap<GreenElement, Vec<DiagnosticInfo>>,
 }
 
 // SAFETY: We only mutate when having mutable access, and mutating doesn't invalidate existing pointers.
