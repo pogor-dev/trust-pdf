@@ -5,7 +5,7 @@ use countme::Count;
 use crate::{GreenTriviaList, SyntaxKind, green::arena::GreenTree};
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTokenHead {
     leading_trivia: GreenTriviaList,  // 8 bytes
     trailing_trivia: GreenTriviaList, // 8 bytes
@@ -16,7 +16,7 @@ pub(super) struct GreenTokenHead {
 
 impl GreenTokenHead {
     #[inline]
-    pub(super) fn new(leading: GreenTriviaList, trailing: GreenTriviaList, full_width: u32, kind: SyntaxKind) -> Self {
+    pub(super) fn new(kind: SyntaxKind, full_width: u32, leading: GreenTriviaList, trailing: GreenTriviaList) -> Self {
         Self {
             leading_trivia: leading,
             trailing_trivia: trailing,
@@ -38,14 +38,13 @@ impl GreenTokenHead {
 
 /// This is used to store the token in the arena.
 /// The actual text is stored inline after the head.
-#[derive(Debug, Eq, PartialEq, Hash)]
 #[repr(C)]
 pub(super) struct GreenTokenData {
     head: GreenTokenHead, // 24 bytes
     text: [u8; 0],        // 0 bytes, actual text is stored inline after this struct
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct GreenToken {
     /// INVARIANT: This points at a valid `GreenTokenData` followed by `text_len` bytes,
@@ -63,7 +62,7 @@ impl GreenToken {
     pub fn new(leading: GreenTriviaList, trailing: GreenTriviaList, kind: SyntaxKind, text: &[u8]) -> GreenToken {
         debug_assert!(text.len() <= u32::MAX as usize);
         let mut arena = GreenTree::new();
-        arena.alloc_token(leading, trailing, kind, text)
+        arena.alloc_token(kind, text, leading, trailing)
     }
 
     #[inline]
@@ -80,6 +79,16 @@ impl GreenToken {
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
+    }
+
+    #[inline]
+    pub fn leading_trivia(&self) -> &GreenTriviaList {
+        &self.header().leading_trivia
+    }
+
+    #[inline]
+    pub fn trailing_trivia(&self) -> &GreenTriviaList {
+        &self.header().trailing_trivia
     }
 
     #[inline]
@@ -101,6 +110,17 @@ impl GreenToken {
         unsafe { (&raw mut (*self.data.as_ptr()).text).cast::<u8>() }
     }
 }
+
+impl PartialEq for GreenToken {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind()
+            && self.text() == other.text()
+            && self.leading_trivia() == other.leading_trivia()
+            && self.trailing_trivia() == other.trailing_trivia()
+    }
+}
+
+impl Eq for GreenToken {}
 
 impl fmt::Debug for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

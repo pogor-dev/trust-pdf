@@ -18,6 +18,7 @@ autobenches = false
 bumpalo.workspace = true
 countme.workspace = true
 hashbrown.workspace = true
+rustc-hash.workspace = true
 triomphe.workspace = true
 
 [dev-dependencies]

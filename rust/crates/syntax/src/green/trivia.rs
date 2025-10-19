@@ -5,7 +5,7 @@ use countme::Count;
 use crate::{SyntaxKind, green::arena::GreenTree};
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTriviaListHead {
     full_width: u32,            // 4 bytes
     pieces_len: u16,            // 2 bytes
@@ -35,13 +35,12 @@ impl GreenTriviaListHead {
 /// This is used to store the trivia list in the arena.
 /// The actual pieces are stored inline after the head.
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash)]
 pub(super) struct GreenTriviaListData {
     head: GreenTriviaListHead, // 6 bytes
     pieces: [GreenTrivia; 0],  // 0 bytes, actual pieces are stored inline after this struct
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct GreenTriviaList {
     /// INVARIANT: This points at a valid `GreenTriviaListData` followed by `pieces_len` `GreenTrivia`s,
@@ -100,6 +99,15 @@ impl From<GreenTrivia> for GreenTriviaList {
     }
 }
 
+impl PartialEq for GreenTriviaList {
+    fn eq(&self, other: &Self) -> bool {
+        // Early exit on different widths for performance
+        self.full_width() == other.full_width() && self.pieces() == other.pieces()
+    }
+}
+
+impl Eq for GreenTriviaList {}
+
 impl fmt::Debug for GreenTriviaList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaList").field("full_width", &self.full_width()).finish()
@@ -120,7 +128,7 @@ unsafe impl Send for GreenTriviaList {}
 unsafe impl Sync for GreenTriviaList {}
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTriviaHead {
     kind: SyntaxKind,       // 2 bytes
     full_width: u16,        // 2 bytes
@@ -149,14 +157,13 @@ impl GreenTriviaHead {
 
 /// This is used to store the trivia in the arena.
 /// The actual text is stored inline after the head.
-#[derive(Debug, Eq, PartialEq, Hash)]
 #[repr(C)]
 pub(super) struct GreenTriviaData {
     head: GreenTriviaHead, // 4 bytes
     text: [u8; 0],         // 0 bytes, actual text is stored inline after this struct
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct GreenTrivia {
     /// INVARIANT: This points at a valid `GreenTriviaData` followed by `text_len` bytes,
@@ -212,6 +219,14 @@ impl GreenTrivia {
         unsafe { (&raw mut (*self.data.as_ptr()).text).cast::<u8>() }
     }
 }
+
+impl PartialEq for GreenTrivia {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind() && self.text() == other.text()
+    }
+}
+
+impl Eq for GreenTrivia {}
 
 impl fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
