@@ -11,6 +11,7 @@
     ],
     "settings": {
         "rust-analyzer.testExplorer": true,
+        "rust-analyzer.gotoImplementations.filterAdjacentDerives": true,
         "debug.allowBreakpointsEverywhere": true,
     }
 }
