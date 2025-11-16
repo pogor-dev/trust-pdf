@@ -75,8 +75,8 @@ impl GreenCache {
         let token = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
-                let leading_trivia_list = GreenTriviaList::new(leading_trivia);
-                let trailing_trivia_list = GreenTriviaList::new(trailing_trivia);
+                let leading_trivia_list = self.arena.alloc_trivia_list(leading_trivia);
+                let trailing_trivia_list = self.arena.alloc_trivia_list(trailing_trivia);
                 let token = self.arena.alloc_token(kind, text, leading_trivia_list, trailing_trivia_list);
                 entry.insert_with_hasher(hash, NoHash(token), (), |t| token_hash(&t.0));
                 token

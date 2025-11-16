@@ -2,7 +2,7 @@ use std::{alloc::Layout, fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{SyntaxKind, green::arena::GreenTree};
+use crate::SyntaxKind;
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -49,18 +49,6 @@ pub struct GreenTriviaList {
 }
 
 impl GreenTriviaList {
-    /// Creates a freestanding trivia list.
-    ///
-    /// Note: this is expensive. Prefer building your trivia list directly into the tree with [`GreenNodeBuilder`].
-    ///
-    /// [`GreenNodeBuilder`]: crate::GreenNodeBuilder
-    #[inline]
-    pub fn new(pieces: &[GreenTrivia]) -> GreenTriviaList {
-        debug_assert!(pieces.len() <= u16::MAX.into(), "too many trivia pieces");
-        let mut arena = GreenTree::new();
-        arena.alloc_trivia_list(pieces)
-    }
-
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
@@ -89,13 +77,6 @@ impl GreenTriviaList {
     pub(super) fn pieces_ptr_mut(&self) -> *mut GreenTrivia {
         // SAFETY: `&raw mut` doesn't require the data to be valid, only allocated.
         unsafe { (&raw mut (*self.data.as_ptr()).pieces).cast::<GreenTrivia>() }
-    }
-}
-
-impl From<GreenTrivia> for GreenTriviaList {
-    #[inline]
-    fn from(trivia: GreenTrivia) -> Self {
-        Self::new(&[trivia])
     }
 }
 
@@ -172,18 +153,6 @@ pub struct GreenTrivia {
 }
 
 impl GreenTrivia {
-    /// Creates a freestanding trivia.
-    ///
-    /// Note: this is expensive. Prefer building your trivia directly into the tree with [`GreenNodeBuilder`].
-    ///
-    /// [`GreenNodeBuilder`]: crate::GreenNodeBuilder
-    #[inline]
-    pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
-        debug_assert!(text.len() <= u16::MAX.into(), "text too long");
-        let mut arena = GreenTree::new();
-        arena.alloc_trivia(kind, text)
-    }
-
     #[inline]
     pub fn text(&self) -> &[u8] {
         // SAFETY: `data`'s invariant.
@@ -247,7 +216,7 @@ unsafe impl Send for GreenTrivia {}
 unsafe impl Sync for GreenTrivia {}
 
 #[cfg(test)]
-mod tests {
+mod memory_layout_tests {
     use rstest::rstest;
 
     use super::*;
@@ -265,5 +234,126 @@ mod tests {
 
         assert_eq!(std::mem::size_of::<GreenTriviaListData>(), 8); // 8 bytes + 0 bytes padding
         assert_eq!(std::mem::align_of::<GreenTriviaListData>(), 8); // 8 bytes alignment
+    }
+}
+
+#[cfg(test)]
+mod trivia_tests {
+    use rstest::rstest;
+
+    use crate::green::arena::GreenTree;
+
+    use super::*;
+
+    const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
+
+    #[rstest]
+    fn test_kind() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        assert_eq!(trivia.kind(), WHITESPACE_KIND);
+    }
+
+    #[rstest]
+    fn test_text() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"   ");
+        assert_eq!(trivia.text(), b"   ");
+    }
+
+    #[rstest]
+    fn test_full_width() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"\n\t");
+        assert_eq!(trivia.full_width(), 2);
+    }
+
+    #[rstest]
+    fn test_eq() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
+
+        assert_eq!(trivia1, trivia2);
+        assert_ne!(trivia1, trivia3);
+    }
+
+    #[rstest]
+    fn test_display() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" \n\t");
+        assert_eq!(trivia.to_string(), " \n\t");
+    }
+
+    #[rstest]
+    fn test_debug() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" \n\t");
+        let debug_str = format!("{:?}", trivia);
+        assert_eq!(debug_str, "GreenTrivia { kind: SyntaxKind(1), text: \" \\n\\t\" }");
+    }
+}
+
+#[cfg(test)]
+mod trivia_list_tests {
+    use rstest::rstest;
+
+    use crate::green::arena::GreenTree;
+
+    use super::*;
+
+    const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
+    const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
+
+    #[rstest]
+    fn test_full_width() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        assert_eq!(trivia_list.full_width(), 10);
+    }
+
+    #[rstest]
+    fn test_pieces() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let pieces = trivia_list.pieces();
+        assert_eq!(pieces, &[trivia1, trivia2]);
+    }
+
+    #[rstest]
+    fn test_eq() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list1 = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list2 = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list3 = arena.alloc_trivia_list(&[trivia2, trivia1]);
+
+        assert_eq!(trivia_list1, trivia_list2);
+        assert_ne!(trivia_list1, trivia_list3);
+    }
+
+    #[rstest]
+    fn test_display() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        assert_eq!(trivia_list.to_string(), " % comment");
+    }
+
+    #[rstest]
+    fn test_debug() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let debug_str = format!("{:?}", trivia_list);
+        assert_eq!(debug_str, "GreenTriviaList { full_width: 10 }");
     }
 }
