@@ -2,7 +2,7 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenToken, SyntaxKind};
+use crate::{GreenToken, GreenTriviaList, SyntaxKind};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -57,6 +57,27 @@ impl GreenNode {
         self.header().kind
     }
 
+    /// Returns the text excluding the first token's leading trivia and last token's trailing trivia
+    #[inline]
+    pub fn text(&self) -> Vec<u8> {
+        self.write_to(false, false)
+    }
+
+    /// Returns the full text including all trivia
+    #[inline]
+    pub fn full_text(&self) -> Vec<u8> {
+        self.write_to(true, true)
+    }
+
+    /// Returns the width excluding the first token's leading trivia and last token's trailing trivia.
+    /// This is similar to Roslyn's approach for calculating the "true" width of a node's content.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        let first_leading_width = self.first_token().map(|t| t.leading_trivia().full_width()).unwrap_or(0);
+        let last_trailing_width = self.last_token().map(|t| t.trailing_trivia().full_width()).unwrap_or(0);
+        self.full_width() - first_leading_width - last_trailing_width
+    }
+
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
@@ -71,6 +92,78 @@ impl GreenNode {
     pub(crate) fn children(&self) -> &[GreenChild] {
         // SAFETY: `data`'s invariant.
         unsafe { slice::from_raw_parts(self.children_ptr_mut(), self.header().children_len as usize) }
+    }
+
+    /// Returns the leading trivia from the first terminal token in the node tree
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<&GreenTriviaList> {
+        self.first_token().map(|token| token.leading_trivia())
+    }
+
+    /// Returns the trailing trivia from the last terminal token in the node tree
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<&GreenTriviaList> {
+        self.last_token().map(|token| token.trailing_trivia())
+    }
+
+    /// Returns the node's text as a byte vector.
+    ///
+    /// Similar to Roslyn's WriteTo implementation, uses an explicit stack to avoid
+    /// stack overflow on deeply nested structures.
+    ///
+    /// # Parameters
+    /// * `leading` - If true, include the first token's leading trivia
+    /// * `trailing` - If true, include the last token's trailing trivia
+    fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
+        let mut output = Vec::new();
+
+        // Use explicit stack to handle deeply recursive structures without stack overflow
+        let mut stack = Vec::new();
+        stack.push((self, leading, trailing));
+
+        while let Some((node, current_leading, current_trailing)) = stack.pop() {
+            let children = node.children();
+            if children.is_empty() {
+                continue;
+            }
+
+            let first_index = 0;
+            let last_index = children.len() - 1;
+
+            // Process children in reverse order so they're popped in correct order
+            for (index, child) in children.iter().enumerate().rev() {
+                let is_first = index == first_index;
+                let is_last = index == last_index;
+
+                match child {
+                    GreenChild::Node { node: child_node, .. } => {
+                        // Propagate flags using bitwise OR, like Roslyn
+                        stack.push((child_node, current_leading | !is_first, current_trailing | !is_last));
+                    }
+                    GreenChild::Token { token, .. } => {
+                        output.extend_from_slice(&token.write_to(current_leading | !is_first, current_trailing | !is_last));
+                    }
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Returns the first terminal token in the node tree
+    fn first_token(&self) -> Option<&GreenToken> {
+        self.children().first().and_then(|child| match child {
+            GreenChild::Token { token, .. } => Some(token),
+            GreenChild::Node { node, .. } => node.first_token(),
+        })
+    }
+
+    /// Returns the last terminal token in the node tree
+    fn last_token(&self) -> Option<&GreenToken> {
+        self.children().last().and_then(|child| match child {
+            GreenChild::Token { token, .. } => Some(token),
+            GreenChild::Node { node, .. } => node.last_token(),
+        })
     }
 
     #[inline]
@@ -113,8 +206,9 @@ impl fmt::Debug for GreenNode {
 
 impl fmt::Display for GreenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for child in self.children() {
-            write!(f, "{}", child)?;
+        let bytes = self.full_text();
+        for &byte in &bytes {
+            write!(f, "{}", byte as char)?;
         }
         Ok(())
     }
@@ -166,7 +260,7 @@ impl fmt::Display for GreenChild {
 }
 
 #[cfg(test)]
-mod tests {
+mod memory_layout_tests {
     use rstest::rstest;
 
     use super::*;
@@ -182,4 +276,11 @@ mod tests {
         assert_eq!(std::mem::size_of::<GreenChild>(), 16); // 12 bytes + 4 bytes padding
         assert_eq!(std::mem::align_of::<GreenChild>(), 8); // 8 bytes alignment
     }
+}
+
+#[cfg(test)]
+mod node_tests {
+    use rstest::rstest;
+
+    use super::*;
 }

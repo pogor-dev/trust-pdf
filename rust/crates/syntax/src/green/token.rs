@@ -59,17 +59,14 @@ impl GreenToken {
     }
 
     #[inline]
-    pub fn text(&self) -> &[u8] {
-        // SAFETY: `data`'s invariant.
-        unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.width() as usize) }
+    pub fn text(&self) -> Vec<u8> {
+        self.write_to(false, false)
     }
 
     /// Returns the full text including leading and trailing trivia
     #[inline]
-    pub fn full_text(&self) -> String {
-        let mut result = String::new();
-        let _ = self.write_full_text(&mut result);
-        result
+    pub fn full_text(&self) -> Vec<u8> {
+        self.write_to(true, true)
     }
 
     #[inline]
@@ -92,28 +89,27 @@ impl GreenToken {
         &self.header().trailing_trivia
     }
 
-    /// Writes the full text including leading and trailing trivia to the writer
-    fn write_full_text(&self, writer: &mut impl std::fmt::Write) -> std::fmt::Result {
-        // Write leading trivia
-        for trivia in self.leading_trivia().pieces() {
-            for &byte in trivia.text() {
-                write!(writer, "{}", byte as char)?;
-            }
+    /// Writes the token to a byte vector with conditional trivia inclusion
+    ///
+    /// # Parameters
+    /// * `leading` - If true, include the leading trivia
+    /// * `trailing` - If true, include the trailing trivia
+    pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
+        let mut output = Vec::new();
+
+        if leading {
+            output.extend_from_slice(&self.leading_trivia().full_text());
         }
 
-        // Write token text
-        for &byte in self.text() {
-            write!(writer, "{}", byte as char)?;
+        // SAFETY: `data`'s invariant.
+        let text = unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.width() as usize) };
+        output.extend_from_slice(text);
+
+        if trailing {
+            output.extend_from_slice(&self.trailing_trivia().full_text());
         }
 
-        // Write trailing trivia
-        for trivia in self.trailing_trivia().pieces() {
-            for &byte in trivia.text() {
-                write!(writer, "{}", byte as char)?;
-            }
-        }
-
-        Ok(())
+        output
     }
 
     #[inline]
@@ -149,9 +145,11 @@ impl Eq for GreenToken {}
 
 impl fmt::Debug for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let full_text_bytes = self.full_text();
+        let full_text_str = String::from_utf8_lossy(&full_text_bytes);
         f.debug_struct("GreenToken")
             .field("kind", &self.kind())
-            .field("full_text", &self.full_text())
+            .field("full_text", &full_text_str)
             .field("full_width", &self.full_width())
             .finish()
     }
@@ -159,7 +157,11 @@ impl fmt::Debug for GreenToken {
 
 impl fmt::Display for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.write_full_text(f)
+        let bytes = self.full_text();
+        for &byte in &bytes {
+            write!(f, "{}", byte as char)?;
+        }
+        Ok(())
     }
 }
 
@@ -224,7 +226,7 @@ mod token_tests {
         };
 
         let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.text(), expected);
+        assert_eq!(token.text().as_slice(), expected);
     }
 
     #[rstest]
@@ -282,13 +284,13 @@ mod token_tests {
     }
 
     #[rstest]
-    #[case(b"", b"obj", b"", "obj")]
-    #[case::with_leading(b"  ", b"endobj", b"", "  endobj")]
-    #[case::with_trailing(b"", b"stream", b"\n", "stream\n")]
-    #[case::with_both(b"\t", b"true", b" ", "\ttrue ")]
-    #[case::with_comment(b"% comment\n", b"null", b"\r\n", "% comment\nnull\r\n")]
-    #[case::with_name(b" \t", b"/Name", b" \n", " \t/Name \n")]
-    fn test_full_text(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &str) {
+    #[case(b"", b"obj", b"", b"obj")]
+    #[case::with_leading(b"  ", b"endobj", b"", b"  endobj")]
+    #[case::with_trailing(b"", b"stream", b"\n", b"stream\n")]
+    #[case::with_both(b"\t", b"true", b" ", b"\ttrue ")]
+    #[case::with_comment(b"% comment\n", b"null", b"\r\n", b"% comment\nnull\r\n")]
+    #[case::with_name(b" \t", b"/Name", b" \n", b" \t/Name \n")]
+    fn test_full_text(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
         let mut arena = GreenTree::new();
 
         let leading_trivia = if leading.is_empty() {
@@ -306,7 +308,7 @@ mod token_tests {
         };
 
         let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.full_text(), expected);
+        assert_eq!(token.full_text().as_slice(), expected);
     }
 
     #[rstest]

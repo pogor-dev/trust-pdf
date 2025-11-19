@@ -49,6 +49,16 @@ pub struct GreenTriviaList {
 }
 
 impl GreenTriviaList {
+    /// Returns the full text of all trivia pieces concatenated
+    #[inline]
+    pub fn full_text(&self) -> Vec<u8> {
+        let mut output = Vec::with_capacity(self.full_width() as usize);
+        for piece in self.pieces() {
+            output.extend_from_slice(piece.text());
+        }
+        output
+    }
+
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
@@ -355,5 +365,30 @@ mod trivia_list_tests {
         let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
         let debug_str = format!("{:?}", trivia_list);
         assert_eq!(debug_str, "GreenTriviaList { full_width: 10 }");
+    }
+
+    #[rstest]
+    fn test_full_text_when_single_piece_expect_single_piece_text() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"  \t");
+        let trivia_list = arena.alloc_trivia_list(&[trivia]);
+        assert_eq!(trivia_list.full_text(), b"  \t");
+    }
+
+    #[rstest]
+    fn test_full_text_when_multiple_pieces_expect_concatenated_text() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]);
+        assert_eq!(trivia_list.full_text(), b" % comment\n");
+    }
+
+    #[rstest]
+    fn test_full_text_when_empty_list_expect_empty_vec() {
+        let mut arena = GreenTree::new();
+        let trivia_list = arena.alloc_trivia_list(&[]);
+        assert_eq!(trivia_list.full_text(), b"");
     }
 }
