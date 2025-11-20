@@ -282,5 +282,20 @@ mod memory_layout_tests {
 mod node_tests {
     use rstest::rstest;
 
+    use crate::green::arena::GreenTree;
+
     use super::*;
+
+    const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
+    const NODE_KIND: SyntaxKind = SyntaxKind(100);
+    const TRIVIA_KIND: SyntaxKind = SyntaxKind(200);
+
+    #[rstest]
+    fn test_kind() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+        let token = arena.alloc_token(TOKEN_KIND, b"test", empty_trivia, empty_trivia);
+        let node = arena.alloc_node(NODE_KIND, token.full_width(), 1, [GreenChild::Token { token, rel_offset: 0 }].into_iter());
+        assert_eq!(node.kind(), NODE_KIND);
+    }
 }
