@@ -49,12 +49,12 @@ pub struct GreenTriviaList {
 }
 
 impl GreenTriviaList {
-    /// Returns the full text of all trivia pieces concatenated
+    /// Returns the full bytes of all trivia pieces concatenated
     #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
+    pub fn full_bytes(&self) -> Vec<u8> {
         let mut output = Vec::with_capacity(self.full_width() as usize);
         for piece in self.pieces() {
-            output.extend_from_slice(piece.text());
+            output.extend_from_slice(piece.bytes());
         }
         output
     }
@@ -164,9 +164,9 @@ pub struct GreenTrivia {
 
 impl GreenTrivia {
     #[inline]
-    pub fn text(&self) -> &[u8] {
+    pub fn bytes(&self) -> &[u8] {
         // SAFETY: `data`'s invariant.
-        unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.header().full_width.into()) }
+        unsafe { slice::from_raw_parts(self.bytes_ptr_mut(), self.header().full_width.into()) }
     }
 
     #[inline]
@@ -193,7 +193,7 @@ impl GreenTrivia {
     }
 
     #[inline]
-    pub(super) fn text_ptr_mut(&self) -> *mut u8 {
+    pub(super) fn bytes_ptr_mut(&self) -> *mut u8 {
         // SAFETY: `&raw mut` doesn't require the data to be valid, only allocated.
         unsafe { (&raw mut (*self.data.as_ptr()).text).cast::<u8>() }
     }
@@ -201,7 +201,7 @@ impl GreenTrivia {
 
 impl PartialEq for GreenTrivia {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text()
+        self.kind() == other.kind() && self.bytes() == other.bytes()
     }
 }
 
@@ -210,14 +210,14 @@ impl Eq for GreenTrivia {}
 impl fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // SAFETY: `text` is guaranteed to be valid UTF-8 by the node invariant.
-        let text = unsafe { std::str::from_utf8_unchecked(self.text()) };
+        let text = unsafe { std::str::from_utf8_unchecked(self.bytes()) };
         f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &text).finish()
     }
 }
 
 impl fmt::Display for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.text()) })
+        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.bytes()) })
     }
 }
 
@@ -265,10 +265,10 @@ mod trivia_tests {
     }
 
     #[rstest]
-    fn test_text() {
+    fn test_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"   ");
-        assert_eq!(trivia.text(), b"   ");
+        assert_eq!(trivia.bytes(), b"   ");
     }
 
     #[rstest]
@@ -368,27 +368,27 @@ mod trivia_list_tests {
     }
 
     #[rstest]
-    fn test_full_text_when_single_piece_expect_single_piece_text() {
+    fn test_full_bytes_when_single_piece_expect_single_piece_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"  \t");
         let trivia_list = arena.alloc_trivia_list(&[trivia]);
-        assert_eq!(trivia_list.full_text(), b"  \t");
+        assert_eq!(trivia_list.full_bytes(), b"  \t");
     }
 
     #[rstest]
-    fn test_full_text_when_multiple_pieces_expect_concatenated_text() {
+    fn test_full_bytes_when_multiple_pieces_expect_concatenated_bytes() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
         let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
         let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]);
-        assert_eq!(trivia_list.full_text(), b" % comment\n");
+        assert_eq!(trivia_list.full_bytes(), b" % comment\n");
     }
 
     #[rstest]
-    fn test_full_text_when_empty_list_expect_empty_vec() {
+    fn test_full_bytes_when_empty_list_expect_empty_vec() {
         let mut arena = GreenTree::new();
         let trivia_list = arena.alloc_trivia_list(&[]);
-        assert_eq!(trivia_list.full_text(), b"");
+        assert_eq!(trivia_list.full_bytes(), b"");
     }
 }

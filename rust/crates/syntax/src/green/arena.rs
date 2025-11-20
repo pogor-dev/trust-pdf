@@ -98,7 +98,7 @@ impl GreenTree {
             token
                 .header_ptr_mut()
                 .write(GreenTokenHead::new(kind, full_width, leading_trivia, trailing_trivia));
-            token.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
+            token.bytes_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
         }
         token
     }
@@ -116,7 +116,7 @@ impl GreenTree {
         // SAFETY: The trivia is allocated, we don't need it to be initialized for the writing.
         unsafe {
             trivia.header_ptr_mut().write(GreenTriviaHead::new(kind, text));
-            trivia.text_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
+            trivia.bytes_ptr_mut().copy_from_nonoverlapping(text.as_ptr(), text.len());
         }
         trivia
     }

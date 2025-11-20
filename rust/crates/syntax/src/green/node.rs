@@ -7,7 +7,6 @@ use crate::{GreenToken, GreenTriviaList, SyntaxKind};
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenNodeHead {
-    // TODO: change to u64? Do we want to support files > 4GB? Some cfg for that?
     full_width: u32,   // 4 bytes
     kind: SyntaxKind,  // 2 bytes
     children_len: u16, // 2 bytes
@@ -57,15 +56,15 @@ impl GreenNode {
         self.header().kind
     }
 
-    /// Returns the text excluding the first token's leading trivia and last token's trailing trivia
+    /// Returns the bytes excluding the first token's leading trivia and last token's trailing trivia
     #[inline]
-    pub fn text(&self) -> Vec<u8> {
+    pub fn bytes(&self) -> Vec<u8> {
         self.write_to(false, false)
     }
 
-    /// Returns the full text including all trivia
+    /// Returns the full bytes including all trivia
     #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
+    pub fn full_bytes(&self) -> Vec<u8> {
         self.write_to(true, true)
     }
 
@@ -134,14 +133,15 @@ impl GreenNode {
             for (index, child) in children.iter().enumerate().rev() {
                 let is_first = index == first_index;
                 let is_last = index == last_index;
+                let include_leading = current_leading || !is_first;
+                let include_trailing = current_trailing || !is_last;
 
                 match child {
                     GreenChild::Node { node: child_node, .. } => {
-                        // Propagate flags using bitwise OR, like Roslyn
-                        stack.push((child_node, current_leading | !is_first, current_trailing | !is_last));
+                        stack.push((child_node, include_leading, include_trailing));
                     }
                     GreenChild::Token { token, .. } => {
-                        output.extend_from_slice(&token.write_to(current_leading | !is_first, current_trailing | !is_last));
+                        output.extend_from_slice(&token.write_to(include_leading, include_trailing));
                     }
                 }
             }
@@ -206,7 +206,7 @@ impl fmt::Debug for GreenNode {
 
 impl fmt::Display for GreenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bytes = self.full_text();
+        let bytes = self.full_bytes();
         for &byte in &bytes {
             write!(f, "{}", byte as char)?;
         }

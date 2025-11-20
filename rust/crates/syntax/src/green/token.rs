@@ -59,13 +59,13 @@ impl GreenToken {
     }
 
     #[inline]
-    pub fn text(&self) -> Vec<u8> {
+    pub fn bytes(&self) -> Vec<u8> {
         self.write_to(false, false)
     }
 
-    /// Returns the full text including leading and trailing trivia
+    /// Returns the full bytes including leading and trailing trivia
     #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
+    pub fn full_bytes(&self) -> Vec<u8> {
         self.write_to(true, true)
     }
 
@@ -98,15 +98,15 @@ impl GreenToken {
         let mut output = Vec::new();
 
         if leading {
-            output.extend_from_slice(&self.leading_trivia().full_text());
+            output.extend_from_slice(&self.leading_trivia().full_bytes());
         }
 
         // SAFETY: `data`'s invariant.
-        let text = unsafe { slice::from_raw_parts(self.text_ptr_mut(), self.width() as usize) };
-        output.extend_from_slice(text);
+        let bytes = unsafe { slice::from_raw_parts(self.bytes_ptr_mut(), self.width() as usize) };
+        output.extend_from_slice(bytes);
 
         if trailing {
-            output.extend_from_slice(&self.trailing_trivia().full_text());
+            output.extend_from_slice(&self.trailing_trivia().full_bytes());
         }
 
         output
@@ -126,7 +126,7 @@ impl GreenToken {
     }
 
     #[inline]
-    pub(super) fn text_ptr_mut(&self) -> *mut u8 {
+    pub(super) fn bytes_ptr_mut(&self) -> *mut u8 {
         // SAFETY: `&raw mut` doesn't require the data to be valid, only allocated.
         unsafe { (&raw mut (*self.data.as_ptr()).text).cast::<u8>() }
     }
@@ -135,7 +135,7 @@ impl GreenToken {
 impl PartialEq for GreenToken {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind()
-            && self.text() == other.text()
+            && self.bytes() == other.bytes()
             && self.leading_trivia() == other.leading_trivia()
             && self.trailing_trivia() == other.trailing_trivia()
     }
@@ -145,8 +145,8 @@ impl Eq for GreenToken {}
 
 impl fmt::Debug for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let full_text_bytes = self.full_text();
-        let full_text_str = String::from_utf8_lossy(&full_text_bytes);
+        let full_bytes = self.full_bytes();
+        let full_text_str = String::from_utf8_lossy(&full_bytes);
         f.debug_struct("GreenToken")
             .field("kind", &self.kind())
             .field("full_text", &full_text_str)
@@ -157,7 +157,7 @@ impl fmt::Debug for GreenToken {
 
 impl fmt::Display for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bytes = self.full_text();
+        let bytes = self.full_bytes();
         for &byte in &bytes {
             write!(f, "{}", byte as char)?;
         }
@@ -208,7 +208,7 @@ mod token_tests {
     #[case::with_trailing(b"", b"null", b"\n", b"null")]
     #[case::with_both(b"\t", b"true", b" ", b"true")]
     #[case::with_comment(b"% comment\n", b"42", b"\r\n", b"42")]
-    fn test_text(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
+    fn test_bytes(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
         let mut arena = GreenTree::new();
 
         let leading_trivia = if leading.is_empty() {
@@ -226,7 +226,7 @@ mod token_tests {
         };
 
         let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.text().as_slice(), expected);
+        assert_eq!(token.bytes().as_slice(), expected);
     }
 
     #[rstest]
@@ -290,7 +290,7 @@ mod token_tests {
     #[case::with_both(b"\t", b"true", b" ", b"\ttrue ")]
     #[case::with_comment(b"% comment\n", b"null", b"\r\n", b"% comment\nnull\r\n")]
     #[case::with_name(b" \t", b"/Name", b" \n", b" \t/Name \n")]
-    fn test_full_text(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
+    fn test_full_bytes(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
         let mut arena = GreenTree::new();
 
         let leading_trivia = if leading.is_empty() {
@@ -308,7 +308,7 @@ mod token_tests {
         };
 
         let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.full_text().as_slice(), expected);
+        assert_eq!(token.full_bytes().as_slice(), expected);
     }
 
     #[rstest]
@@ -332,11 +332,11 @@ mod token_tests {
 
         assert_eq!(token.leading_trivia().full_width(), expected_width);
 
-        // Verify the actual trivia text matches
+        // Verify the actual trivia bytes matches
         let trivia_pieces = token.leading_trivia().pieces();
         if !leading.is_empty() {
             assert_eq!(trivia_pieces.len(), 1);
-            assert_eq!(trivia_pieces[0].text(), leading);
+            assert_eq!(trivia_pieces[0].bytes(), leading);
         } else {
             assert_eq!(trivia_pieces.len(), 0);
         }
@@ -363,11 +363,11 @@ mod token_tests {
 
         assert_eq!(token.trailing_trivia().full_width(), expected_width);
 
-        // Verify the actual trivia text matches
+        // Verify the actual trivia bytes matches
         let trivia_pieces = token.trailing_trivia().pieces();
         if !trailing.is_empty() {
             assert_eq!(trivia_pieces.len(), 1);
-            assert_eq!(trivia_pieces[0].text(), trailing);
+            assert_eq!(trivia_pieces[0].bytes(), trailing);
         } else {
             assert_eq!(trivia_pieces.len(), 0);
         }
