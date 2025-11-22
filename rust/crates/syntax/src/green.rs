@@ -2,6 +2,7 @@ mod arena;
 mod builder;
 mod cache;
 mod element;
+mod macros;
 mod node;
 mod token;
 mod trivia;

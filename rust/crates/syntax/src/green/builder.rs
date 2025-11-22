@@ -31,6 +31,15 @@ impl GreenNodeBuilder {
         self.children.push((hash, token.into()));
     }
 
+    /// Start new token and make it current.
+    #[inline]
+    pub fn start_token(&mut self, kind: SyntaxKind) {}
+
+    /// Finish current token and restore previous
+    /// branch as current.
+    #[inline]
+    pub fn finish_token(&mut self) {}
+
     /// Start new node and make it current.
     #[inline]
     pub fn start_node(&mut self, kind: SyntaxKind) {
@@ -58,4 +67,13 @@ impl GreenNodeBuilder {
             NodeOrToken::Token(_) => panic!(),
         }
     }
+}
+
+struct TokenBuilder<'a> {
+    cache: &'a mut GreenCache,
+    kind: SyntaxKind,
+    text: Option<Vec<u8>>,
+    text_set: bool,
+    leading_trivia: Vec<GreenTrivia>,
+    trailing_trivia: Vec<GreenTrivia>,
 }
