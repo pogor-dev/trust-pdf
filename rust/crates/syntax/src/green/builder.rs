@@ -102,7 +102,7 @@ impl GreenNodeBuilder {
     }
 
     /// Complete tree building. Make sure that
-    /// `start_node_at` and `finish_node` calls
+    /// `start_node` and `finish_node` calls
     /// are paired!
     ///
     /// Returns the root node and the arena that owns all the allocated data.
@@ -113,7 +113,9 @@ impl GreenNodeBuilder {
         assert_eq!(self.children.len(), 1);
         let node = match self.children.pop().unwrap().1 {
             NodeOrToken::Node(node) => node,
-            NodeOrToken::Token(_) => panic!(),
+            NodeOrToken::Token(_) => {
+                panic!("Expected root node to be a GreenNode, but got a Token. This usually indicates mismatched start_node/finish_node calls.")
+            }
         };
         (node, arena)
     }
