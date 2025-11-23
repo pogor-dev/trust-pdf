@@ -9,6 +9,7 @@ pub struct GreenNodeBuilder {
     cache: GreenCache,
     parents: Vec<(SyntaxKind, usize)>,
     children: Vec<(u64, GreenElement)>,
+    current_token: Option<TokenBuilder>,
 }
 
 impl std::fmt::Debug for GreenNodeBuilder {
@@ -24,6 +25,19 @@ impl GreenNodeBuilder {
         GreenNodeBuilder::default()
     }
 
+    /// Attaches new trivia to the current token.
+    #[inline]
+    pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) {
+        let token_builder = self.current_token.as_mut().expect("No current token to add trivia to");
+        let (_hash, trivia) = self.cache.trivia(kind, text);
+
+        if token_builder.text_set {
+            token_builder.trailing_trivia.push(trivia);
+        } else {
+            token_builder.leading_trivia.push(trivia);
+        }
+    }
+
     /// Adds new token to the current branch.
     #[inline]
     pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTrivia], trailing_trivia: &[GreenTrivia]) {
@@ -33,12 +47,41 @@ impl GreenNodeBuilder {
 
     /// Start new token and make it current.
     #[inline]
-    pub fn start_token(&mut self, kind: SyntaxKind) {}
+    pub fn start_token(&mut self, kind: SyntaxKind) {
+        assert!(self.current_token.is_none(), "Nested tokens are not allowed");
+
+        self.current_token = Some(TokenBuilder {
+            kind,
+            text: None,
+            text_set: false,
+            leading_trivia: Vec::new(),
+            trailing_trivia: Vec::new(),
+        });
+    }
+
+    /// Set text for the current token.
+    #[inline]
+    pub fn token_text(&mut self, text: &[u8]) {
+        let token_builder = self.current_token.as_mut().expect("No current token to set text for");
+        assert!(!token_builder.text_set, "Token text can only be set once");
+
+        token_builder.text = Some(text.to_vec());
+        token_builder.text_set = true;
+    }
 
     /// Finish current token and restore previous
     /// branch as current.
     #[inline]
-    pub fn finish_token(&mut self) {}
+    pub fn finish_token(&mut self) {
+        let token_builder = self.current_token.take().expect("No current token to finish");
+        let text = token_builder.text.expect("Token text must be set before finishing the token");
+
+        let (hash, token) = self
+            .cache
+            .token(token_builder.kind, &text, &token_builder.leading_trivia, &token_builder.trailing_trivia);
+
+        self.children.push((hash, token.into()));
+    }
 
     /// Start new node and make it current.
     #[inline]
@@ -59,18 +102,21 @@ impl GreenNodeBuilder {
     /// Complete tree building. Make sure that
     /// `start_node_at` and `finish_node` calls
     /// are paired!
+    ///
+    /// Returns the root node and the arena that owns all the allocated data.
+    /// The arena must be kept alive as long as any nodes from the tree are in use.
     #[inline]
-    pub fn finish(mut self) -> GreenNode {
+    pub fn finish(mut self) -> (GreenNode, triomphe::UniqueArc<crate::green::arena::GreenTree>) {
         assert_eq!(self.children.len(), 1);
-        match self.children.pop().unwrap().1 {
+        let node = match self.children.pop().unwrap().1 {
             NodeOrToken::Node(node) => node,
             NodeOrToken::Token(_) => panic!(),
-        }
+        };
+        (node, self.cache.arena)
     }
 }
 
-struct TokenBuilder<'a> {
-    cache: &'a mut GreenCache,
+struct TokenBuilder {
     kind: SyntaxKind,
     text: Option<Vec<u8>>,
     text_set: bool,

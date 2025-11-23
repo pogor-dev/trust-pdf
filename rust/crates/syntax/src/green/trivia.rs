@@ -4,11 +4,12 @@ use countme::Count;
 
 use crate::SyntaxKind;
 
-#[repr(C)]
+#[repr(C, align(8))]
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTriviaListHead {
     full_width: u32,            // 4 bytes
     pieces_len: u16,            // 2 bytes
+    _padding: u16,              // 2 bytes padding to ensure 8-byte total size
     _c: Count<GreenTriviaList>, // 0 bytes
 }
 
@@ -18,6 +19,7 @@ impl GreenTriviaListHead {
         Self {
             full_width,
             pieces_len,
+            _padding: 0,
             _c: Count::new(),
         }
     }
@@ -36,7 +38,7 @@ impl GreenTriviaListHead {
 /// The actual pieces are stored inline after the head.
 #[repr(C)]
 pub(super) struct GreenTriviaListData {
-    head: GreenTriviaListHead, // 6 bytes
+    head: GreenTriviaListHead, // 8 bytes (with explicit 8-byte alignment)
     pieces: [GreenTrivia; 0],  // 0 bytes, actual pieces are stored inline after this struct
 }
 
@@ -239,8 +241,8 @@ mod memory_layout_tests {
         assert_eq!(std::mem::size_of::<GreenTriviaData>(), 4); // 4 bytes + 0 bytes padding
         assert_eq!(std::mem::align_of::<GreenTriviaData>(), 2); // 2 bytes alignment
 
-        assert_eq!(std::mem::size_of::<GreenTriviaListHead>(), 8); // 6 bytes + 2 bytes padding
-        assert_eq!(std::mem::align_of::<GreenTriviaListHead>(), 4); // 4 bytes alignment
+        assert_eq!(std::mem::size_of::<GreenTriviaListHead>(), 8); // 8 bytes (aligned to 8)
+        assert_eq!(std::mem::align_of::<GreenTriviaListHead>(), 8); // 8 bytes alignment (explicit)
 
         assert_eq!(std::mem::size_of::<GreenTriviaListData>(), 8); // 8 bytes + 0 bytes padding
         assert_eq!(std::mem::align_of::<GreenTriviaListData>(), 8); // 8 bytes alignment

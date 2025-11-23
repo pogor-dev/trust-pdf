@@ -1,115 +1,139 @@
 /// Macro for building green syntax trees with a declarative syntax.
 ///
+/// This macro provides a clean DSL for constructing syntax trees by automatically
+/// translating high-level syntax into `GreenNodeBuilder` method calls. It handles
+/// the entire builder lifecycle, from initialization to final tree construction.
+///
 /// # Expansion Steps
 ///
-/// The macro expands in the following order:
+/// The macro expands through the following phases:
 ///
-/// 1. **Entry point**: `tree! { ... }` creates a `GreenNodeBuilder`
-/// 2. **Elements processing**: Recursively processes nodes and tokens via `@elements`
-/// 3. **Node expansion**: `KIND => { children }` calls `start_node`, recurses on children, then `finish_node`
-/// 4. **Token expansion**: `(KIND) => { content }` calls `start_token`, expands content, then `finish_token`
-/// 5. **Token content**: Comma-separated function calls are converted to semicolon-separated statements
+/// 1. Entry point (`tree! { ... }`):
+///    - Creates a `GreenNodeBuilder` instance
+///    - Delegates to `@elements` to process the tree structure
+///    - Calls `builder.finish()` to return the root `GreenNode`
 ///
-/// # Example Expansion
+/// 2. Elements processing (`@elements`):
+///    - Recursively processes nodes and tokens in document order
+///    - Dispatches to node or token-specific rules based on syntax
 ///
-/// Input:
+/// 3. Node expansion (`KIND => { children }`):
+///    - Calls `builder.start_node(KIND)`
+///    - Recursively processes child elements
+///    - Calls `builder.finish_node()`
+///
+/// 4. Token expansion (`(KIND) => { content }`):
+///    - Calls `builder.start_token(KIND)`
+///    - Delegates to `@token_content` to process trivia and text
+///    - Calls `builder.finish_token()`
+///
+/// 5. Token shorthand (`(KIND, text)`):
+///    - Direct shorthand for tokens with only text, no trivia
+///    - Expands to `start_token`, `token_text`, `finish_token` sequence
+///
+/// 6. Token content processing (`@token_content`):
+///    - Translates `text(value)` → `builder.token_text(value)`
+///    - Translates `trivia(kind, value)` → `builder.trivia(kind, value)`
+///    - Processes calls sequentially, preserving order for leading/trailing trivia
+///
+/// # Example Usage
+///
 /// ```ignore
-/// tree! {
+/// use syntax::tree;
+/// use syntax::SyntaxKind;
+///
+/// const PARENT: SyntaxKind = SyntaxKind(1);
+/// const CHILD: SyntaxKind = SyntaxKind(2);
+/// const TOKEN: SyntaxKind = SyntaxKind(3);
+/// const SPACE: SyntaxKind = SyntaxKind(4);
+///
+/// let tree = tree! {
 ///     PARENT => {
-///         (TOKEN) => { space(), text(b"foo") },
+///         (TOKEN) => { trivia(SPACE, b" "), text(b"foo") },
 ///         CHILD => {
-///             (TOKEN) => { text(b"bar") }
+///             (TOKEN, b"bar")
 ///         }
 ///     }
-/// }
+/// };
 /// ```
 ///
-/// Expands to:
+/// The above expands to:
 /// ```ignore
 /// {
 ///     let mut builder = GreenNodeBuilder::new();
-///     
-///     builder.start_node(PARENT);           // Start PARENT node
-///     
-///         builder.start_token(TOKEN);       // Start first TOKEN
-///         { space(); text(b"foo"); }        // Execute token content
-///         builder.finish_token();           // Finish first TOKEN
-///         
-///         builder.start_node(CHILD);        // Start CHILD node
-///         
-///             builder.start_token(TOKEN);   // Start nested TOKEN
-///             { text(b"bar"); }             // Execute token content
-///             builder.finish_token();       // Finish nested TOKEN
-///             
-///         builder.finish_node();            // Finish CHILD node
-///         
-///     builder.finish_node();                // Finish PARENT node
-///     
-///     builder.finish()                      // Return root GreenNode
+///     {
+///         builder.start_node(PARENT);
+///         {
+///             builder.start_token(TOKEN);
+///             {
+///                 builder.trivia(SPACE, b" ");
+///                 builder.token_text(b"foo");
+///             }
+///             builder.finish_token();
+///             {
+///                 builder.start_node(CHILD);
+///                 {
+///                     builder.start_token(TOKEN);
+///                     builder.token_text(b"bar");
+///                     builder.finish_token();
+///                 };
+///                 builder.finish_node();
+///             };
+///         };
+///         builder.finish_node();
+///     };
+///     builder.finish()
 /// }
 /// ```
 ///
 /// # Syntax Rules
 ///
 /// - **Node**: `KIND => { children }` - no parentheses around KIND
-/// - **Token**: `(KIND) => { content }` - parentheses around KIND
-/// - **Token content**: Comma-separated calls to `text()`, `space()`, `linefeed()`, etc.
+/// - **Token**: `(KIND) => { content }` - parentheses around KIND  
+/// - **Token shorthand**: `(KIND, text)` - direct text assignment without trivia
+/// - **Token content**: Comma-separated calls to `text()` and `trivia(kind, value)`
+/// - **Trivia placement**: Calls before `text()` become leading trivia, calls after become trailing trivia
 #[macro_export]
 macro_rules! tree {
-    // Public entry point: delegates to internal implementation
-    ($($tt:tt)*) => {
-        $crate::__tree_internal!($($tt)*)
-    };
-}
-
-/// Internal implementation of the tree macro.
-/// Not intended for direct use - use `tree!` instead.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __tree_internal {
     // [Step 1a] Token expansion (last token in sequence)
     // Matches: (KIND) => { content }
     (@elements $builder:ident, ($kind:expr) => { $($content:tt)* }) => {{
-        // TODO: Implement start_token/finish_token in GreenNodeBuilder
         $builder.start_token($kind);
-        { $crate::__tree_internal!(@token_content $($content)*) }
+        { $crate::tree!(@token_content $builder, $($content)*); }
         $builder.finish_token();
     }};
 
     // [Step 1b] Token expansion (followed by more elements)
     // Matches: (KIND) => { content }, rest...
     (@elements $builder:ident, ($kind:expr) => { $($content:tt)* }, $($rest:tt)*) => {{
-        // TODO: Implement start_token/finish_token in GreenNodeBuilder
         $builder.start_token($kind);
-        { $crate::__tree_internal!(@token_content $($content)*) }
+        { $crate::tree!(@token_content $builder, $($content)*); }
         $builder.finish_token();
-        $crate::__tree_internal!(@elements $builder, $($rest)*);
+        $crate::tree!(@elements $builder, $($rest)*);
     }};
 
     // [Step 1c] Token shorthand (last token in sequence)
     // Matches: (KIND, text)
     (@elements $builder:ident, ($kind:expr, $text:expr)) => {{
-        // TODO: Implement start_token/finish_token in GreenNodeBuilder
         $builder.start_token($kind);
-        { text($text); }
+        $builder.token_text($text);
         $builder.finish_token();
     }};
 
     // [Step 1d] Token shorthand (followed by more elements)
     // Matches: (KIND, text), rest...
     (@elements $builder:ident, ($kind:expr, $text:expr), $($rest:tt)*) => {{
-        // TODO: Implement start_token/finish_token in GreenNodeBuilder
         $builder.start_token($kind);
-        { text($text); }
+        $builder.token_text($text);
         $builder.finish_token();
-        $crate::__tree_internal!(@elements $builder, $($rest)*);
+        $crate::tree!(@elements $builder, $($rest)*);
     }};
 
     // [Step 2a] Node expansion (last node in sequence)
     // Matches: KIND => { children }
     (@elements $builder:ident, $kind:expr => { $($children:tt)* }) => {{
         $builder.start_node($kind);
-        $crate::__tree_internal!(@elements $builder, $($children)*);
+        $crate::tree!(@elements $builder, $($children)*);
         $builder.finish_node();
     }};
 
@@ -117,26 +141,45 @@ macro_rules! __tree_internal {
     // Matches: KIND => { children }, rest...
     (@elements $builder:ident, $kind:expr => { $($children:tt)* }, $($rest:tt)*) => {{
         $builder.start_node($kind);
-        $crate::__tree_internal!(@elements $builder, $($children)*);
+        $crate::tree!(@elements $builder, $($children)*);
         $builder.finish_node();
-        $crate::__tree_internal!(@elements $builder, $($rest)*);
+        $crate::tree!(@elements $builder, $($rest)*);
     }};
 
-    // [Step 3] Helper: converts comma-separated token content to semicolon-separated statements
-    // Input: space(), text(b"foo"), linefeed()
-    // Output: { space(); text(b"foo"); linefeed(); }
-    (@token_content $($item:expr),* $(,)?) => {{
-        $( $item; )*
-    }};
+    // [Step 3] Token content processing: translates text() and trivia() calls to builder methods
+    // Processes token content sequentially, maintaining order for leading/trailing trivia.
+    // Input: trivia(SPACE, b" "), text(b"foo"), trivia(LINEFEED, b"\n")
+    // Output: builder.trivia(SPACE, b" "); builder.token_text(b"foo"); builder.trivia(LINEFEED, b"\n");
+
+    // [Step 3a] Translate text() to builder.token_text()
+    // Matches: text(expression)
+    (@token_content $builder:ident, text($text:expr) $(, $($rest:tt)*)?) => {
+        $builder.token_text($text);
+        $($crate::tree!(@token_content $builder, $($rest)*);)?
+    };
+
+    // [Step 3b] Translate trivia() to builder.trivia()
+    // Matches: trivia(kind, value)
+    (@token_content $builder:ident, trivia($kind:expr, $value:expr) $(, $($rest:tt)*)?) => {
+        $builder.trivia($kind, $value);
+        $($crate::tree!(@token_content $builder, $($rest)*);)?
+    };
+
+    // [Step 3c] Base case: no more token content to process
+    // Matches: empty token content
+    (@token_content $builder:ident,) => {};
 
     // [Step 4] Base case: recursion ends when all elements are processed
+    // Matches: empty element list
     (@elements $builder:ident,) => {};
 
-    // [Step 0] Entry point: creates builder, passes to @elements, returns finished tree
+    // [Step 0] Entry point: creates builder, passes to @elements, returns finished tree and arena
+    // Matches: any token tree (catch-all pattern)
     // Must be last since ($($tt:tt)*) matches everything
+    // Returns (GreenNode, UniqueArc<GreenTree>) - caller must keep arena alive
     ($($tt:tt)*) => {{
         let mut builder = $crate::green::builder::GreenNodeBuilder::new();
-        $crate::__tree_internal!(@elements builder, $($tt)*);
+        $crate::tree!(@elements builder, $($tt)*);
         builder.finish()
     }};
 }
@@ -147,32 +190,6 @@ mod builder_tests {
 
     use crate::SyntaxKind;
 
-    // TODO: Implement these helper functions for token building
-    #[allow(dead_code)]
-    fn space() {
-        // TODO: Add space trivia
-    }
-
-    #[allow(dead_code)]
-    fn linefeed() {
-        // TODO: Add linefeed trivia
-    }
-
-    #[allow(dead_code)]
-    fn carriage_return() {
-        // TODO: Add carriage return trivia
-    }
-
-    #[allow(dead_code)]
-    fn text(_value: &[u8]) {
-        // TODO: Set token text
-    }
-
-    #[allow(dead_code)]
-    fn trivia(_kind: crate::SyntaxKind, _value: &[u8]) {
-        // TODO: Add generic trivia with kind and value
-    }
-
     const OBJECT: SyntaxKind = SyntaxKind(1000);
     const INDIRECT: SyntaxKind = SyntaxKind(1001);
     const NUMBER: SyntaxKind = SyntaxKind(1002);
@@ -182,6 +199,8 @@ mod builder_tests {
     const DICTIONARY: SyntaxKind = SyntaxKind(1006);
     const KEYWORD_ENDOBJ: SyntaxKind = SyntaxKind(1007);
     const COMMENT: SyntaxKind = SyntaxKind(2000);
+    const SPACE: SyntaxKind = SyntaxKind(2001);
+    const LINEFEED: SyntaxKind = SyntaxKind(2002);
 
     /// Example of building a PDF object structure with the tree macro.
     ///
@@ -200,47 +219,51 @@ mod builder_tests {
     /// - The `text()` call divides leading from trailing trivia
     #[rstest]
     fn test_macro() {
-        let _tree = tree! {
+        let tree = tree! {
             OBJECT => {
                 INDIRECT => {
                     (NUMBER, b"1"),
                     (NUMBER) => {
-                        space(),
+                        trivia(SPACE, b" "),
                         text(b"0")
                     },
                     (KEYWORD) => {
-                        space(),
+                        trivia(SPACE, b" "),
                         text(b"obj"),
-                        linefeed()
+                        trivia(LINEFEED, b"\n")
                     }
                 },
                 DICTIONARY => {
                     (DELIMITER) => {
-                        linefeed(),
+                        trivia(LINEFEED, b"\n"),
                         text(b"<<"),
-                        linefeed()
+                        trivia(LINEFEED, b"\n")
                     },
                     (NAME) => {
-                        space(),
-                        space(),
+                        trivia(SPACE, b" "),
+                        trivia(SPACE, b" "),
                         text(b"/Type"),
-                        space()
+                        trivia(SPACE, b" ")
                     },
                     (NAME) => {
                         text(b"/Catalog"),
-                        linefeed()
+                        trivia(LINEFEED, b"\n")
                     },
                     (DELIMITER) => {
                         text(b">>"),
-                        linefeed()
+                        trivia(LINEFEED, b"\n")
                     }
                 },
                 (KEYWORD_ENDOBJ) => {
                     text(b"endobj"),
-                    linefeed(),
+                    trivia(LINEFEED, b"\n"),
                     trivia(COMMENT, b"% This is a comment")
                 }
             }
         };
+
+        let expected = b"1 0 obj\n<<\n  /Type /Catalog\n>>endobj\n% This is a comment";
+        let (tree, _arena) = tree; // TODO: keep arena alive
+        assert_eq!(tree.full_bytes(), expected);
     }
 }
