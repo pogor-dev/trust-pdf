@@ -2,7 +2,7 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenToken, GreenTriviaList, SyntaxKind};
+use crate::{GreenToken, GreenTriviaList, NodeOrToken, SyntaxKind};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -117,31 +117,40 @@ impl GreenNode {
         let mut output = Vec::new();
 
         // Use explicit stack to handle deeply recursive structures without stack overflow
-        let mut stack = Vec::new();
-        stack.push((self, leading, trailing));
+        let mut stack: Vec<(NodeOrToken<&GreenNode, &GreenToken>, bool, bool)> = Vec::new();
+        stack.push((NodeOrToken::Node(self), leading, trailing));
 
-        while let Some((node, current_leading, current_trailing)) = stack.pop() {
-            let children = node.children();
-            if children.is_empty() {
-                continue;
-            }
-
-            let first_index = 0;
-            let last_index = children.len() - 1;
-
-            // Process children in reverse order so they're popped in correct order
-            for (index, child) in children.iter().enumerate().rev() {
-                let is_first = index == first_index;
-                let is_last = index == last_index;
-                let include_leading = current_leading || !is_first;
-                let include_trailing = current_trailing || !is_last;
-
-                match child {
-                    GreenChild::Node { node: child_node, .. } => {
-                        stack.push((child_node, include_leading, include_trailing));
+        while let Some((item, current_leading, current_trailing)) = stack.pop() {
+            match item {
+                NodeOrToken::Token(token) => {
+                    output.extend_from_slice(&token.write_to(current_leading, current_trailing));
+                }
+                NodeOrToken::Node(node) => {
+                    let children = node.children();
+                    if children.is_empty() {
+                        continue;
                     }
-                    GreenChild::Token { token, .. } => {
-                        output.extend_from_slice(&token.write_to(include_leading, include_trailing));
+
+                    let first_index = 0;
+                    let last_index = children.len() - 1;
+
+                    // Process children in reverse order (last to first), pushing to stack
+                    // so they're popped in correct order (first to last)
+                    for i in (first_index..=last_index).rev() {
+                        let child = &children[i];
+                        let is_first = i == first_index;
+                        let is_last = i == last_index;
+                        let include_leading = current_leading || !is_first;
+                        let include_trailing = current_trailing || !is_last;
+
+                        match child {
+                            GreenChild::Node { node: child_node, .. } => {
+                                stack.push((NodeOrToken::Node(child_node), include_leading, include_trailing));
+                            }
+                            GreenChild::Token { token, .. } => {
+                                stack.push((NodeOrToken::Token(token), include_leading, include_trailing));
+                            }
+                        }
                     }
                 }
             }
