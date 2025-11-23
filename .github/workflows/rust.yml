@@ -36,6 +36,15 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: echo "::add-matcher::.github/rust.json"
 
+      - name: Debug - List files
+        run: |
+          echo "=== Root directory ==="
+          ls -la
+          echo "=== Rust directory ==="
+          ls -la rust/
+          echo "=== Cargo files ==="
+          find . -name "Cargo.*" -type f
+
       - name: Cache
         uses: actions/cache@v4
         with:
