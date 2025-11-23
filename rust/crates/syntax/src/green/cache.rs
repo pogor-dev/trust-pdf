@@ -45,7 +45,7 @@ impl GreenCache {
         let entry = self
             .trivias
             .raw_entry_mut()
-            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.text() == text);
+            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.bytes() == text);
 
         let trivia = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
@@ -70,13 +70,13 @@ impl GreenCache {
         let entry = self
             .tokens
             .raw_entry_mut()
-            .from_hash(hash, |token| token.0.kind() == kind && token.0.text() == text);
+            .from_hash(hash, |token| token.0.kind() == kind && token.0.bytes().as_slice() == text);
 
         let token = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
-                let leading_trivia_list = GreenTriviaList::new(leading_trivia);
-                let trailing_trivia_list = GreenTriviaList::new(trailing_trivia);
+                let leading_trivia_list = self.arena.alloc_trivia_list(leading_trivia);
+                let trailing_trivia_list = self.arena.alloc_trivia_list(trailing_trivia);
                 let token = self.arena.alloc_token(kind, text, leading_trivia_list, trailing_trivia_list);
                 entry.insert_with_hasher(hash, NoHash(token), (), |t| token_hash(&t.0));
                 token
@@ -172,14 +172,14 @@ impl GreenCache {
 fn trivia_hash(trivia: &GreenTrivia) -> u64 {
     let mut h = FxHasher::default();
     trivia.kind().hash(&mut h);
-    trivia.text().hash(&mut h);
+    trivia.bytes().hash(&mut h);
     h.finish()
 }
 
 fn token_hash(token: &GreenToken) -> u64 {
     let mut h = FxHasher::default();
     token.kind().hash(&mut h);
-    token.text().hash(&mut h);
+    token.bytes().hash(&mut h);
 
     for piece in token.leading_trivia().pieces() {
         trivia_hash(piece).hash(&mut h);

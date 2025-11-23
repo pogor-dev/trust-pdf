@@ -2,12 +2,11 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenToken, SyntaxKind};
+use crate::{GreenToken, GreenTriviaList, NodeOrToken, SyntaxKind};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenNodeHead {
-    // TODO: change to u64? Do we want to support files > 4GB? Some cfg for that?
     full_width: u32,   // 4 bytes
     kind: SyntaxKind,  // 2 bytes
     children_len: u16, // 2 bytes
@@ -57,6 +56,27 @@ impl GreenNode {
         self.header().kind
     }
 
+    /// Returns the bytes excluding the first token's leading trivia and last token's trailing trivia
+    #[inline]
+    pub fn bytes(&self) -> Vec<u8> {
+        self.write_to(false, false)
+    }
+
+    /// Returns the full bytes including all trivia
+    #[inline]
+    pub fn full_bytes(&self) -> Vec<u8> {
+        self.write_to(true, true)
+    }
+
+    /// Returns the width excluding the first token's leading trivia and last token's trailing trivia.
+    /// This is similar to Roslyn's approach for calculating the "true" width of a node's content.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        let first_leading_width = self.first_token().map(|t| t.leading_trivia().full_width()).unwrap_or(0);
+        let last_trailing_width = self.last_token().map(|t| t.trailing_trivia().full_width()).unwrap_or(0);
+        self.full_width() - first_leading_width - last_trailing_width
+    }
+
     #[inline]
     pub fn full_width(&self) -> u32 {
         self.header().full_width
@@ -71,6 +91,88 @@ impl GreenNode {
     pub(crate) fn children(&self) -> &[GreenChild] {
         // SAFETY: `data`'s invariant.
         unsafe { slice::from_raw_parts(self.children_ptr_mut(), self.header().children_len as usize) }
+    }
+
+    /// Returns the leading trivia from the first terminal token in the node tree
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<&GreenTriviaList> {
+        self.first_token().map(|token| token.leading_trivia())
+    }
+
+    /// Returns the trailing trivia from the last terminal token in the node tree
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<&GreenTriviaList> {
+        self.last_token().map(|token| token.trailing_trivia())
+    }
+
+    /// Returns the node's text as a byte vector.
+    ///
+    /// Similar to Roslyn's WriteTo implementation, uses an explicit stack to avoid
+    /// stack overflow on deeply nested structures.
+    ///
+    /// # Parameters
+    /// * `leading` - If true, include the first token's leading trivia
+    /// * `trailing` - If true, include the last token's trailing trivia
+    fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
+        let mut output = Vec::new();
+
+        // Use explicit stack to handle deeply recursive structures without stack overflow
+        let mut stack: Vec<(NodeOrToken<&GreenNode, &GreenToken>, bool, bool)> = Vec::new();
+        stack.push((NodeOrToken::Node(self), leading, trailing));
+
+        while let Some((item, current_leading, current_trailing)) = stack.pop() {
+            match item {
+                NodeOrToken::Token(token) => {
+                    output.extend_from_slice(&token.write_to(current_leading, current_trailing));
+                }
+                NodeOrToken::Node(node) => {
+                    let children = node.children();
+                    if children.is_empty() {
+                        continue;
+                    }
+
+                    let first_index = 0;
+                    let last_index = children.len() - 1;
+
+                    // Process children in reverse order (last to first), pushing to stack
+                    // so they're popped in correct order (first to last)
+                    for i in (first_index..=last_index).rev() {
+                        let child = &children[i];
+                        let is_first = i == first_index;
+                        let is_last = i == last_index;
+                        let include_leading = current_leading || !is_first;
+                        let include_trailing = current_trailing || !is_last;
+
+                        match child {
+                            GreenChild::Node { node: child_node, .. } => {
+                                stack.push((NodeOrToken::Node(child_node), include_leading, include_trailing));
+                            }
+                            GreenChild::Token { token, .. } => {
+                                stack.push((NodeOrToken::Token(token), include_leading, include_trailing));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        output
+    }
+
+    /// Returns the first terminal token in the node tree
+    fn first_token(&self) -> Option<&GreenToken> {
+        self.children().first().and_then(|child| match child {
+            GreenChild::Token { token, .. } => Some(token),
+            GreenChild::Node { node, .. } => node.first_token(),
+        })
+    }
+
+    /// Returns the last terminal token in the node tree
+    fn last_token(&self) -> Option<&GreenToken> {
+        self.children().last().and_then(|child| match child {
+            GreenChild::Token { token, .. } => Some(token),
+            GreenChild::Node { node, .. } => node.last_token(),
+        })
     }
 
     #[inline]
@@ -113,8 +215,9 @@ impl fmt::Debug for GreenNode {
 
 impl fmt::Display for GreenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for child in self.children() {
-            write!(f, "{}", child)?;
+        let bytes = self.full_bytes();
+        for &byte in &bytes {
+            write!(f, "{}", byte as char)?;
         }
         Ok(())
     }
@@ -166,7 +269,7 @@ impl fmt::Display for GreenChild {
 }
 
 #[cfg(test)]
-mod tests {
+mod memory_layout_tests {
     use rstest::rstest;
 
     use super::*;
@@ -181,5 +284,27 @@ mod tests {
 
         assert_eq!(std::mem::size_of::<GreenChild>(), 16); // 12 bytes + 4 bytes padding
         assert_eq!(std::mem::align_of::<GreenChild>(), 8); // 8 bytes alignment
+    }
+}
+
+#[cfg(test)]
+mod node_tests {
+    use rstest::rstest;
+
+    use crate::green::arena::GreenTree;
+
+    use super::*;
+
+    const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
+    const NODE_KIND: SyntaxKind = SyntaxKind(100);
+    const TRIVIA_KIND: SyntaxKind = SyntaxKind(200);
+
+    #[rstest]
+    fn test_kind() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+        let token = arena.alloc_token(TOKEN_KIND, b"test", empty_trivia, empty_trivia);
+        let node = arena.alloc_node(NODE_KIND, token.full_width(), 1, [GreenChild::Token { token, rel_offset: 0 }].into_iter());
+        assert_eq!(node.kind(), NODE_KIND);
     }
 }
