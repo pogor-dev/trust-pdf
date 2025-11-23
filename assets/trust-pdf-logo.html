@@ -14,10 +14,14 @@
 
     .light {
       background-color: white;
+      --color-primary: #0797B9;
+      --color-secondary: #EF5F00;
     }
 
     .dark {
       background-color: #121212;
+      --color-primary: #23AFD0;
+      --color-secondary: #F76B15;
     }
 
     button {
@@ -37,6 +41,14 @@
       display: flex;
       justify-content: center;
     }
+
+    .color-primary {
+      fill: var(--color-primary);
+    }
+
+    .color-secondary {
+      fill: var(--color-secondary);
+    }
   </style>
 </head>
 
@@ -52,9 +64,9 @@
       <rect width="100%" height="100%" fill="transparent" />
       <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Segoe UI, sans-serif"
         font-size="64" font-weight="bold">
-        <tspan fill="#2B7581">T</tspan>
-        <tspan fill="#D75F00" dx="-20">Rust</tspan>
-        <tspan fill="#2B7581"> PDF</tspan>
+        <tspan class="color-primary">T</tspan>
+        <tspan class="color-secondary" dx="-20">Rust</tspan>
+        <tspan class="color-primary"> PDF</tspan>
       </text>
     </svg>
   </div>
@@ -67,7 +79,23 @@
 
     function exportAsPng(scale = 4) {
       const svg = document.getElementById("trust-pdf-logo");
-      const svgData = new XMLSerializer().serializeToString(svg);
+      
+      // Clone SVG and replace CSS variables with computed colors
+      const svgClone = svg.cloneNode(true);
+      const primaryColor = getComputedStyle(document.body).getPropertyValue('--color-primary').trim();
+      const secondaryColor = getComputedStyle(document.body).getPropertyValue('--color-secondary').trim();
+      
+      // Replace class-based colors with inline fill attributes
+      svgClone.querySelectorAll('.color-primary').forEach(el => {
+        el.setAttribute('fill', primaryColor);
+        el.removeAttribute('class');
+      });
+      svgClone.querySelectorAll('.color-secondary').forEach(el => {
+        el.setAttribute('fill', secondaryColor);
+        el.removeAttribute('class');
+      });
+      
+      const svgData = new XMLSerializer().serializeToString(svgClone);
 
       const baseWidth = svg.viewBox.baseVal.width;
       const baseHeight = svg.viewBox.baseVal.height;

@@ -1,5 +1,9 @@
 <div align="center">
-  <img src="assets/trust-pdf-logo.png" alt="TRust PDF Logo" width="400">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/trust-pdf-logo@4x-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/trust-pdf-logo@4x-light.png">
+    <img alt="TRust PDF Logo" src="assets/trust-pdf-logo@4x-light.png" width="400">
+  </picture>
 </div>
 
 Rust library for reading, viewing, editing and validating the PDF files.
