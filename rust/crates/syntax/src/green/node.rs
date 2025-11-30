@@ -277,6 +277,11 @@ impl GreenNode {
         self.node.full_width()
     }
 
+    #[inline]
+    pub fn children_len(&self) -> u16 {
+        self.node.children_len()
+    }
+
     /// The leading trivia of this Node.
     #[inline]
     pub fn leading_trivia(&self) -> Option<&GreenTriviaListInTree> {
@@ -399,10 +404,8 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod node_tests {
-
-    use crate::green::arena::GreenTree;
-
     use super::*;
+    use crate::tree;
 
     const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
     const NODE_KIND: SyntaxKind = SyntaxKind(100);
@@ -410,10 +413,42 @@ mod node_tests {
 
     #[test]
     fn test_kind() {
-        let mut arena = GreenTree::new();
-        let empty_trivia = arena.alloc_trivia_list(&[]);
-        let token = arena.alloc_token(TOKEN_KIND, b"test", empty_trivia, empty_trivia);
-        let node = arena.alloc_node(NODE_KIND, token.full_width(), 1, [GreenChild::Token { token, rel_offset: 0 }].into_iter());
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
         assert_eq!(node.kind(), NODE_KIND);
+    }
+
+    #[test]
+    fn test_bytes() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND) => {
+                    trivia(TRIVIA_KIND, b"  "),
+                    text(b"foo")
+                },
+                NODE_KIND => {
+                    (TOKEN_KIND) => {
+                        text(b"bar"),
+                        trivia(TRIVIA_KIND, b" ")
+                    }
+                },
+                (TOKEN_KIND) => {
+                    text(b"baz"),
+                    trivia(TRIVIA_KIND, b"\n")
+                },
+            }
+        };
+
+        assert_eq!(node.bytes(), b"foobar baz".to_vec());
+        assert_eq!(node.width(), 10);
+        assert_eq!(node.full_bytes(), b"  foobar baz\n".to_vec());
+        assert_eq!(node.full_width(), 13);
+        assert_eq!(node.children_len(), 3);
+        assert_eq!(node.leading_trivia().unwrap().full_bytes(), b"  ".to_vec());
+        assert_eq!(node.trailing_trivia().unwrap().full_bytes(), b"\n".to_vec());
     }
 }
