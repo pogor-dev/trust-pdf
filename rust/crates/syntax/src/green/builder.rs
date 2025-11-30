@@ -2,7 +2,7 @@ use triomphe::Arc;
 
 use crate::{
     NodeOrToken,
-    green::{GreenNode, SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, trivia::GreenTriviaInTree},
+    green::{SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, node::GreenNodeInTree, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
@@ -108,7 +108,7 @@ impl GreenNodeBuilder {
     /// Returns the root node and the arena that owns all the allocated data.
     /// The arena must be kept alive as long as any nodes from the tree are in use.
     #[inline]
-    pub fn finish(mut self) -> (GreenNode, Arc<GreenTree>) {
+    pub fn finish(mut self) -> (GreenNodeInTree, Arc<GreenTree>) {
         let arena = self.cache.arena.shareable();
         assert_eq!(self.children.len(), 1);
         let node = match self.children.pop().unwrap().1 {

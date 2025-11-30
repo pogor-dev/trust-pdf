@@ -1,10 +1,11 @@
-use std::{fmt, ptr::NonNull, slice};
+use std::{fmt, hash, ptr::NonNull, slice};
 
 use countme::Count;
+use triomphe::Arc;
 
 use crate::{
     NodeOrToken, SyntaxKind,
-    green::{token::GreenTokenInTree, trivia::GreenTriviaListInTree},
+    green::{arena::GreenTree, token::GreenTokenInTree, trivia::GreenTriviaListInTree},
 };
 
 #[repr(C)]
@@ -13,7 +14,7 @@ pub(super) struct GreenNodeHead {
     full_width: u32,   // 4 bytes
     kind: SyntaxKind,  // 2 bytes
     children_len: u16, // 2 bytes
-    _c: Count<GreenNode>,
+    _c: Count<GreenNodeInTree>,
 }
 
 impl GreenNodeHead {
@@ -47,13 +48,13 @@ pub(super) struct GreenNodeData {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct GreenNode {
+pub struct GreenNodeInTree {
     /// INVARIANT: This points at a valid `GreenNodeData` followed by `children_len` `GreenChild`s,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenNodeData>,
 }
 
-impl GreenNode {
+impl GreenNodeInTree {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.header().kind
@@ -120,7 +121,7 @@ impl GreenNode {
         let mut output = Vec::new();
 
         // Use explicit stack to handle deeply recursive structures without stack overflow
-        let mut stack: Vec<(NodeOrToken<&GreenNode, &GreenTokenInTree>, bool, bool)> = Vec::new();
+        let mut stack: Vec<(NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>, bool, bool)> = Vec::new();
         stack.push((NodeOrToken::Node(self), leading, trailing));
 
         while let Some((item, current_leading, current_trailing)) = stack.pop() {
@@ -198,15 +199,25 @@ impl GreenNode {
     }
 }
 
-impl PartialEq for GreenNode {
+impl PartialEq for GreenNodeInTree {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.full_width() == other.full_width() && self.children() == other.children()
     }
 }
 
-impl Eq for GreenNode {}
+impl Eq for GreenNodeInTree {}
 
-impl fmt::Debug for GreenNode {
+impl hash::Hash for GreenNodeInTree {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.kind().hash(state);
+        self.full_width().hash(state);
+        for child in self.children() {
+            child.hash(state);
+        }
+    }
+}
+
+impl fmt::Debug for GreenNodeInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenNode")
             .field("kind", &self.kind())
@@ -216,7 +227,7 @@ impl fmt::Debug for GreenNode {
     }
 }
 
-impl fmt::Display for GreenNode {
+impl fmt::Display for GreenNodeInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let bytes = self.full_bytes();
         for &byte in &bytes {
@@ -227,12 +238,94 @@ impl fmt::Display for GreenNode {
 }
 
 // SAFETY: The pointer is valid.
-unsafe impl Send for GreenNode {}
-unsafe impl Sync for GreenNode {}
+unsafe impl Send for GreenNodeInTree {}
+unsafe impl Sync for GreenNodeInTree {}
+
+#[derive(Clone)]
+pub struct GreenNode {
+    pub(super) node: GreenNodeInTree,
+    pub(super) _arena: Arc<GreenTree>,
+}
+
+impl GreenNode {
+    /// Kind of this Node.
+    #[inline]
+    pub fn kind(&self) -> SyntaxKind {
+        self.node.kind()
+    }
+
+    /// The bytes of this Node.
+    #[inline]
+    pub fn bytes(&self) -> Vec<u8> {
+        self.node.bytes()
+    }
+
+    #[inline]
+    pub fn full_bytes(&self) -> Vec<u8> {
+        self.node.full_bytes()
+    }
+
+    /// The width of this Node.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.node.width()
+    }
+
+    /// The full width of this Node.
+    #[inline]
+    pub fn full_width(&self) -> u32 {
+        self.node.full_width()
+    }
+
+    /// The leading trivia of this Node.
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<&GreenTriviaListInTree> {
+        self.node.leading_trivia()
+    }
+
+    /// The trailing trivia of this Node.
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<&GreenTriviaListInTree> {
+        self.node.trailing_trivia()
+    }
+
+    #[inline]
+    pub(crate) fn into_raw_parts(self) -> (GreenNodeInTree, Arc<GreenTree>) {
+        (self.node, self._arena)
+    }
+}
+
+impl PartialEq for GreenNode {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.node == other.node
+    }
+}
+
+impl Eq for GreenNode {}
+
+impl hash::Hash for GreenNode {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.node.hash(state);
+    }
+}
+
+impl fmt::Debug for GreenNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.node, f)
+    }
+}
+
+impl fmt::Display for GreenNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.node, f)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum GreenChild {
-    Node { node: GreenNode, rel_offset: u32 },
+    Node { node: GreenNodeInTree, rel_offset: u32 },
     Token { token: GreenTokenInTree, rel_offset: u32 },
 }
 
@@ -246,7 +339,7 @@ impl GreenChild {
     }
 
     #[inline]
-    pub(crate) fn as_node(&self) -> Option<&GreenNode> {
+    pub(crate) fn as_node(&self) -> Option<&GreenNodeInTree> {
         match self {
             GreenChild::Node { node, .. } => Some(node),
             GreenChild::Token { .. } => None,
@@ -258,6 +351,21 @@ impl GreenChild {
         match self {
             GreenChild::Node { .. } => None,
             GreenChild::Token { token, .. } => Some(token),
+        }
+    }
+}
+
+impl hash::Hash for GreenChild {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Node { rel_offset, node } => {
+                rel_offset.hash(state);
+                node.hash(state);
+            }
+            Self::Token { rel_offset, token } => {
+                rel_offset.hash(state);
+                token.hash(state);
+            }
         }
     }
 }

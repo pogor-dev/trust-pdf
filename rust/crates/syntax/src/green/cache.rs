@@ -5,8 +5,14 @@ use triomphe::UniqueArc;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use crate::{
-    GreenNode, NodeOrToken, SyntaxKind,
-    green::{GreenElement, arena::GreenTree, node::GreenChild, token::GreenTokenInTree, trivia::GreenTriviaInTree},
+    NodeOrToken, SyntaxKind,
+    green::{
+        GreenElement,
+        arena::GreenTree,
+        node::{GreenChild, GreenNodeInTree},
+        token::GreenTokenInTree,
+        trivia::GreenTriviaInTree,
+    },
 };
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -15,7 +21,7 @@ type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 struct NoHash<T>(T);
 
 pub struct GreenCache {
-    nodes: HashMap<NoHash<GreenNode>, ()>,
+    nodes: HashMap<NoHash<GreenNodeInTree>, ()>,
     tokens: HashMap<NoHash<GreenTokenInTree>, ()>,
     trivias: HashMap<NoHash<GreenTriviaInTree>, ()>,
     pub(super) arena: UniqueArc<GreenTree>,
@@ -92,7 +98,7 @@ impl GreenCache {
         (hash, token)
     }
 
-    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElement)>, first_child: usize) -> (u64, GreenNode) {
+    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElement)>, first_child: usize) -> (u64, GreenNodeInTree) {
         let mut build_node = |children: &mut Vec<(u64, GreenElement)>| {
             let full_width = children[first_child..].iter().map(|(_, child)| child.full_width()).sum();
 
@@ -198,7 +204,7 @@ fn token_hash(token: &GreenTokenInTree) -> u64 {
     h.finish()
 }
 
-fn node_hash(node: &GreenNode) -> u64 {
+fn node_hash(node: &GreenNodeInTree) -> u64 {
     let mut h = FxHasher::default();
     node.kind().hash(&mut h);
     for child in node.children() {
@@ -211,7 +217,7 @@ fn node_hash(node: &GreenNode) -> u64 {
     h.finish()
 }
 
-fn element_id(elem: NodeOrToken<&GreenNode, &GreenTokenInTree>) -> *const () {
+fn element_id(elem: NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>) -> *const () {
     match elem {
         NodeOrToken::Node(it) => it.data.as_ptr().cast(),
         NodeOrToken::Token(it) => it.data.as_ptr().cast(),

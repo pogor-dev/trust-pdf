@@ -1,10 +1,13 @@
-use crate::{GreenNode, NodeOrToken, SyntaxKind, green::token::GreenTokenInTree};
+use crate::{
+    NodeOrToken, SyntaxKind,
+    green::{node::GreenNodeInTree, token::GreenTokenInTree},
+};
 
-pub(crate) type GreenElement = NodeOrToken<GreenNode, GreenTokenInTree>;
+pub(crate) type GreenElement = NodeOrToken<GreenNodeInTree, GreenTokenInTree>;
 
-impl From<GreenNode> for GreenElement {
+impl From<GreenNodeInTree> for GreenElement {
     #[inline]
-    fn from(node: GreenNode) -> Self {
+    fn from(node: GreenNodeInTree) -> Self {
         NodeOrToken::Node(node)
     }
 }

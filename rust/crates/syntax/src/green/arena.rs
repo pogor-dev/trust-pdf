@@ -3,10 +3,10 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenNode, SyntaxKind,
+    DiagnosticInfo, SyntaxKind,
     green::{
         GreenElement,
-        node::{GreenChild, GreenNodeHead},
+        node::{GreenChild, GreenNodeHead, GreenNodeInTree},
         token::{GreenTokenHead, GreenTokenInTree},
         trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
     },
@@ -32,7 +32,7 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_node(&mut self, kind: SyntaxKind, text_len: u32, children_len: u16, children: impl Iterator<Item = GreenChild>) -> GreenNode {
+    pub(super) fn alloc_node(&mut self, kind: SyntaxKind, text_len: u32, children_len: u16, children: impl Iterator<Item = GreenChild>) -> GreenNodeInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_node_unchecked(kind, text_len, children_len, children) }
     }
@@ -71,11 +71,11 @@ impl GreenTree {
         text_len: u32,
         children_len: u16,
         mut children: impl Iterator<Item = GreenChild>,
-    ) -> GreenNode {
+    ) -> GreenNodeInTree {
         assert!(children_len as usize <= u16::MAX as usize, "too many children");
         let layout = GreenNodeHead::layout(children_len);
         let token = self.arena.alloc_layout(layout);
-        let node = GreenNode { data: token.cast() };
+        let node = GreenNodeInTree { data: token.cast() };
         // SAFETY: The node is allocated, we don't need it to be initialized for the writing.
         unsafe {
             node.header_ptr_mut().write(GreenNodeHead::new(kind, text_len, children_len));
