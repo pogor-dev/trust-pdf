@@ -1,8 +1,8 @@
 use triomphe::Arc;
 
 use crate::{
-    GreenTrivia, NodeOrToken,
-    green::{GreenNode, SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement},
+    NodeOrToken,
+    green::{GreenNode, SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
@@ -42,7 +42,7 @@ impl GreenNodeBuilder {
 
     /// Adds new token to the current branch.
     #[inline]
-    pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTrivia], trailing_trivia: &[GreenTrivia]) {
+    pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTriviaInTree], trailing_trivia: &[GreenTriviaInTree]) {
         let (hash, token) = self.cache.token(kind, text, leading_trivia, trailing_trivia);
         self.children.push((hash, token.into()));
     }
@@ -125,6 +125,6 @@ struct TokenBuilder {
     kind: SyntaxKind,
     text: Option<Vec<u8>>,
     text_set: bool,
-    leading_trivia: Vec<GreenTrivia>,
-    trailing_trivia: Vec<GreenTrivia>,
+    leading_trivia: Vec<GreenTriviaInTree>,
+    trailing_trivia: Vec<GreenTriviaInTree>,
 }

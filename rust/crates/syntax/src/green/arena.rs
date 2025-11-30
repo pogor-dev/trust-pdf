@@ -3,12 +3,12 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind,
+    DiagnosticInfo, GreenNode, GreenToken, GreenTriviaList, SyntaxKind,
     green::{
         GreenElement,
         node::{GreenChild, GreenNodeHead},
         token::GreenTokenHead,
-        trivia::{GreenTriviaHead, GreenTriviaListHead},
+        trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead},
     },
 };
 
@@ -44,13 +44,13 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
+    pub(super) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_unchecked(kind, text) }
     }
 
     #[inline]
-    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTrivia]) -> GreenTriviaList {
+    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaList {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_list_unchecked(pieces) }
     }
@@ -106,12 +106,12 @@ impl GreenTree {
     /// # Safety
     ///
     /// You must ensure there is no concurrent allocation.
-    unsafe fn alloc_trivia_unchecked(&self, kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
+    unsafe fn alloc_trivia_unchecked(&self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
         assert!(text.len() <= u16::MAX.into(), "trivia text too long");
 
         let layout = GreenTriviaHead::layout(text.len() as u16);
         let trivia = self.arena.alloc_layout(layout);
-        let trivia = GreenTrivia { data: trivia.cast() };
+        let trivia = GreenTriviaInTree { data: trivia.cast() };
 
         // SAFETY: The trivia is allocated, we don't need it to be initialized for the writing.
         unsafe {
@@ -124,7 +124,7 @@ impl GreenTree {
     // # Safety
     ///
     /// You must ensure there is no concurrent allocation.
-    unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTrivia]) -> GreenTriviaList {
+    unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTriviaInTree]) -> GreenTriviaList {
         assert!(pieces.len() <= u16::MAX.into(), "too many trivia pieces");
         let full_width = pieces.iter().map(|p| p.full_width() as u32).sum::<u32>();
         let layout = GreenTriviaListHead::layout(pieces.len() as u16);
