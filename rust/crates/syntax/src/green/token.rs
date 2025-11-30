@@ -208,7 +208,7 @@ mod token_tests {
             (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), b"42".to_vec()),
         ];
 
-        for (leading, text, trailing, expected) in cases.iter() {
+        for (leading, text, trailing, expected) in cases {
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -239,7 +239,7 @@ mod token_tests {
             (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), 2),
         ];
 
-        for (leading, text, trailing, expected) in cases.iter() {
+        for (leading, text, trailing, expected) in cases {
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -255,7 +255,7 @@ mod token_tests {
             };
 
             let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
-            assert_eq!(token.width(), *expected);
+            assert_eq!(token.width(), expected);
         }
     }
 
@@ -270,7 +270,7 @@ mod token_tests {
             (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), 14),
         ];
 
-        for (leading, text, trailing, expected) in cases.iter() {
+        for (leading, text, trailing, expected) in cases {
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -286,7 +286,7 @@ mod token_tests {
             };
 
             let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
-            assert_eq!(token.full_width(), *expected);
+            assert_eq!(token.full_width(), expected);
         }
     }
 
@@ -302,7 +302,7 @@ mod token_tests {
             (b" \t".to_vec(), b"/Name".to_vec(), b" \n".to_vec(), b" \t/Name \n".to_vec()),
         ];
 
-        for (leading, text, trailing, expected) in cases.iter() {
+        for (leading, text, trailing, expected) in cases {
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -333,7 +333,7 @@ mod token_tests {
             (b"  \t\n".to_vec(), 4),
         ];
 
-        for (leading, expected_width) in cases.iter() {
+        for (leading, expected_width) in cases {
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -343,7 +343,7 @@ mod token_tests {
 
             let empty_trivia = arena.alloc_trivia_list(&[]);
             let token = arena.alloc_token(INTEGER_KIND, b"42", leading_trivia, empty_trivia);
-            assert_eq!(token.leading_trivia().full_width(), *expected_width);
+            assert_eq!(token.leading_trivia().full_width(), expected_width);
 
             let trivia_pieces = token.leading_trivia().pieces();
             if !leading.is_empty() {
@@ -366,7 +366,7 @@ mod token_tests {
             (b"\r\n".to_vec(), 2),
         ];
 
-        for (trailing, expected_width) in cases.iter() {
+        for (trailing, expected_width) in cases {
             let trailing_trivia = if trailing.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -376,7 +376,7 @@ mod token_tests {
 
             let empty_trivia = arena.alloc_trivia_list(&[]);
             let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_trivia);
-            assert_eq!(token.trailing_trivia().full_width(), *expected_width);
+            assert_eq!(token.trailing_trivia().full_width(), expected_width);
 
             let trivia_pieces = token.trailing_trivia().pieces();
             if !trailing.is_empty() {

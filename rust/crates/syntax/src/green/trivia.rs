@@ -326,10 +326,13 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod trivia_tests {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
     use super::*;
     use crate::green::arena::GreenTree;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
+    const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
 
     #[test]
     fn test_kind() {
@@ -350,6 +353,49 @@ mod trivia_tests {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"\n\t").to_green_trivia(arena.shareable());
         assert_eq!(trivia.full_width(), 2);
+    }
+
+    #[test]
+    fn test_into_raw_parts() {
+        let mut arena = GreenTree::new();
+        let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" ").to_green_trivia(arena.shareable());
+        let (trivia_in_tree, _) = trivia.into_raw_parts();
+
+        assert_eq!(trivia_in_tree.kind(), WHITESPACE_KIND);
+        assert_eq!(trivia_in_tree.bytes(), b" ");
+    }
+
+    #[test]
+    fn test_hash() {
+        let cases = [
+            (COMMENT_KIND, b"% Comment".to_vec(), COMMENT_KIND, b"% Comment".to_vec(), true),
+            (COMMENT_KIND, b"% Comment".to_vec(), WHITESPACE_KIND, b"% Comment".to_vec(), false),
+            (COMMENT_KIND, b"% Comment".to_vec(), COMMENT_KIND, b"% Different".to_vec(), false),
+        ];
+
+        for (kind1, text1, kind2, text2, should_be_equal) in cases {
+            let mut arena = GreenTree::new();
+
+            let trivia1 = arena.alloc_trivia(kind1, text1.as_slice());
+            let trivia2 = arena.alloc_trivia(kind2, text2.as_slice());
+            let shareable = arena.shareable();
+            let trivia1 = trivia1.to_green_trivia(shareable.clone());
+            let trivia2 = trivia2.to_green_trivia(shareable);
+
+            let mut hasher1 = DefaultHasher::new();
+            trivia1.hash(&mut hasher1);
+            let hash1 = hasher1.finish();
+
+            let mut hasher2 = DefaultHasher::new();
+            trivia2.hash(&mut hasher2);
+            let hash2 = hasher2.finish();
+
+            if should_be_equal {
+                assert_eq!(hash1, hash2);
+            } else {
+                assert_ne!(hash1, hash2);
+            }
+        }
     }
 
     #[test]
