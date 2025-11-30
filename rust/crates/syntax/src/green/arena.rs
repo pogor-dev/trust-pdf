@@ -3,11 +3,11 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenNode, GreenToken, SyntaxKind,
+    DiagnosticInfo, GreenNode, SyntaxKind,
     green::{
         GreenElement,
         node::{GreenChild, GreenNodeHead},
-        token::GreenTokenHead,
+        token::{GreenTokenHead, GreenTokenInTree},
         trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
     },
 };
@@ -44,7 +44,7 @@ impl GreenTree {
         text: &[u8],
         leading_trivia: GreenTriviaListInTree,
         trailing_trivia: GreenTriviaListInTree,
-    ) -> GreenToken {
+    ) -> GreenTokenInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_token_unchecked(kind, text, leading_trivia, trailing_trivia) }
     }
@@ -97,12 +97,12 @@ impl GreenTree {
         text: &[u8],
         leading_trivia: GreenTriviaListInTree,
         trailing_trivia: GreenTriviaListInTree,
-    ) -> GreenToken {
+    ) -> GreenTokenInTree {
         assert!(text.len() <= u32::MAX as usize, "token text too long");
 
         let layout = GreenTokenHead::layout(text.len() as u32);
         let token = self.arena.alloc_layout(layout);
-        let token = GreenToken { data: token.cast() };
+        let token = GreenTokenInTree { data: token.cast() };
         let full_width = leading_trivia.full_width() + text.len() as u32 + trailing_trivia.full_width();
 
         // SAFETY: The token is allocated, we don't need it to be initialized for the writing.

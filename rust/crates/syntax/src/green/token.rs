@@ -1,8 +1,12 @@
-use std::{fmt, ptr::NonNull, slice};
+use std::{fmt, hash, ptr::NonNull, slice};
 
 use countme::Count;
+use triomphe::Arc;
 
-use crate::{SyntaxKind, green::trivia::GreenTriviaListInTree};
+use crate::{
+    SyntaxKind,
+    green::{arena::GreenTree, trivia::GreenTriviaListInTree},
+};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -11,7 +15,7 @@ pub(super) struct GreenTokenHead {
     trailing_trivia: GreenTriviaListInTree, // 8 bytes
     full_width: u32,                        // 4 bytes
     kind: SyntaxKind,                       // 2 bytes
-    _c: Count<GreenToken>,                  // 0 bytes
+    _c: Count<GreenTokenInTree>,            // 0 bytes
 }
 
 impl GreenTokenHead {
@@ -46,13 +50,13 @@ pub(super) struct GreenTokenData {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct GreenToken {
+pub struct GreenTokenInTree {
     /// INVARIANT: This points at a valid `GreenTokenData` followed by `text_len` bytes,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenTokenData>,
 }
 
-impl GreenToken {
+impl GreenTokenInTree {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.header().kind
@@ -87,6 +91,11 @@ impl GreenToken {
     #[inline]
     pub fn trailing_trivia(&self) -> &GreenTriviaListInTree {
         &self.header().trailing_trivia
+    }
+
+    #[inline]
+    pub(crate) fn to_green_token(self, arena: Arc<GreenTree>) -> GreenToken {
+        GreenToken { token: self, _arena: arena }
     }
 
     /// Writes the token to a byte vector with conditional trivia inclusion
@@ -132,7 +141,7 @@ impl GreenToken {
     }
 }
 
-impl PartialEq for GreenToken {
+impl PartialEq for GreenTokenInTree {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind()
             && self.bytes() == other.bytes()
@@ -141,9 +150,18 @@ impl PartialEq for GreenToken {
     }
 }
 
-impl Eq for GreenToken {}
+impl Eq for GreenTokenInTree {}
 
-impl fmt::Debug for GreenToken {
+impl hash::Hash for GreenTokenInTree {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.kind().hash(state);
+        self.bytes().hash(state);
+        self.leading_trivia().hash(state);
+        self.trailing_trivia().hash(state);
+    }
+}
+
+impl fmt::Debug for GreenTokenInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let full_bytes = self.full_bytes();
         let full_text_str = String::from_utf8_lossy(&full_bytes);
@@ -155,7 +173,7 @@ impl fmt::Debug for GreenToken {
     }
 }
 
-impl fmt::Display for GreenToken {
+impl fmt::Display for GreenTokenInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let bytes = self.full_bytes();
         for &byte in &bytes {
@@ -166,8 +184,90 @@ impl fmt::Display for GreenToken {
 }
 
 // SAFETY: The pointer is valid.
-unsafe impl Send for GreenToken {}
-unsafe impl Sync for GreenToken {}
+unsafe impl Send for GreenTokenInTree {}
+unsafe impl Sync for GreenTokenInTree {}
+
+#[derive(Clone)]
+pub struct GreenToken {
+    pub(super) token: GreenTokenInTree,
+    pub(super) _arena: Arc<GreenTree>,
+}
+
+impl GreenToken {
+    /// Kind of this Token.
+    #[inline]
+    pub fn kind(&self) -> SyntaxKind {
+        self.token.kind()
+    }
+
+    /// The bytes of this Token.
+    #[inline]
+    pub fn bytes(&self) -> Vec<u8> {
+        self.token.bytes()
+    }
+
+    #[inline]
+    pub fn full_bytes(&self) -> Vec<u8> {
+        self.token.full_bytes()
+    }
+
+    /// The width of this Token.
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self.token.width()
+    }
+
+    /// The full width of this Token.
+    #[inline]
+    pub fn full_width(&self) -> u32 {
+        self.token.full_width()
+    }
+
+    /// The leading trivia of this Token.
+    #[inline]
+    pub fn leading_trivia(&self) -> &GreenTriviaListInTree {
+        &self.token.leading_trivia()
+    }
+
+    /// The trailing trivia of this Token.
+    #[inline]
+    pub fn trailing_trivia(&self) -> &GreenTriviaListInTree {
+        &self.token.trailing_trivia()
+    }
+
+    #[inline]
+    pub(crate) fn into_raw_parts(self) -> (GreenTokenInTree, Arc<GreenTree>) {
+        (self.token, self._arena)
+    }
+}
+
+impl PartialEq for GreenToken {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.token == other.token
+    }
+}
+
+impl Eq for GreenToken {}
+
+impl hash::Hash for GreenToken {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.token.hash(state);
+    }
+}
+
+impl fmt::Debug for GreenToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.token, f)
+    }
+}
+
+impl fmt::Display for GreenToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.token, f)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -193,13 +293,15 @@ mod token_tests {
     fn test_kind() {
         let mut arena = GreenTree::new();
         let empty_trivia = arena.alloc_trivia_list(&[]);
-        let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia)
+            .to_green_token(arena.shareable());
+
         assert_eq!(token.kind(), INTEGER_KIND);
     }
 
     #[test]
     fn test_bytes() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), b"123".to_vec(), b"".to_vec(), b"123".to_vec()),
             (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), b"obj".to_vec()),
@@ -209,6 +311,8 @@ mod token_tests {
         ];
 
         for (leading, text, trailing, expected) in cases {
+            let mut arena = GreenTree::new();
+
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -223,14 +327,15 @@ mod token_tests {
                 arena.alloc_trivia_list(&[trivia])
             };
 
-            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.bytes().as_slice(), expected.as_slice());
         }
     }
 
     #[test]
     fn test_width() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), b"123".to_vec(), b"".to_vec(), 3),
             (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), 3),
@@ -240,6 +345,8 @@ mod token_tests {
         ];
 
         for (leading, text, trailing, expected) in cases {
+            let mut arena = GreenTree::new();
+
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -254,14 +361,15 @@ mod token_tests {
                 arena.alloc_trivia_list(&[trivia])
             };
 
-            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.width(), expected);
         }
     }
 
     #[test]
     fn test_full_width() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), b"123".to_vec(), b"".to_vec(), 3),
             (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), 5),
@@ -271,6 +379,8 @@ mod token_tests {
         ];
 
         for (leading, text, trailing, expected) in cases {
+            let mut arena = GreenTree::new();
+
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -285,14 +395,15 @@ mod token_tests {
                 arena.alloc_trivia_list(&[trivia])
             };
 
-            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.full_width(), expected);
         }
     }
 
     #[test]
     fn test_full_bytes() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), b"obj".to_vec(), b"".to_vec(), b"obj".to_vec()),
             (b"  ".to_vec(), b"endobj".to_vec(), b"".to_vec(), b"  endobj".to_vec()),
@@ -303,6 +414,8 @@ mod token_tests {
         ];
 
         for (leading, text, trailing, expected) in cases {
+            let mut arena = GreenTree::new();
+
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -317,14 +430,15 @@ mod token_tests {
                 arena.alloc_trivia_list(&[trivia])
             };
 
-            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.full_bytes().as_slice(), expected.as_slice());
         }
     }
 
     #[test]
     fn test_leading_trivia() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), 0),
             (b" ".to_vec(), 1),
@@ -334,6 +448,8 @@ mod token_tests {
         ];
 
         for (leading, expected_width) in cases {
+            let mut arena = GreenTree::new();
+
             let leading_trivia = if leading.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -342,7 +458,9 @@ mod token_tests {
             };
 
             let empty_trivia = arena.alloc_trivia_list(&[]);
-            let token = arena.alloc_token(INTEGER_KIND, b"42", leading_trivia, empty_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, b"42", leading_trivia, empty_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.leading_trivia().full_width(), expected_width);
 
             let trivia_pieces = token.leading_trivia().pieces();
@@ -357,7 +475,6 @@ mod token_tests {
 
     #[test]
     fn test_trailing_trivia() {
-        let mut arena = GreenTree::new();
         let cases = [
             (b"".to_vec(), 0),
             (b" ".to_vec(), 1),
@@ -367,6 +484,8 @@ mod token_tests {
         ];
 
         for (trailing, expected_width) in cases {
+            let mut arena = GreenTree::new();
+
             let trailing_trivia = if trailing.is_empty() {
                 arena.alloc_trivia_list(&[])
             } else {
@@ -375,7 +494,9 @@ mod token_tests {
             };
 
             let empty_trivia = arena.alloc_trivia_list(&[]);
-            let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_trivia);
+            let token = arena
+                .alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_trivia)
+                .to_green_token(arena.shareable());
             assert_eq!(token.trailing_trivia().full_width(), expected_width);
 
             let trivia_pieces = token.trailing_trivia().pieces();
@@ -395,52 +516,81 @@ mod token_tests {
 
         let token1 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
         let token2 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+        let shareable = arena.shareable();
+        let token1 = token1.to_green_token(shareable.clone());
+        let token2 = token2.to_green_token(shareable.clone());
         assert_eq!(token1, token2);
 
         // Different kind
+        let mut arena = GreenTree::new();
         let token3 = arena.alloc_token(WHITESPACE_KIND, b"42", empty_trivia, empty_trivia);
+        let shareable = arena.shareable();
+        let token3 = token3.to_green_token(shareable.clone());
         assert_ne!(token1, token3);
 
         // Different text
-        let token4 = arena.alloc_token(INTEGER_KIND, b"123", empty_trivia, empty_trivia);
+        let mut arena = GreenTree::new();
+        let token4 = arena
+            .alloc_token(INTEGER_KIND, b"123", empty_trivia, empty_trivia)
+            .to_green_token(arena.shareable());
+
         assert_ne!(token1, token4);
 
         // Different leading trivia
+        let mut arena = GreenTree::new();
         let leading = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let leading_list = arena.alloc_trivia_list(&[leading]);
-        let token5 = arena.alloc_token(INTEGER_KIND, b"42", leading_list, empty_trivia);
+        let token5 = arena
+            .alloc_token(INTEGER_KIND, b"42", leading_list, empty_trivia)
+            .to_green_token(arena.shareable());
+
         assert_ne!(token1, token5);
 
         // Different trailing trivia
+        let mut arena = GreenTree::new();
         let trailing = arena.alloc_trivia(COMMENT_KIND, b"\n");
         let trailing_list = arena.alloc_trivia_list(&[trailing]);
-        let token6 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_list);
+        let token6 = arena
+            .alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_list)
+            .to_green_token(arena.shareable());
+
         assert_ne!(token1, token6);
     }
 
     #[test]
     fn test_display() {
-        let mut arena = GreenTree::new();
-
         // Token without trivia
+        let mut arena = GreenTree::new();
         let empty_trivia = arena.alloc_trivia_list(&[]);
         let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+        let shareable = arena.shareable();
+        let token = token.to_green_token(shareable);
         assert_eq!(format!("{}", token), "42");
 
         // Token with leading trivia
+        let mut arena = GreenTree::new();
         let leading = arena.alloc_trivia(WHITESPACE_KIND, b"  ");
         let leading_list = arena.alloc_trivia_list(&[leading]);
         let token = arena.alloc_token(INTEGER_KIND, b"obj", leading_list, empty_trivia);
+        let token = token.to_green_token(arena.shareable());
         assert_eq!(format!("{}", token), "  obj");
 
         // Token with trailing trivia
+        let mut arena = GreenTree::new();
         let trailing = arena.alloc_trivia(COMMENT_KIND, b"\n");
         let trailing_list = arena.alloc_trivia_list(&[trailing]);
-        let token = arena.alloc_token(INTEGER_KIND, b"null", empty_trivia, trailing_list);
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"null", empty_trivia, trailing_list)
+            .to_green_token(arena.shareable());
+
         assert_eq!(format!("{}", token), "null\n");
 
         // Token with both trivia
-        let token = arena.alloc_token(INTEGER_KIND, b"true", leading_list, trailing_list);
+        let mut arena = GreenTree::new();
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"true", leading_list, trailing_list)
+            .to_green_token(arena.shareable());
+
         assert_eq!(format!("{}", token), "  true\n");
     }
 
@@ -453,7 +603,9 @@ mod token_tests {
         let leading_list = arena.alloc_trivia_list(&[leading]);
         let trailing = arena.alloc_trivia(COMMENT_KIND, b"\n");
         let trailing_list = arena.alloc_trivia_list(&[trailing]);
-        let token = arena.alloc_token(INTEGER_KIND, b"42", leading_list, trailing_list);
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"42", leading_list, trailing_list)
+            .to_green_token(arena.shareable());
 
         let debug_output = format!("{:?}", token);
         assert_eq!(debug_output, "GreenToken { kind: SyntaxKind(1), full_text: \"  42\\n\", full_width: 5 }");

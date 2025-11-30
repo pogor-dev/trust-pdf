@@ -5,8 +5,8 @@ use triomphe::UniqueArc;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use crate::{
-    GreenNode, GreenToken, NodeOrToken, SyntaxKind,
-    green::{GreenElement, arena::GreenTree, node::GreenChild, trivia::GreenTriviaInTree},
+    GreenNode, NodeOrToken, SyntaxKind,
+    green::{GreenElement, arena::GreenTree, node::GreenChild, token::GreenTokenInTree, trivia::GreenTriviaInTree},
 };
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -16,7 +16,7 @@ struct NoHash<T>(T);
 
 pub struct GreenCache {
     nodes: HashMap<NoHash<GreenNode>, ()>,
-    tokens: HashMap<NoHash<GreenToken>, ()>,
+    tokens: HashMap<NoHash<GreenTokenInTree>, ()>,
     trivias: HashMap<NoHash<GreenTriviaInTree>, ()>,
     pub(super) arena: UniqueArc<GreenTree>,
 }
@@ -65,7 +65,7 @@ impl GreenCache {
         text: &[u8],
         leading_trivia: &[GreenTriviaInTree],
         trailing_trivia: &[GreenTriviaInTree],
-    ) -> (u64, GreenToken) {
+    ) -> (u64, GreenTokenInTree) {
         let hash = {
             let mut h = FxHasher::default();
             kind.hash(&mut h);
@@ -182,7 +182,7 @@ fn trivia_hash(trivia: &GreenTriviaInTree) -> u64 {
     h.finish()
 }
 
-fn token_hash(token: &GreenToken) -> u64 {
+fn token_hash(token: &GreenTokenInTree) -> u64 {
     let mut h = FxHasher::default();
     token.kind().hash(&mut h);
     token.bytes().hash(&mut h);
@@ -211,7 +211,7 @@ fn node_hash(node: &GreenNode) -> u64 {
     h.finish()
 }
 
-fn element_id(elem: NodeOrToken<&GreenNode, &GreenToken>) -> *const () {
+fn element_id(elem: NodeOrToken<&GreenNode, &GreenTokenInTree>) -> *const () {
     match elem {
         NodeOrToken::Node(it) => it.data.as_ptr().cast(),
         NodeOrToken::Token(it) => it.data.as_ptr().cast(),

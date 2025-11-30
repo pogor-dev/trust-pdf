@@ -2,7 +2,10 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenToken, NodeOrToken, SyntaxKind, green::trivia::GreenTriviaListInTree};
+use crate::{
+    NodeOrToken, SyntaxKind,
+    green::{token::GreenTokenInTree, trivia::GreenTriviaListInTree},
+};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -117,7 +120,7 @@ impl GreenNode {
         let mut output = Vec::new();
 
         // Use explicit stack to handle deeply recursive structures without stack overflow
-        let mut stack: Vec<(NodeOrToken<&GreenNode, &GreenToken>, bool, bool)> = Vec::new();
+        let mut stack: Vec<(NodeOrToken<&GreenNode, &GreenTokenInTree>, bool, bool)> = Vec::new();
         stack.push((NodeOrToken::Node(self), leading, trailing));
 
         while let Some((item, current_leading, current_trailing)) = stack.pop() {
@@ -160,7 +163,7 @@ impl GreenNode {
     }
 
     /// Returns the first terminal token in the node tree
-    fn first_token(&self) -> Option<&GreenToken> {
+    fn first_token(&self) -> Option<&GreenTokenInTree> {
         self.children().first().and_then(|child| match child {
             GreenChild::Token { token, .. } => Some(token),
             GreenChild::Node { node, .. } => node.first_token(),
@@ -168,7 +171,7 @@ impl GreenNode {
     }
 
     /// Returns the last terminal token in the node tree
-    fn last_token(&self) -> Option<&GreenToken> {
+    fn last_token(&self) -> Option<&GreenTokenInTree> {
         self.children().last().and_then(|child| match child {
             GreenChild::Token { token, .. } => Some(token),
             GreenChild::Node { node, .. } => node.last_token(),
@@ -230,7 +233,7 @@ unsafe impl Sync for GreenNode {}
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) enum GreenChild {
     Node { node: GreenNode, rel_offset: u32 },
-    Token { token: GreenToken, rel_offset: u32 },
+    Token { token: GreenTokenInTree, rel_offset: u32 },
 }
 
 impl GreenChild {
@@ -251,7 +254,7 @@ impl GreenChild {
     }
 
     #[inline]
-    pub(crate) fn as_token(&self) -> Option<&GreenToken> {
+    pub(crate) fn as_token(&self) -> Option<&GreenTokenInTree> {
         match self {
             GreenChild::Node { .. } => None,
             GreenChild::Token { token, .. } => Some(token),
