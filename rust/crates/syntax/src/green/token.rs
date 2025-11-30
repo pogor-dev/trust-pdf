@@ -292,7 +292,7 @@ mod tests {
 #[cfg(test)]
 mod token_tests {
     use super::*;
-    use crate::green::arena::GreenTree;
+    use crate::{green::arena::GreenTree, tree};
 
     const INTEGER_KIND: SyntaxKind = SyntaxKind(1);
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(2);

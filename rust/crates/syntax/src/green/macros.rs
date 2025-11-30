@@ -260,7 +260,6 @@ mod builder_tests {
         };
 
         let expected = b"1 0 obj\n<<\n  /Type /Catalog\n>>endobj\n% This is a comment";
-        let (tree, _arena) = tree; // TODO: keep arena alive
         assert_eq!(tree.to_string(), String::from_utf8_lossy(expected));
         assert_eq!(tree.full_bytes(), expected);
     }

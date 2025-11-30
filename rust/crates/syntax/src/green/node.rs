@@ -244,7 +244,7 @@ unsafe impl Sync for GreenNodeInTree {}
 #[derive(Clone)]
 pub struct GreenNode {
     pub(super) node: GreenNodeInTree,
-    pub(super) _arena: Arc<GreenTree>,
+    pub(super) arena: Arc<GreenTree>,
 }
 
 impl GreenNode {
@@ -291,7 +291,7 @@ impl GreenNode {
 
     #[inline]
     pub(crate) fn into_raw_parts(self) -> (GreenNodeInTree, Arc<GreenTree>) {
-        (self.node, self._arena)
+        (self.node, self.arena)
     }
 }
 
