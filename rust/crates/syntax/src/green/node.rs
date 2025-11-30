@@ -423,7 +423,7 @@ mod node_tests {
     }
 
     #[test]
-    fn test_bytes() {
+    fn test_bytes_and_widths() {
         let node = tree! {
             NODE_KIND => {
                 (TOKEN_KIND) => {
@@ -450,5 +450,99 @@ mod node_tests {
         assert_eq!(node.children_len(), 3);
         assert_eq!(node.leading_trivia().unwrap().full_bytes(), b"  ".to_vec());
         assert_eq!(node.trailing_trivia().unwrap().full_bytes(), b"\n".to_vec());
+    }
+
+    #[test]
+    fn test_hash() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let node1 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let node2 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let mut hasher1 = DefaultHasher::new();
+        node1.hash(&mut hasher1);
+        let hash1 = hasher1.finish();
+
+        let mut hasher2 = DefaultHasher::new();
+        node2.hash(&mut hasher2);
+        let hash2 = hasher2.finish();
+
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_equality() {
+        let node1 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let node2 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let node3 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"different")
+            }
+        };
+
+        assert_eq!(node1, node2);
+        assert_ne!(node1, node3);
+    }
+
+    #[test]
+    fn test_debug() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let expected = "GreenNode { kind: SyntaxKind(100), full_width: 4, children_len: 1 }";
+        let actual = format!("{:?}", node);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_display() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND) => {
+                    trivia(TRIVIA_KIND, b" "),
+                    text(b"token"),
+                    trivia(TRIVIA_KIND, b"\n")
+                }
+            }
+        };
+
+        let display_str = format!("{}", node);
+        assert_eq!(display_str, " token\n");
+    }
+
+    #[test]
+    fn test_into_raw_parts() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let (raw_node, arena) = node.clone().into_raw_parts();
+        assert_eq!(raw_node, node.node);
+        assert_eq!(Arc::as_ptr(&arena), Arc::as_ptr(&node.arena));
     }
 }

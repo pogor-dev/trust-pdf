@@ -291,8 +291,10 @@ mod tests {
 
 #[cfg(test)]
 mod token_tests {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+
     use super::*;
-    use crate::{green::arena::GreenTree, tree};
+    use crate::green::arena::GreenTree;
 
     const INTEGER_KIND: SyntaxKind = SyntaxKind(1);
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(2);
@@ -618,5 +620,54 @@ mod token_tests {
 
         let debug_output = format!("{:?}", token);
         assert_eq!(debug_output, "GreenToken { kind: SyntaxKind(1), full_text: \"  42\\n\", full_width: 5 }");
+    }
+
+    #[test]
+    fn test_hash() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+
+        let token1 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+        let token2 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+        let shareable = arena.shareable();
+        let token1 = token1.to_green_token(shareable.clone());
+        let token2 = token2.to_green_token(shareable.clone());
+
+        let mut hasher1 = DefaultHasher::new();
+        token1.hash(&mut hasher1);
+        let hash1 = hasher1.finish();
+
+        let mut hasher2 = DefaultHasher::new();
+        token2.hash(&mut hasher2);
+        let hash2 = hasher2.finish();
+
+        assert_eq!(hash1, hash2);
+
+        // Different kind
+        let mut arena = GreenTree::new();
+        let token3 = arena.alloc_token(WHITESPACE_KIND, b"42", empty_trivia, empty_trivia);
+        let shareable = arena.shareable();
+        let token3 = token3.to_green_token(shareable.clone());
+
+        let mut hasher3 = DefaultHasher::new();
+        token3.hash(&mut hasher3);
+        let hash3 = hasher3.finish();
+
+        assert_ne!(hash1, hash3);
+    }
+
+    #[test]
+    fn test_into_raw_parts() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia)
+            .to_green_token(arena.shareable());
+
+        let (raw_token, raw_arena) = token.clone().into_raw_parts();
+
+        assert_eq!(raw_token, token.token);
+        assert_eq!(Arc::as_ptr(&raw_arena), Arc::as_ptr(&token._arena));
     }
 }
