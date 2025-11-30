@@ -171,11 +171,9 @@ unsafe impl Sync for GreenToken {}
 
 #[cfg(test)]
 mod tests {
-    use rstest::rstest;
-
     use super::*;
 
-    #[rstest]
+    #[test]
     fn test_memory_layout() {
         assert_eq!(std::mem::size_of::<GreenTokenHead>(), 24); // 22 bytes + 2 bytes padding
         assert_eq!(std::mem::align_of::<GreenTokenHead>(), 8); // 8 bytes alignment
@@ -184,17 +182,14 @@ mod tests {
 
 #[cfg(test)]
 mod token_tests {
-    use rstest::rstest;
-
-    use crate::green::arena::GreenTree;
-
     use super::*;
+    use crate::green::arena::GreenTree;
 
     const INTEGER_KIND: SyntaxKind = SyntaxKind(1);
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(2);
     const COMMENT_KIND: SyntaxKind = SyntaxKind(3);
 
-    #[rstest]
+    #[test]
     fn test_kind() {
         let mut arena = GreenTree::new();
         let empty_trivia = arena.alloc_trivia_list(&[]);
@@ -202,178 +197,198 @@ mod token_tests {
         assert_eq!(token.kind(), INTEGER_KIND);
     }
 
-    #[rstest]
-    #[case(b"", b"123", b"", b"123")]
-    #[case::with_leading(b"  ", b"obj", b"", b"obj")]
-    #[case::with_trailing(b"", b"null", b"\n", b"null")]
-    #[case::with_both(b"\t", b"true", b" ", b"true")]
-    #[case::with_comment(b"% comment\n", b"42", b"\r\n", b"42")]
-    fn test_bytes(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
+    #[test]
+    fn test_bytes() {
         let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), b"123".to_vec(), b"".to_vec(), b"123".to_vec()),
+            (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), b"obj".to_vec()),
+            (b"".to_vec(), b"null".to_vec(), b"\n".to_vec(), b"null".to_vec()),
+            (b"\t".to_vec(), b"true".to_vec(), b" ".to_vec(), b"true".to_vec()),
+            (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), b"42".to_vec()),
+        ];
 
-        let leading_trivia = if leading.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading);
-            arena.alloc_trivia_list(&[trivia])
-        };
+        for (leading, text, trailing, expected) in cases.iter() {
+            let leading_trivia = if leading.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
 
-        let trailing_trivia = if trailing.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(COMMENT_KIND, trailing);
-            arena.alloc_trivia_list(&[trivia])
-        };
+            let trailing_trivia = if trailing.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(COMMENT_KIND, trailing.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
 
-        let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.bytes().as_slice(), expected);
-    }
-
-    #[rstest]
-    #[case(b"", b"123", b"", 3)]
-    #[case::with_leading(b"  ", b"obj", b"", 3)]
-    #[case::with_trailing(b"", b"null", b"\n", 4)]
-    #[case::with_both(b"\t", b"true", b" ", 4)]
-    #[case::with_comment(b"% comment\n", b"42", b"\r\n", 2)]
-    fn test_width(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: u32) {
-        let mut arena = GreenTree::new();
-
-        let leading_trivia = if leading.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let trailing_trivia = if trailing.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(COMMENT_KIND, trailing);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.width(), expected);
-    }
-
-    #[rstest]
-    #[case(b"", b"123", b"", 3)]
-    #[case::with_leading(b"  ", b"obj", b"", 5)]
-    #[case::with_trailing(b"", b"null", b"\n", 5)]
-    #[case::with_both(b"\t", b"true", b" ", 6)]
-    #[case::with_comment(b"% comment\n", b"42", b"\r\n", 14)]
-    fn test_full_width(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: u32) {
-        let mut arena = GreenTree::new();
-
-        let leading_trivia = if leading.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let trailing_trivia = if trailing.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(COMMENT_KIND, trailing);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.full_width(), expected);
-    }
-
-    #[rstest]
-    #[case(b"", b"obj", b"", b"obj")]
-    #[case::with_leading(b"  ", b"endobj", b"", b"  endobj")]
-    #[case::with_trailing(b"", b"stream", b"\n", b"stream\n")]
-    #[case::with_both(b"\t", b"true", b" ", b"\ttrue ")]
-    #[case::with_comment(b"% comment\n", b"null", b"\r\n", b"% comment\nnull\r\n")]
-    #[case::with_name(b" \t", b"/Name", b" \n", b" \t/Name \n")]
-    fn test_full_bytes(#[case] leading: &[u8], #[case] text: &[u8], #[case] trailing: &[u8], #[case] expected: &[u8]) {
-        let mut arena = GreenTree::new();
-
-        let leading_trivia = if leading.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let trailing_trivia = if trailing.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(COMMENT_KIND, trailing);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let token = arena.alloc_token(INTEGER_KIND, text, leading_trivia, trailing_trivia);
-        assert_eq!(token.full_bytes().as_slice(), expected);
-    }
-
-    #[rstest]
-    #[case(b"", 0)]
-    #[case::with_space(b" ", 1)]
-    #[case::with_tab(b"\t", 1)]
-    #[case::with_newline(b"\n", 1)]
-    #[case::with_multiple(b"  \t\n", 4)]
-    fn test_leading_trivia(#[case] leading: &[u8], #[case] expected_width: u32) {
-        let mut arena = GreenTree::new();
-
-        let leading_trivia = if leading.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading);
-            arena.alloc_trivia_list(&[trivia])
-        };
-
-        let empty_trivia = arena.alloc_trivia_list(&[]);
-        let token = arena.alloc_token(INTEGER_KIND, b"42", leading_trivia, empty_trivia);
-
-        assert_eq!(token.leading_trivia().full_width(), expected_width);
-
-        // Verify the actual trivia bytes matches
-        let trivia_pieces = token.leading_trivia().pieces();
-        if !leading.is_empty() {
-            assert_eq!(trivia_pieces.len(), 1);
-            assert_eq!(trivia_pieces[0].bytes(), leading);
-        } else {
-            assert_eq!(trivia_pieces.len(), 0);
+            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            assert_eq!(token.bytes().as_slice(), expected.as_slice());
         }
     }
 
-    #[rstest]
-    #[case(b"", 0)]
-    #[case::with_space(b" ", 1)]
-    #[case::with_newline(b"\n", 1)]
-    #[case::with_comment(b"% comment\n", 10)]
-    #[case::with_multiple(b"\r\n", 2)]
-    fn test_trailing_trivia(#[case] trailing: &[u8], #[case] expected_width: u32) {
+    #[test]
+    fn test_width() {
         let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), b"123".to_vec(), b"".to_vec(), 3),
+            (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), 3),
+            (b"".to_vec(), b"null".to_vec(), b"\n".to_vec(), 4),
+            (b"\t".to_vec(), b"true".to_vec(), b" ".to_vec(), 4),
+            (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), 2),
+        ];
 
-        let trailing_trivia = if trailing.is_empty() {
-            arena.alloc_trivia_list(&[])
-        } else {
-            let trivia = arena.alloc_trivia(COMMENT_KIND, trailing);
-            arena.alloc_trivia_list(&[trivia])
-        };
+        for (leading, text, trailing, expected) in cases.iter() {
+            let leading_trivia = if leading.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
 
-        let empty_trivia = arena.alloc_trivia_list(&[]);
-        let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_trivia);
+            let trailing_trivia = if trailing.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(COMMENT_KIND, trailing.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
 
-        assert_eq!(token.trailing_trivia().full_width(), expected_width);
-
-        // Verify the actual trivia bytes matches
-        let trivia_pieces = token.trailing_trivia().pieces();
-        if !trailing.is_empty() {
-            assert_eq!(trivia_pieces.len(), 1);
-            assert_eq!(trivia_pieces[0].bytes(), trailing);
-        } else {
-            assert_eq!(trivia_pieces.len(), 0);
+            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            assert_eq!(token.width(), *expected);
         }
     }
 
-    #[rstest]
+    #[test]
+    fn test_full_width() {
+        let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), b"123".to_vec(), b"".to_vec(), 3),
+            (b"  ".to_vec(), b"obj".to_vec(), b"".to_vec(), 5),
+            (b"".to_vec(), b"null".to_vec(), b"\n".to_vec(), 5),
+            (b"\t".to_vec(), b"true".to_vec(), b" ".to_vec(), 6),
+            (b"% comment\n".to_vec(), b"42".to_vec(), b"\r\n".to_vec(), 14),
+        ];
+
+        for (leading, text, trailing, expected) in cases.iter() {
+            let leading_trivia = if leading.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let trailing_trivia = if trailing.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(COMMENT_KIND, trailing.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            assert_eq!(token.full_width(), *expected);
+        }
+    }
+
+    #[test]
+    fn test_full_bytes() {
+        let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), b"obj".to_vec(), b"".to_vec(), b"obj".to_vec()),
+            (b"  ".to_vec(), b"endobj".to_vec(), b"".to_vec(), b"  endobj".to_vec()),
+            (b"".to_vec(), b"stream".to_vec(), b"\n".to_vec(), b"stream\n".to_vec()),
+            (b"\t".to_vec(), b"true".to_vec(), b" ".to_vec(), b"\ttrue ".to_vec()),
+            (b"% comment\n".to_vec(), b"null".to_vec(), b"\r\n".to_vec(), b"% comment\nnull\r\n".to_vec()),
+            (b" \t".to_vec(), b"/Name".to_vec(), b" \n".to_vec(), b" \t/Name \n".to_vec()),
+        ];
+
+        for (leading, text, trailing, expected) in cases.iter() {
+            let leading_trivia = if leading.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let trailing_trivia = if trailing.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(COMMENT_KIND, trailing.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let token = arena.alloc_token(INTEGER_KIND, text.as_slice(), leading_trivia, trailing_trivia);
+            assert_eq!(token.full_bytes().as_slice(), expected.as_slice());
+        }
+    }
+
+    #[test]
+    fn test_leading_trivia() {
+        let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), 0),
+            (b" ".to_vec(), 1),
+            (b"\t".to_vec(), 1),
+            (b"\n".to_vec(), 1),
+            (b"  \t\n".to_vec(), 4),
+        ];
+
+        for (leading, expected_width) in cases.iter() {
+            let leading_trivia = if leading.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(WHITESPACE_KIND, leading.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let empty_trivia = arena.alloc_trivia_list(&[]);
+            let token = arena.alloc_token(INTEGER_KIND, b"42", leading_trivia, empty_trivia);
+            assert_eq!(token.leading_trivia().full_width(), *expected_width);
+
+            let trivia_pieces = token.leading_trivia().pieces();
+            if !leading.is_empty() {
+                assert_eq!(trivia_pieces.len(), 1);
+                assert_eq!(trivia_pieces[0].bytes(), leading.as_slice());
+            } else {
+                assert_eq!(trivia_pieces.len(), 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_trailing_trivia() {
+        let mut arena = GreenTree::new();
+        let cases = [
+            (b"".to_vec(), 0),
+            (b" ".to_vec(), 1),
+            (b"\n".to_vec(), 1),
+            (b"% comment\n".to_vec(), 10),
+            (b"\r\n".to_vec(), 2),
+        ];
+
+        for (trailing, expected_width) in cases.iter() {
+            let trailing_trivia = if trailing.is_empty() {
+                arena.alloc_trivia_list(&[])
+            } else {
+                let trivia = arena.alloc_trivia(COMMENT_KIND, trailing.as_slice());
+                arena.alloc_trivia_list(&[trivia])
+            };
+
+            let empty_trivia = arena.alloc_trivia_list(&[]);
+            let token = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, trailing_trivia);
+            assert_eq!(token.trailing_trivia().full_width(), *expected_width);
+
+            let trivia_pieces = token.trailing_trivia().pieces();
+            if !trailing.is_empty() {
+                assert_eq!(trivia_pieces.len(), 1);
+                assert_eq!(trivia_pieces[0].bytes(), trailing.as_slice());
+            } else {
+                assert_eq!(trivia_pieces.len(), 0);
+            }
+        }
+    }
+
+    #[test]
     fn test_eq() {
         let mut arena = GreenTree::new();
         let empty_trivia = arena.alloc_trivia_list(&[]);
@@ -403,7 +418,7 @@ mod token_tests {
         assert_ne!(token1, token6);
     }
 
-    #[rstest]
+    #[test]
     fn test_display() {
         let mut arena = GreenTree::new();
 
@@ -429,7 +444,7 @@ mod token_tests {
         assert_eq!(format!("{}", token), "  true\n");
     }
 
-    #[rstest]
+    #[test]
     fn test_debug() {
         let mut arena = GreenTree::new();
 

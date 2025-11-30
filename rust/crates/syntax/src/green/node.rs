@@ -270,11 +270,10 @@ impl fmt::Display for GreenChild {
 
 #[cfg(test)]
 mod memory_layout_tests {
-    use rstest::rstest;
 
     use super::*;
 
-    #[rstest]
+    #[test]
     fn test_memory_layout() {
         assert_eq!(std::mem::size_of::<GreenNodeHead>(), 8); // 6 bytes + 2 bytes padding
         assert_eq!(std::mem::align_of::<GreenNodeHead>(), 4); // 4 bytes alignment
@@ -289,7 +288,6 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod node_tests {
-    use rstest::rstest;
 
     use crate::green::arena::GreenTree;
 
@@ -299,7 +297,7 @@ mod node_tests {
     const NODE_KIND: SyntaxKind = SyntaxKind(100);
     const TRIVIA_KIND: SyntaxKind = SyntaxKind(200);
 
-    #[rstest]
+    #[test]
     fn test_kind() {
         let mut arena = GreenTree::new();
         let empty_trivia = arena.alloc_trivia_list(&[]);

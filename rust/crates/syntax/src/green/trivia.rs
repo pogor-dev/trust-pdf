@@ -303,11 +303,9 @@ impl fmt::Display for GreenTrivia {
 
 #[cfg(test)]
 mod memory_layout_tests {
-    use rstest::rstest;
-
     use super::*;
 
-    #[rstest]
+    #[test]
     fn test_memory_layout() {
         assert_eq!(std::mem::size_of::<GreenTriviaHead>(), 4); // 4 bytes + 0 bytes padding
         assert_eq!(std::mem::align_of::<GreenTriviaHead>(), 2); // 2 bytes alignment
@@ -328,36 +326,33 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod trivia_tests {
-    use rstest::rstest;
-
-    use crate::green::arena::GreenTree;
-
     use super::*;
+    use crate::green::arena::GreenTree;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
 
-    #[rstest]
+    #[test]
     fn test_kind() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" ").to_green_trivia(arena.shareable());
         assert_eq!(trivia.kind(), WHITESPACE_KIND);
     }
 
-    #[rstest]
+    #[test]
     fn test_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"   ").to_green_trivia(arena.shareable());
         assert_eq!(trivia.bytes(), b"   ");
     }
 
-    #[rstest]
+    #[test]
     fn test_full_width() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"\n\t").to_green_trivia(arena.shareable());
         assert_eq!(trivia.full_width(), 2);
     }
 
-    #[rstest]
+    #[test]
     fn test_eq() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -373,14 +368,14 @@ mod trivia_tests {
         assert_ne!(trivia1, trivia3);
     }
 
-    #[rstest]
+    #[test]
     fn test_display() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" \n\t").to_green_trivia(arena.shareable());
         assert_eq!(trivia.to_string(), " \n\t");
     }
 
-    #[rstest]
+    #[test]
     fn test_debug() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" \n\t").to_green_trivia(arena.shareable());
@@ -391,7 +386,6 @@ mod trivia_tests {
 
 #[cfg(test)]
 mod trivia_list_tests {
-    use rstest::rstest;
 
     use crate::green::arena::GreenTree;
 
@@ -400,7 +394,7 @@ mod trivia_list_tests {
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
     const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
 
-    #[rstest]
+    #[test]
     fn test_full_width() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -409,7 +403,7 @@ mod trivia_list_tests {
         assert_eq!(trivia_list.full_width(), 10);
     }
 
-    #[rstest]
+    #[test]
     fn test_pieces() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -419,7 +413,7 @@ mod trivia_list_tests {
         assert_eq!(pieces, &[trivia1, trivia2]);
     }
 
-    #[rstest]
+    #[test]
     fn test_eq() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -432,7 +426,7 @@ mod trivia_list_tests {
         assert_ne!(trivia_list1, trivia_list3);
     }
 
-    #[rstest]
+    #[test]
     fn test_display() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -441,7 +435,7 @@ mod trivia_list_tests {
         assert_eq!(trivia_list.to_string(), " % comment");
     }
 
-    #[rstest]
+    #[test]
     fn test_debug() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -451,7 +445,7 @@ mod trivia_list_tests {
         assert_eq!(debug_str, "GreenTriviaList { full_width: 10 }");
     }
 
-    #[rstest]
+    #[test]
     fn test_full_bytes_when_single_piece_expect_single_piece_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"  \t");
@@ -459,7 +453,7 @@ mod trivia_list_tests {
         assert_eq!(trivia_list.full_bytes(), b"  \t");
     }
 
-    #[rstest]
+    #[test]
     fn test_full_bytes_when_multiple_pieces_expect_concatenated_bytes() {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
@@ -469,7 +463,7 @@ mod trivia_list_tests {
         assert_eq!(trivia_list.full_bytes(), b" % comment\n");
     }
 
-    #[rstest]
+    #[test]
     fn test_full_bytes_when_empty_list_expect_empty_vec() {
         let mut arena = GreenTree::new();
         let trivia_list = arena.alloc_trivia_list(&[]);

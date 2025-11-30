@@ -186,7 +186,6 @@ macro_rules! tree {
 
 #[cfg(test)]
 mod builder_tests {
-    use rstest::rstest;
 
     use crate::SyntaxKind;
 
@@ -217,7 +216,7 @@ mod builder_tests {
     /// - Leading trivia appears before the token text
     /// - Trailing trivia appears after the token text
     /// - The `text()` call divides leading from trailing trivia
-    #[rstest]
+    #[test]
     fn test_macro() {
         let tree = tree! {
             OBJECT => {
