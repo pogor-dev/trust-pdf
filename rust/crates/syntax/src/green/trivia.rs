@@ -388,6 +388,9 @@ mod memory_layout_tests {
         assert_eq!(std::mem::size_of::<GreenTriviaData>(), 4); // 4 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaData>(), 2); // 2 bytes alignment
 
+        assert_eq!(std::mem::size_of::<GreenTriviaInTree>(), 8); // 8 bytes
+        assert_eq!(std::mem::align_of::<GreenTriviaInTree>(), 8); // 8 bytes alignment
+
         assert_eq!(std::mem::size_of::<GreenTrivia>(), 16); // 16 bytes
         assert_eq!(std::mem::align_of::<GreenTrivia>(), 8); // 8 bytes alignment
 
@@ -396,6 +399,9 @@ mod memory_layout_tests {
 
         assert_eq!(std::mem::size_of::<GreenTriviaListData>(), 8); // 8 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaListData>(), 8); // 8 bytes alignment
+
+        assert_eq!(std::mem::size_of::<GreenTriviaListInTree>(), 8); // 8 bytes
+        assert_eq!(std::mem::align_of::<GreenTriviaListInTree>(), 8); // 8 bytes alignment
 
         assert_eq!(std::mem::size_of::<GreenTriviaList>(), 16); // 16 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaList>(), 8); // 8 bytes alignment
@@ -616,7 +622,7 @@ mod trivia_list_tests {
         let list1 = list1.to_green_trivia_list(shareable.clone());
         let list2 = list2.to_green_trivia_list(shareable.clone());
         let list3 = list3.to_green_trivia_list(shareable.clone());
-        let list4 = list4.to_green_trivia_list(shareable);
+        let list4 = list4.to_green_trivia_list(shareable.clone());
 
         let mut hasher1 = DefaultHasher::new();
         list1.hash(&mut hasher1);

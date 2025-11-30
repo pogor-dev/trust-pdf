@@ -277,6 +277,15 @@ mod tests {
     fn test_memory_layout() {
         assert_eq!(std::mem::size_of::<GreenTokenHead>(), 24); // 22 bytes + 2 bytes padding
         assert_eq!(std::mem::align_of::<GreenTokenHead>(), 8); // 8 bytes alignment
+
+        assert_eq!(std::mem::size_of::<GreenTokenData>(), 24); // 24 bytes
+        assert_eq!(std::mem::align_of::<GreenTokenData>(), 8); // 8 bytes alignment
+
+        assert_eq!(std::mem::size_of::<GreenTokenInTree>(), 8); // 8 bytes
+        assert_eq!(std::mem::align_of::<GreenTokenInTree>(), 8); // 8 bytes alignment
+
+        assert_eq!(std::mem::size_of::<GreenToken>(), 16); // 16 bytes
+        assert_eq!(std::mem::align_of::<GreenToken>(), 8); // 8 bytes alignment
     }
 }
 
