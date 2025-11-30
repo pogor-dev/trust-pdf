@@ -5,13 +5,12 @@ use triomphe::Arc;
 
 use crate::{SyntaxKind, green::arena::GreenTree};
 
-#[repr(C, align(8))]
+#[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTriviaListHead {
-    full_width: u32,            // 4 bytes
-    pieces_len: u16,            // 2 bytes
-    _padding: u16,              // 2 bytes padding to ensure 8-byte total size
-    _c: Count<GreenTriviaList>, // 0 bytes
+    full_width: u32,                  // 4 bytes
+    pieces_len: u16,                  // 2 bytes
+    _c: Count<GreenTriviaListInTree>, // 0 bytes
 }
 
 impl GreenTriviaListHead {
@@ -20,7 +19,6 @@ impl GreenTriviaListHead {
         Self {
             full_width,
             pieces_len,
-            _padding: 0,
             _c: Count::new(),
         }
     }
@@ -45,13 +43,13 @@ pub(super) struct GreenTriviaListData {
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
-pub struct GreenTriviaList {
+pub struct GreenTriviaListInTree {
     /// INVARIANT: This points at a valid `GreenTriviaListData` followed by `pieces_len` `GreenTrivia`s,
     /// with `#[repr(C)]`.
     pub(super) data: NonNull<GreenTriviaListData>,
 }
 
-impl GreenTriviaList {
+impl GreenTriviaListInTree {
     /// Returns the full bytes of all trivia pieces concatenated
     #[inline]
     pub fn full_bytes(&self) -> Vec<u8> {
@@ -91,24 +89,42 @@ impl GreenTriviaList {
         // SAFETY: `&raw mut` doesn't require the data to be valid, only allocated.
         unsafe { (&raw mut (*self.data.as_ptr()).pieces).cast::<GreenTriviaInTree>() }
     }
+
+    #[inline]
+    pub(crate) fn to_green_trivia_list(self, arena: Arc<GreenTree>) -> GreenTriviaList {
+        GreenTriviaList {
+            trivia_list: self,
+            _arena: arena,
+        }
+    }
 }
 
-impl PartialEq for GreenTriviaList {
+impl PartialEq for GreenTriviaListInTree {
     fn eq(&self, other: &Self) -> bool {
         // Early exit on different widths for performance
         self.full_width() == other.full_width() && self.pieces() == other.pieces()
     }
 }
 
-impl Eq for GreenTriviaList {}
+impl Eq for GreenTriviaListInTree {}
 
-impl fmt::Debug for GreenTriviaList {
+impl hash::Hash for GreenTriviaListInTree {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.full_width().hash(state);
+        for piece in self.pieces() {
+            piece.hash(state);
+        }
+    }
+}
+
+impl fmt::Debug for GreenTriviaListInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaList").field("full_width", &self.full_width()).finish()
     }
 }
 
-impl fmt::Display for GreenTriviaList {
+impl fmt::Display for GreenTriviaListInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for piece in self.pieces() {
             write!(f, "{}", piece)?;
@@ -118,8 +134,66 @@ impl fmt::Display for GreenTriviaList {
 }
 
 // SAFETY: The pointer is valid.
-unsafe impl Send for GreenTriviaList {}
-unsafe impl Sync for GreenTriviaList {}
+unsafe impl Send for GreenTriviaListInTree {}
+unsafe impl Sync for GreenTriviaListInTree {}
+
+/// A green trivia list that is attached to a [`GreenToken`].
+#[derive(Clone)]
+pub struct GreenTriviaList {
+    pub(super) trivia_list: GreenTriviaListInTree,
+    pub(super) _arena: Arc<GreenTree>,
+}
+
+impl GreenTriviaList {
+    #[inline]
+    pub fn full_bytes(&self) -> Vec<u8> {
+        self.trivia_list.full_bytes()
+    }
+
+    /// The full width of this Trivia.
+    #[inline]
+    pub fn full_width(&self) -> u32 {
+        self.trivia_list.full_width()
+    }
+
+    #[inline]
+    pub fn pieces(&self) -> &[GreenTriviaInTree] {
+        self.trivia_list.pieces()
+    }
+
+    #[inline]
+    pub(crate) fn into_raw_parts(self) -> (GreenTriviaListInTree, Arc<GreenTree>) {
+        (self.trivia_list, self._arena)
+    }
+}
+
+impl PartialEq for GreenTriviaList {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.trivia_list == other.trivia_list
+    }
+}
+
+impl Eq for GreenTriviaList {}
+
+impl hash::Hash for GreenTriviaList {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.trivia_list.hash(state);
+    }
+}
+
+impl fmt::Debug for GreenTriviaList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.trivia_list, f)
+    }
+}
+
+impl fmt::Display for GreenTriviaList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.trivia_list, f)
+    }
+}
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -219,6 +293,7 @@ impl hash::Hash for GreenTriviaInTree {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.kind().hash(state);
+        self.full_width().hash(state);
         self.bytes().hash(state);
     }
 }
@@ -241,7 +316,7 @@ impl fmt::Display for GreenTriviaInTree {
 unsafe impl Send for GreenTriviaInTree {}
 unsafe impl Sync for GreenTriviaInTree {}
 
-/// Leaf node in the immutable tree.
+/// A green trivia, part of a [`GreenTriviaList`] that is attached to a [`GreenToken`].
 #[derive(Clone)]
 pub struct GreenTrivia {
     pub(super) trivia: GreenTriviaInTree,
@@ -307,20 +382,23 @@ mod memory_layout_tests {
 
     #[test]
     fn test_memory_layout() {
-        assert_eq!(std::mem::size_of::<GreenTriviaHead>(), 4); // 4 bytes + 0 bytes padding
+        assert_eq!(std::mem::size_of::<GreenTriviaHead>(), 4); // 4 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaHead>(), 2); // 2 bytes alignment
 
-        assert_eq!(std::mem::size_of::<GreenTriviaData>(), 4); // 4 bytes + 0 bytes padding
+        assert_eq!(std::mem::size_of::<GreenTriviaData>(), 4); // 4 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaData>(), 2); // 2 bytes alignment
 
         assert_eq!(std::mem::size_of::<GreenTrivia>(), 16); // 16 bytes
         assert_eq!(std::mem::align_of::<GreenTrivia>(), 8); // 8 bytes alignment
 
-        assert_eq!(std::mem::size_of::<GreenTriviaListHead>(), 8); // 8 bytes (aligned to 8)
-        assert_eq!(std::mem::align_of::<GreenTriviaListHead>(), 8); // 8 bytes alignment (explicit)
+        assert_eq!(std::mem::size_of::<GreenTriviaListHead>(), 8); // 8 bytes
+        assert_eq!(std::mem::align_of::<GreenTriviaListHead>(), 4); // 4 bytes alignment
 
-        assert_eq!(std::mem::size_of::<GreenTriviaListData>(), 8); // 8 bytes + 0 bytes padding
+        assert_eq!(std::mem::size_of::<GreenTriviaListData>(), 8); // 8 bytes
         assert_eq!(std::mem::align_of::<GreenTriviaListData>(), 8); // 8 bytes alignment
+
+        assert_eq!(std::mem::size_of::<GreenTriviaList>(), 16); // 16 bytes
+        assert_eq!(std::mem::align_of::<GreenTriviaList>(), 8); // 8 bytes alignment
     }
 }
 
@@ -445,7 +523,7 @@ mod trivia_list_tests {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
-        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.full_width(), 10);
     }
 
@@ -454,7 +532,7 @@ mod trivia_list_tests {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
-        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
         let pieces = trivia_list.pieces();
         assert_eq!(pieces, &[trivia1, trivia2]);
     }
@@ -468,6 +546,11 @@ mod trivia_list_tests {
         let trivia_list2 = arena.alloc_trivia_list(&[trivia1, trivia2]);
         let trivia_list3 = arena.alloc_trivia_list(&[trivia2, trivia1]);
 
+        let shareable = arena.shareable();
+        let trivia_list1 = trivia_list1.to_green_trivia_list(shareable.clone());
+        let trivia_list2 = trivia_list2.to_green_trivia_list(shareable.clone());
+        let trivia_list3 = trivia_list3.to_green_trivia_list(shareable.clone());
+
         assert_eq!(trivia_list1, trivia_list2);
         assert_ne!(trivia_list1, trivia_list3);
     }
@@ -477,7 +560,7 @@ mod trivia_list_tests {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
-        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.to_string(), " % comment");
     }
 
@@ -486,7 +569,7 @@ mod trivia_list_tests {
         let mut arena = GreenTree::new();
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
-        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
         let debug_str = format!("{:?}", trivia_list);
         assert_eq!(debug_str, "GreenTriviaList { full_width: 10 }");
     }
@@ -495,7 +578,7 @@ mod trivia_list_tests {
     fn test_full_bytes_when_single_piece_expect_single_piece_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"  \t");
-        let trivia_list = arena.alloc_trivia_list(&[trivia]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.full_bytes(), b"  \t");
     }
 
@@ -505,14 +588,66 @@ mod trivia_list_tests {
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
         let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
-        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]);
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.full_bytes(), b" % comment\n");
     }
 
     #[test]
     fn test_full_bytes_when_empty_list_expect_empty_vec() {
         let mut arena = GreenTree::new();
-        let trivia_list = arena.alloc_trivia_list(&[]);
+        let trivia_list = arena.alloc_trivia_list(&[]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.full_bytes(), b"");
+    }
+
+    #[test]
+    fn test_hash() {
+        use std::hash::{DefaultHasher, Hash, Hasher};
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
+
+        let list1 = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let list2 = arena.alloc_trivia_list(&[trivia1, trivia2]);
+        let list3 = arena.alloc_trivia_list(&[trivia2, trivia1]);
+        let list4 = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]);
+
+        let shareable = arena.shareable();
+        let list1 = list1.to_green_trivia_list(shareable.clone());
+        let list2 = list2.to_green_trivia_list(shareable.clone());
+        let list3 = list3.to_green_trivia_list(shareable.clone());
+        let list4 = list4.to_green_trivia_list(shareable);
+
+        let mut hasher1 = DefaultHasher::new();
+        list1.hash(&mut hasher1);
+        let hash1 = hasher1.finish();
+
+        let mut hasher2 = DefaultHasher::new();
+        list2.hash(&mut hasher2);
+        let hash2 = hasher2.finish();
+
+        let mut hasher3 = DefaultHasher::new();
+        list3.hash(&mut hasher3);
+        let hash3 = hasher3.finish();
+
+        let mut hasher4 = DefaultHasher::new();
+        list4.hash(&mut hasher4);
+        let hash4 = hasher4.finish();
+
+        assert_eq!(hash1, hash2);
+        assert_ne!(hash1, hash3);
+        assert_ne!(hash1, hash4);
+    }
+
+    #[test]
+    fn test_into_raw_parts() {
+        let mut arena = GreenTree::new();
+        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
+        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
+        let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
+        let (trivia_list_in_tree, _) = trivia_list.into_raw_parts();
+
+        assert_eq!(trivia_list_in_tree.full_width(), 10);
+        assert_eq!(trivia_list_in_tree.pieces(), &[trivia1, trivia2]);
     }
 }

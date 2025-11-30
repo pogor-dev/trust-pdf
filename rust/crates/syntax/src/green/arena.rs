@@ -3,12 +3,12 @@ use hashbrown::HashMap;
 use triomphe::UniqueArc;
 
 use crate::{
-    DiagnosticInfo, GreenNode, GreenToken, GreenTriviaList, SyntaxKind,
+    DiagnosticInfo, GreenNode, GreenToken, SyntaxKind,
     green::{
         GreenElement,
         node::{GreenChild, GreenNodeHead},
         token::GreenTokenHead,
-        trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead},
+        trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
     },
 };
 
@@ -38,7 +38,13 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: GreenTriviaList, trailing_trivia: GreenTriviaList) -> GreenToken {
+    pub(super) fn alloc_token(
+        &mut self,
+        kind: SyntaxKind,
+        text: &[u8],
+        leading_trivia: GreenTriviaListInTree,
+        trailing_trivia: GreenTriviaListInTree,
+    ) -> GreenToken {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_token_unchecked(kind, text, leading_trivia, trailing_trivia) }
     }
@@ -50,7 +56,7 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaList {
+    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_list_unchecked(pieces) }
     }
@@ -85,7 +91,13 @@ impl GreenTree {
     /// # Safety
     ///
     /// You must ensure there is no concurrent allocation.
-    unsafe fn alloc_token_unchecked(&self, kind: SyntaxKind, text: &[u8], leading_trivia: GreenTriviaList, trailing_trivia: GreenTriviaList) -> GreenToken {
+    unsafe fn alloc_token_unchecked(
+        &self,
+        kind: SyntaxKind,
+        text: &[u8],
+        leading_trivia: GreenTriviaListInTree,
+        trailing_trivia: GreenTriviaListInTree,
+    ) -> GreenToken {
         assert!(text.len() <= u32::MAX as usize, "token text too long");
 
         let layout = GreenTokenHead::layout(text.len() as u32);
@@ -124,12 +136,12 @@ impl GreenTree {
     // # Safety
     ///
     /// You must ensure there is no concurrent allocation.
-    unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTriviaInTree]) -> GreenTriviaList {
+    unsafe fn alloc_trivia_list_unchecked(&self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
         assert!(pieces.len() <= u16::MAX.into(), "too many trivia pieces");
         let full_width = pieces.iter().map(|p| p.full_width() as u32).sum::<u32>();
         let layout = GreenTriviaListHead::layout(pieces.len() as u16);
         let trivia_list = self.arena.alloc_layout(layout);
-        let trivia_list = GreenTriviaList { data: trivia_list.cast() };
+        let trivia_list = GreenTriviaListInTree { data: trivia_list.cast() };
 
         // SAFETY: The trivia list is allocated, we don't need it to be initialized for the writing.
         unsafe {

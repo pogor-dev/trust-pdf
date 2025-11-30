@@ -2,21 +2,21 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenTriviaList, SyntaxKind};
+use crate::{SyntaxKind, green::trivia::GreenTriviaListInTree};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct GreenTokenHead {
-    leading_trivia: GreenTriviaList,  // 8 bytes
-    trailing_trivia: GreenTriviaList, // 8 bytes
-    full_width: u32,                  // 4 bytes
-    kind: SyntaxKind,                 // 2 bytes
-    _c: Count<GreenToken>,            // 0 bytes
+    leading_trivia: GreenTriviaListInTree,  // 8 bytes
+    trailing_trivia: GreenTriviaListInTree, // 8 bytes
+    full_width: u32,                        // 4 bytes
+    kind: SyntaxKind,                       // 2 bytes
+    _c: Count<GreenToken>,                  // 0 bytes
 }
 
 impl GreenTokenHead {
     #[inline]
-    pub(super) fn new(kind: SyntaxKind, full_width: u32, leading: GreenTriviaList, trailing: GreenTriviaList) -> Self {
+    pub(super) fn new(kind: SyntaxKind, full_width: u32, leading: GreenTriviaListInTree, trailing: GreenTriviaListInTree) -> Self {
         Self {
             leading_trivia: leading,
             trailing_trivia: trailing,
@@ -80,12 +80,12 @@ impl GreenToken {
     }
 
     #[inline]
-    pub fn leading_trivia(&self) -> &GreenTriviaList {
+    pub fn leading_trivia(&self) -> &GreenTriviaListInTree {
         &self.header().leading_trivia
     }
 
     #[inline]
-    pub fn trailing_trivia(&self) -> &GreenTriviaList {
+    pub fn trailing_trivia(&self) -> &GreenTriviaListInTree {
         &self.header().trailing_trivia
     }
 

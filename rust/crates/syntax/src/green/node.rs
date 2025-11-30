@@ -2,7 +2,7 @@ use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 
-use crate::{GreenToken, GreenTriviaList, NodeOrToken, SyntaxKind};
+use crate::{GreenToken, NodeOrToken, SyntaxKind, green::trivia::GreenTriviaListInTree};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, Eq)]
@@ -95,13 +95,13 @@ impl GreenNode {
 
     /// Returns the leading trivia from the first terminal token in the node tree
     #[inline]
-    pub fn leading_trivia(&self) -> Option<&GreenTriviaList> {
+    pub fn leading_trivia(&self) -> Option<&GreenTriviaListInTree> {
         self.first_token().map(|token| token.leading_trivia())
     }
 
     /// Returns the trailing trivia from the last terminal token in the node tree
     #[inline]
-    pub fn trailing_trivia(&self) -> Option<&GreenTriviaList> {
+    pub fn trailing_trivia(&self) -> Option<&GreenTriviaListInTree> {
         self.last_token().map(|token| token.trailing_trivia())
     }
 
