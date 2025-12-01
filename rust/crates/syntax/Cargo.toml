@@ -22,7 +22,6 @@ rustc-hash.workspace = true
 triomphe.workspace = true
 
 [dev-dependencies]
-rstest = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true

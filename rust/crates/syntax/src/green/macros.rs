@@ -88,11 +88,11 @@
 ///
 /// # Syntax Rules
 ///
-/// - **Node**: `KIND => { children }` - no parentheses around KIND
-/// - **Token**: `(KIND) => { content }` - parentheses around KIND  
-/// - **Token shorthand**: `(KIND, text)` - direct text assignment without trivia
-/// - **Token content**: Comma-separated calls to `text()` and `trivia(kind, value)`
-/// - **Trivia placement**: Calls before `text()` become leading trivia, calls after become trailing trivia
+/// - Node: `KIND => { children }` - no parentheses around KIND
+/// - Token: `(KIND) => { content }` - parentheses around KIND  
+/// - Token shorthand: `(KIND, text)` - direct text assignment without trivia
+/// - Token content: Comma-separated calls to `text()` and `trivia(kind, value)`
+/// - Trivia placement: Calls before `text()` become leading trivia, calls after become trailing trivia
 #[macro_export]
 macro_rules! tree {
     // [Step 1a] Token expansion (last token in sequence)
@@ -186,7 +186,6 @@ macro_rules! tree {
 
 #[cfg(test)]
 mod builder_tests {
-    use rstest::rstest;
 
     use crate::SyntaxKind;
 
@@ -217,7 +216,7 @@ mod builder_tests {
     /// - Leading trivia appears before the token text
     /// - Trailing trivia appears after the token text
     /// - The `text()` call divides leading from trailing trivia
-    #[rstest]
+    #[test]
     fn test_macro() {
         let tree = tree! {
             OBJECT => {
@@ -261,7 +260,6 @@ mod builder_tests {
         };
 
         let expected = b"1 0 obj\n<<\n  /Type /Catalog\n>>endobj\n% This is a comment";
-        let (tree, _arena) = tree; // TODO: keep arena alive
         assert_eq!(tree.to_string(), String::from_utf8_lossy(expected));
         assert_eq!(tree.full_bytes(), expected);
     }

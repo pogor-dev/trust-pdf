@@ -1,8 +1,8 @@
 use triomphe::Arc;
 
 use crate::{
-    GreenTrivia, NodeOrToken,
-    green::{GreenNode, SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement},
+    GreenNode, NodeOrToken,
+    green::{SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, node::GreenNodeInTree, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
@@ -42,7 +42,7 @@ impl GreenNodeBuilder {
 
     /// Adds new token to the current branch.
     #[inline]
-    pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTrivia], trailing_trivia: &[GreenTrivia]) {
+    pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTriviaInTree], trailing_trivia: &[GreenTriviaInTree]) {
         let (hash, token) = self.cache.token(kind, text, leading_trivia, trailing_trivia);
         self.children.push((hash, token.into()));
     }
@@ -108,16 +108,15 @@ impl GreenNodeBuilder {
     /// Returns the root node and the arena that owns all the allocated data.
     /// The arena must be kept alive as long as any nodes from the tree are in use.
     #[inline]
-    pub fn finish(mut self) -> (GreenNode, Arc<GreenTree>) {
+    pub fn finish(mut self) -> GreenNode {
         let arena = self.cache.arena.shareable();
         assert_eq!(self.children.len(), 1);
-        let node = match self.children.pop().unwrap().1 {
-            NodeOrToken::Node(node) => node,
+        match self.children.pop().unwrap().1 {
+            NodeOrToken::Node(node) => GreenNode { node, arena },
             NodeOrToken::Token(_) => {
                 panic!("Expected root node to be a GreenNode, but got a Token. This usually indicates mismatched start_node/finish_node calls.")
             }
-        };
-        (node, arena)
+        }
     }
 }
 
@@ -125,6 +124,6 @@ struct TokenBuilder {
     kind: SyntaxKind,
     text: Option<Vec<u8>>,
     text_set: bool,
-    leading_trivia: Vec<GreenTrivia>,
-    trailing_trivia: Vec<GreenTrivia>,
+    leading_trivia: Vec<GreenTriviaInTree>,
+    trailing_trivia: Vec<GreenTriviaInTree>,
 }
