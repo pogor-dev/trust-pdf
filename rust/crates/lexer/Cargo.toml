@@ -9,5 +9,6 @@ repository.workspace = true
 
 [dependencies]
 # Local crates
+syntax = { path = "../syntax" }
 
 # Non-local crates

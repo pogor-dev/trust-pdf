@@ -52,6 +52,9 @@ checksum = "3752f229dcc5a481d60f385fa479ff46818033d881d2d801aa27dffcfb5e8306"
 [[package]]
 name = "lexer"
 version = "0.1.0"
+dependencies = [
+ "syntax",
+]
 
 [[package]]
 name = "parser"
