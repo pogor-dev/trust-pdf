@@ -8,6 +8,7 @@ mod token;
 mod trivia;
 
 pub use self::{
+    arena::GreenTree,
     builder::GreenNodeBuilder,
     node::GreenNode,
     token::GreenToken,

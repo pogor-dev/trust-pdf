@@ -4,6 +4,6 @@ mod utility_types;
 
 pub use crate::{
     diagnostics::DiagnosticInfo,
-    green::{GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind},
+    green::{GreenNode, GreenToken, GreenTree, GreenTrivia, GreenTriviaList, SyntaxKind},
     utility_types::NodeOrToken,
 };

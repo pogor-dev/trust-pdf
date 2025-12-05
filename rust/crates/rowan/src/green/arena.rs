@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-pub(crate) struct GreenTree {
+pub struct GreenTree {
     arena: Bump,
     diagnostics: HashMap<GreenElement, Vec<DiagnosticInfo>>,
 }
@@ -24,7 +24,7 @@ impl GreenTree {
     // This needs to be inside `UniqueArc` because otherwise the `verify_origin()` comparisons
     // are messed up.
     #[inline]
-    pub(crate) fn new() -> UniqueArc<Self> {
+    pub fn new() -> UniqueArc<Self> {
         UniqueArc::new(Self {
             arena: Bump::new(),
             diagnostics: HashMap::default(),
@@ -38,7 +38,7 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_token(
+    pub fn alloc_token(
         &mut self,
         kind: SyntaxKind,
         text: &[u8],
@@ -50,13 +50,13 @@ impl GreenTree {
     }
 
     #[inline]
-    pub(super) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
+    pub fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_unchecked(kind, text) }
     }
 
     #[inline]
-    pub(super) fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
+    pub fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_list_unchecked(pieces) }
     }

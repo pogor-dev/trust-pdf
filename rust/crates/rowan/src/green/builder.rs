@@ -1,8 +1,6 @@
-use triomphe::Arc;
-
 use crate::{
     GreenNode, NodeOrToken,
-    green::{SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, node::GreenNodeInTree, trivia::GreenTriviaInTree},
+    green::{SyntaxKind, cache::GreenCache, element::GreenElement, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
