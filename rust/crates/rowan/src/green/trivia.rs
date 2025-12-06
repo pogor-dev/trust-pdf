@@ -443,10 +443,12 @@ mod trivia_tests {
     fn test_into_raw_parts() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b" ").to_green_trivia(arena.shareable());
-        let (trivia_in_tree, _) = trivia.into_raw_parts();
+        let (trivia_in_tree, arc) = trivia.clone().into_raw_parts();
 
         assert_eq!(trivia_in_tree.kind(), WHITESPACE_KIND);
         assert_eq!(trivia_in_tree.bytes(), b" ");
+        assert_eq!(trivia_in_tree, trivia.trivia);
+        assert_eq!(Arc::as_ptr(&arc), Arc::as_ptr(&trivia._arena));
     }
 
     #[test]
@@ -651,9 +653,11 @@ mod trivia_list_tests {
         let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
         let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
         let trivia_list = arena.alloc_trivia_list(&[trivia1, trivia2]).to_green_trivia_list(arena.shareable());
-        let (trivia_list_in_tree, _) = trivia_list.into_raw_parts();
+        let (trivia_list_in_tree, arc) = trivia_list.clone().into_raw_parts();
 
         assert_eq!(trivia_list_in_tree.full_width(), 10);
         assert_eq!(trivia_list_in_tree.pieces(), &[trivia1, trivia2]);
+        assert_eq!(trivia_list_in_tree, trivia_list.trivia_list);
+        assert_eq!(Arc::as_ptr(&arc), Arc::as_ptr(&trivia_list._arena));
     }
 }
