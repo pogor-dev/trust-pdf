@@ -1,9 +1,4 @@
-mod diagnostics;
-mod green;
-mod utility_types;
+mod syntax_kind;
 
-pub use crate::{
-    diagnostics::DiagnosticInfo,
-    green::{GreenNode, GreenToken, GreenTrivia, GreenTriviaList, SyntaxKind},
-    utility_types::NodeOrToken,
-};
+pub use crate::syntax_kind::SyntaxKind;
+pub use rowan::{GreenNodeBuilder, GreenToken, NodeOrToken};

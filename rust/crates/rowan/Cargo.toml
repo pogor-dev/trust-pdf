@@ -1,5 +1,5 @@
 [package]
-name = "syntax"
+name = "rowan"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -13,9 +13,13 @@ autobenches = false
 
 [dependencies]
 # Local crates
-rowan = { path = "../rowan" }
 
 # Non-local crates
+bumpalo.workspace = true
+countme.workspace = true
+hashbrown.workspace = true
+rustc-hash.workspace = true
+triomphe.workspace = true
 
 [dev-dependencies]
 

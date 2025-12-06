@@ -1,8 +1,6 @@
-use triomphe::Arc;
-
 use crate::{
     GreenNode, NodeOrToken,
-    green::{SyntaxKind, arena::GreenTree, cache::GreenCache, element::GreenElement, node::GreenNodeInTree, trivia::GreenTriviaInTree},
+    green::{SyntaxKind, cache::GreenCache, element::GreenElementInTree, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
@@ -10,7 +8,7 @@ use crate::{
 pub struct GreenNodeBuilder {
     cache: GreenCache,
     parents: Vec<(SyntaxKind, usize)>,
-    children: Vec<(u64, GreenElement)>,
+    children: Vec<(u64, GreenElementInTree)>,
     current_token: Option<TokenBuilder>,
 }
 

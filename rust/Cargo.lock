@@ -52,6 +52,10 @@ checksum = "3752f229dcc5a481d60f385fa479ff46818033d881d2d801aa27dffcfb5e8306"
 [[package]]
 name = "lexer"
 version = "0.1.0"
+dependencies = [
+ "syntax",
+ "triomphe",
+]
 
 [[package]]
 name = "parser"
@@ -73,6 +77,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "rowan"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "countme",
+ "hashbrown",
+ "rustc-hash",
+ "triomphe",
 ]
 
 [[package]]
@@ -138,11 +153,7 @@ dependencies = [
 name = "syntax"
 version = "0.1.0"
 dependencies = [
- "bumpalo",
- "countme",
- "hashbrown",
- "rustc-hash",
- "triomphe",
+ "rowan",
 ]
 
 [[package]]

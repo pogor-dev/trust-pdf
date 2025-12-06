@@ -7,7 +7,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 use crate::{
     NodeOrToken, SyntaxKind,
     green::{
-        GreenElement,
+        GreenElementInTree,
         arena::GreenTree,
         node::{GreenChild, GreenNodeInTree},
         token::GreenTokenInTree,
@@ -98,8 +98,8 @@ impl GreenCache {
         (hash, token)
     }
 
-    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElement)>, first_child: usize) -> (u64, GreenNodeInTree) {
-        let mut build_node = |children: &mut Vec<(u64, GreenElement)>| {
+    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElementInTree)>, first_child: usize) -> (u64, GreenNodeInTree) {
+        let mut build_node = |children: &mut Vec<(u64, GreenElementInTree)>| {
             let full_width = children[first_child..].iter().map(|(_, child)| child.full_width()).sum();
 
             let mut rel_offset = 0;
