@@ -1,74 +1,136 @@
-use syntax::GreenToken;
+use std::ops::Range;
+
+use syntax::{GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
     source: &'source [u8],
-    len_remaining: usize,
+    position: usize,
+    lexeme: Option<Range<usize>>, // start=position, end=start+width
+}
+
+#[derive(Debug, Default)]
+struct TokenInfo<'a> {
+    kind: SyntaxKind,
+    bytes: &'a [u8],
 }
 
 impl<'source> Lexer<'source> {
     pub fn new(source: &'source [u8]) -> Self {
         Self {
             source,
-            len_remaining: source.len(),
+            position: 0,
+            lexeme: None,
         }
     }
 
     pub fn next_token(&mut self) -> Option<GreenToken> {
-        let Some(first_byte) = self.advance() else {
-            return GreenToken::new(SyntaxKind::Eof, 0);
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::LexerNode.into());
+
+        // TODO: add leading trivia handling
+
+        let mut token_info: TokenInfo<'source> = TokenInfo::default();
+        self.start_lexeme();
+        self.scan_token(&mut token_info);
+
+        // TODO: add trailing trivia handling
+
+        builder.start_token(token_info.kind.into());
+        builder.token_text(token_info.bytes);
+        builder.finish_token();
+        builder.finish_node();
+        let node = builder.finish();
+
+        match node.children().next() {
+            Some(NodeOrToken::Token(token)) => Some(token),
+            _ => None,
+        }
+    }
+
+    fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
+        let first_byte = match self.peek() {
+            Some(first_byte) => first_byte,
+            _ => return, // TODO: add a test for this case
         };
 
-        loop {
-            if self.position >= self.source.len() {
-                return None;
+        let token_kind = match first_byte {
+            b'0'..=b'9' => {
+                self.scan_numeric_literal(token_info);
             }
+            _ => {}
+        };
+    }
 
-            let byte = self.source[self.position];
+    fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
+        self.advance(); // consume the first digit
 
+        while let Some(byte) = self.peek() {
             match byte {
-                b @ b'0'..=b'9' => {
-                    return None; // Placeholder for number tokenization
+                b'0'..=b'9' => {
+                    self.advance();
                 }
-                _ => {
-                    panic!("Unrecognized token starting with byte: {}", byte);
-                }
+                _ => break,
             }
+        }
 
-            self.position += 1;
+        token_info.kind = SyntaxKind::IntegerLiteralToken;
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Start recording a lexeme from the current position.
+    fn start_lexeme(&mut self) {
+        self.lexeme = Some(self.position..self.position);
+    }
+
+    /// Finalize the current lexeme by setting its end position.
+    fn stop_lexeme(&mut self) {
+        self.lexeme = None;
+    }
+
+    /// Get the current lexeme bytes.
+    fn get_lexeme_bytes(&self) -> &'source [u8] {
+        match &self.lexeme {
+            Some(range) => &self.source[range.clone()],
+            None => b"",
         }
     }
 
     /// Advance the cursor by one byte and return the byte at the new position.
-    fn advance(&mut self) -> Option<&u8> {
-        self.source.iter().next()
+    fn advance(&mut self) -> Option<u8> {
+        self.advance_by(1)
+    }
+
+    /// Advance the cursor by `offset` bytes and return the byte at the new position.
+    #[inline]
+    fn advance_by(&mut self, offset: usize) -> Option<u8> {
+        assert!(offset > 0, "Offset must be positive");
+        self.position = self.position + offset;
+
+        // Update lexeme range before retrieving byte, so it updates even at EOF
+        if let Some(lexeme) = &mut self.lexeme {
+            lexeme.end += offset;
+        }
+
+        let byte = self.source.get(self.position)?;
+        print!("Advancing byte: {:X}\n", byte);
+
+        Some(*byte)
     }
 
     /// Peek at the first byte without advancing the cursor.
-    fn peek_first(&self) -> Option<&u8> {
-        // `.next()` optimizes better than `.nth(0)`
-        self.source.iter().next()
+    fn peek(&self) -> Option<u8> {
+        self.peek_by(0)
     }
 
-    /// Peek at the second byte without advancing the cursor.
-    fn peek_second(&self) -> Option<&u8> {
-        // `.next()` optimizes better than `.nth(1)`
-        let mut iter = self.source.iter();
-        iter.next();
-        iter.next()
-    }
-
-    /// Peek at the third byte without advancing the cursor.
-    fn peek_third(&self) -> Option<&u8> {
-        // `.next()` optimizes better than `.nth(2)`
-        let mut iter = self.source.iter();
-        iter.next();
-        iter.next();
-        iter.next()
+    /// Peek at the byte at `offset` without advancing the cursor.
+    #[inline]
+    fn peek_by(&self, offset: usize) -> Option<u8> {
+        self.source.get(self.position + offset).copied()
     }
 
     /// Checks if there is nothing more to consume.
     fn is_eof(&self) -> bool {
-        self.source.is_empty()
+        self.position >= self.source.len()
     }
 }
 
@@ -125,5 +187,17 @@ fn is_delimiter(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use syntax::SyntaxKind;
+
     use super::Lexer;
+
+    #[test]
+    fn test_numeric_literal() {
+        let source = b"12345";
+        let mut lexer = Lexer::new(source);
+
+        let token = lexer.next_token().unwrap(); // unwrap is not recommended in production code, but acceptable in tests
+        assert_eq!(token.kind(), SyntaxKind::IntegerLiteralToken.into());
+        assert_eq!(token.bytes(), b"12345");
+    }
 }

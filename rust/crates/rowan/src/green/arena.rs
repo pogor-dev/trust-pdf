@@ -1,3 +1,5 @@
+use std::fmt;
+
 use bumpalo::Bump;
 use hashbrown::HashMap;
 use triomphe::UniqueArc;
@@ -5,16 +7,16 @@ use triomphe::UniqueArc;
 use crate::{
     DiagnosticInfo, SyntaxKind,
     green::{
-        GreenElement,
+        GreenElementInTree,
         node::{GreenChild, GreenNodeHead, GreenNodeInTree},
         token::{GreenTokenHead, GreenTokenInTree},
         trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
     },
 };
 
-pub struct GreenTree {
+pub(crate) struct GreenTree {
     arena: Bump,
-    diagnostics: HashMap<GreenElement, Vec<DiagnosticInfo>>,
+    diagnostics: HashMap<GreenElementInTree, Vec<DiagnosticInfo>>,
 }
 
 // SAFETY: We only mutate when having mutable access, and mutating doesn't invalidate existing pointers.
@@ -24,7 +26,7 @@ impl GreenTree {
     // This needs to be inside `UniqueArc` because otherwise the `verify_origin()` comparisons
     // are messed up.
     #[inline]
-    pub fn new() -> UniqueArc<Self> {
+    pub(crate) fn new() -> UniqueArc<Self> {
         UniqueArc::new(Self {
             arena: Bump::new(),
             diagnostics: HashMap::default(),
@@ -38,7 +40,7 @@ impl GreenTree {
     }
 
     #[inline]
-    pub fn alloc_token(
+    pub(crate) fn alloc_token(
         &mut self,
         kind: SyntaxKind,
         text: &[u8],
@@ -50,13 +52,13 @@ impl GreenTree {
     }
 
     #[inline]
-    pub fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
+    pub(crate) fn alloc_trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> GreenTriviaInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_unchecked(kind, text) }
     }
 
     #[inline]
-    pub fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
+    pub(crate) fn alloc_trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> GreenTriviaListInTree {
         // SAFETY: We have mutable access.
         unsafe { self.alloc_trivia_list_unchecked(pieces) }
     }
@@ -152,5 +154,11 @@ impl GreenTree {
             trivia_list.pieces_ptr_mut().copy_from_nonoverlapping(pieces.as_ptr(), pieces.len());
         }
         trivia_list
+    }
+}
+
+impl fmt::Debug for GreenTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GreenTree").finish_non_exhaustive()
     }
 }

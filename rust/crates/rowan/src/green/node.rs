@@ -1,11 +1,11 @@
-use std::{fmt, hash, ptr::NonNull, slice};
+use std::{fmt, hash, iter::FusedIterator, ptr::NonNull, slice};
 
 use countme::Count;
 use triomphe::Arc;
 
 use crate::{
-    NodeOrToken, SyntaxKind,
-    green::{arena::GreenTree, token::GreenTokenInTree, trivia::GreenTriviaListInTree},
+    GreenToken, NodeOrToken, SyntaxKind,
+    green::{GreenElement, arena::GreenTree, token::GreenTokenInTree, trivia::GreenTriviaListInTree},
 };
 
 #[repr(C)]
@@ -277,6 +277,15 @@ impl GreenNode {
         self.node.full_width()
     }
 
+    /// Children of this node.
+    #[inline]
+    pub fn children(&self) -> Children<'_> {
+        Children {
+            raw: self.node.children().iter(),
+            arena: self.arena.clone(),
+        }
+    }
+
     #[inline]
     pub fn children_len(&self) -> u16 {
         self.node.children_len()
@@ -336,6 +345,14 @@ pub(crate) enum GreenChild {
 
 impl GreenChild {
     #[inline]
+    pub(crate) fn as_green_element(&self, arena: Arc<GreenTree>) -> GreenElement {
+        match self {
+            GreenChild::Node { node, .. } => NodeOrToken::Node(GreenNode { node: *node, arena }),
+            GreenChild::Token { token, .. } => NodeOrToken::Token(GreenToken { token: *token, _arena: arena }),
+        }
+    }
+
+    #[inline]
     pub(crate) fn kind(&self) -> SyntaxKind {
         match self {
             GreenChild::Node { node, .. } => node.kind(),
@@ -383,6 +400,92 @@ impl fmt::Display for GreenChild {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct Children<'a> {
+    pub(crate) raw: slice::Iter<'a, GreenChild>,
+    arena: Arc<GreenTree>,
+}
+
+impl ExactSizeIterator for Children<'_> {
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.raw.len()
+    }
+}
+
+impl<'a> Iterator for Children<'a> {
+    type Item = GreenElement;
+
+    #[inline]
+    fn next(&mut self) -> Option<GreenElement> {
+        self.raw.next().map(|child| child.as_green_element(self.arena.clone()))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.raw.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.raw.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.raw.nth(n).map(|child| child.as_green_element(self.arena.clone()))
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.next_back()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, mut f: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        for x in self {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl DoubleEndedIterator for Children<'_> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.raw.next_back().map(|child| child.as_green_element(self.arena.clone()))
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.raw.nth_back(n).map(|child| child.as_green_element(self.arena.clone()))
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(mut self, init: Acc, mut f: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next_back() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+}
+
+impl FusedIterator for Children<'_> {}
 
 #[cfg(test)]
 mod memory_layout_tests {
@@ -544,5 +647,300 @@ mod node_tests {
         let (raw_node, arena) = node.clone().into_raw_parts();
         assert_eq!(raw_node, node.node);
         assert_eq!(Arc::as_ptr(&arena), Arc::as_ptr(&node.arena));
+    }
+
+    #[test]
+    fn test_width_excludes_trivia() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND) => {
+                    trivia(SyntaxKind(200), b"  "),
+                    text(b"foo"),
+                    trivia(SyntaxKind(200), b" ")
+                }
+            }
+        };
+
+        // width should be 3 (just "foo"), excluding leading and trailing trivia
+        assert_eq!(node.width(), 3);
+    }
+
+    #[test]
+    fn test_first_and_last_token() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND) => {
+                    text(b"first")
+                },
+                NODE_KIND => {
+                    (TOKEN_KIND) => {
+                        text(b"middle")
+                    }
+                },
+                (TOKEN_KIND) => {
+                    text(b"last")
+                }
+            }
+        };
+
+        // Check that leading trivia returns Some
+        assert_eq!(node.leading_trivia().is_some(), true);
+        assert_eq!(node.trailing_trivia().is_some(), true);
+    }
+
+    #[test]
+    fn test_green_child_as_node_and_token() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let raw_children = node.node.children();
+        for child in raw_children {
+            match child {
+                GreenChild::Token { .. } => {
+                    assert_eq!(child.as_token().is_some(), true);
+                    assert_eq!(child.as_node().is_none(), true);
+                }
+                GreenChild::Node { .. } => {
+                    assert_eq!(child.as_node().is_some(), true);
+                    assert_eq!(child.as_token().is_none(), true);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_green_child_kind() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let raw_children = node.node.children();
+        for child in raw_children {
+            assert_eq!(child.kind(), TOKEN_KIND);
+        }
+    }
+
+    #[test]
+    fn test_green_child_display() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND) => {
+                    text(b"hello")
+                }
+            }
+        };
+
+        let raw_children = node.node.children();
+        for child in raw_children {
+            let display_str = format!("{}", child);
+            assert_eq!(display_str, "hello");
+        }
+    }
+
+    #[test]
+    fn test_green_child_hash() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        let node1 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let node2 = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        let children1 = node1.node.children();
+        let children2 = node2.node.children();
+
+        if let (GreenChild::Token { .. }, GreenChild::Token { .. }) = (&children1[0], &children2[0]) {
+            let mut hasher1 = DefaultHasher::new();
+            children1[0].hash(&mut hasher1);
+            let hash1 = hasher1.finish();
+
+            let mut hasher2 = DefaultHasher::new();
+            children2[0].hash(&mut hasher2);
+            let hash2 = hasher2.finish();
+
+            assert_eq!(hash1, hash2);
+        }
+    }
+}
+
+#[cfg(test)]
+mod node_children_tests {
+    use super::*;
+    use crate::tree;
+
+    const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
+    const NODE_KIND: SyntaxKind = SyntaxKind(100);
+
+    #[test]
+    fn test_children_iterator_next() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let mut children = node.children();
+        assert_eq!(children.next().is_some(), true);
+        assert_eq!(children.next().is_some(), true);
+        assert_eq!(children.next().is_some(), true);
+        assert_eq!(children.next().is_none(), true);
+    }
+
+    #[test]
+    fn test_children_exact_size_iterator() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let children = node.children();
+        assert_eq!(children.len(), 3);
+    }
+
+    #[test]
+    fn test_children_double_ended_iterator() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let mut children = node.children();
+        assert_eq!(children.next().is_some(), true);
+        assert_eq!(children.next_back().is_some(), true);
+        assert_eq!(children.len(), 1);
+    }
+
+    #[test]
+    fn test_children_nth() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let mut children = node.children();
+        assert_eq!(children.nth(1).is_some(), true);
+        assert_eq!(children.len(), 1);
+    }
+
+    #[test]
+    fn test_children_count() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let children = node.children();
+        assert_eq!(children.count(), 3);
+    }
+
+    #[test]
+    fn test_children_fold() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let children = node.children();
+        let count = children.fold(0, |acc, _| acc + 1);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_children_empty_node() {
+        let node = tree! {
+            NODE_KIND => {}
+        };
+
+        let mut children = node.children();
+        assert_eq!(children.next().is_none(), true);
+        assert_eq!(children.len(), 0);
+    }
+
+    #[test]
+    fn test_children_last() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let children = node.children();
+        assert_eq!(children.last().is_some(), true);
+    }
+
+    #[test]
+    fn test_children_nth_back() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let mut children = node.children();
+        assert_eq!(children.nth_back(0).is_some(), true);
+    }
+
+    #[test]
+    fn test_children_rfold() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b"),
+                (TOKEN_KIND, b"c")
+            }
+        };
+
+        let children = node.children();
+        let count = children.rfold(0, |acc, _| acc + 1);
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_children_size_hint() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"a"),
+                (TOKEN_KIND, b"b")
+            }
+        };
+
+        let children = node.children();
+        let (lower, upper) = children.size_hint();
+        assert_eq!(lower, 2);
+        assert_eq!(upper, Some(2));
     }
 }

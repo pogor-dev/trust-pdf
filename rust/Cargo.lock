@@ -53,7 +53,7 @@ checksum = "3752f229dcc5a481d60f385fa479ff46818033d881d2d801aa27dffcfb5e8306"
 name = "lexer"
 version = "0.1.0"
 dependencies = [
- "rowan",
+ "syntax",
  "triomphe",
 ]
 
@@ -147,6 +147,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "syntax"
+version = "0.1.0"
+dependencies = [
+ "rowan",
 ]
 
 [[package]]

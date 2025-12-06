@@ -94,7 +94,7 @@ impl GreenTokenInTree {
     }
 
     #[inline]
-    pub(crate) fn to_green_token(self, arena: Arc<GreenTree>) -> GreenToken {
+    pub fn to_green_token(self, arena: Arc<GreenTree>) -> GreenToken {
         GreenToken { token: self, _arena: arena }
     }
 

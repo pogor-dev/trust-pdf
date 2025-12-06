@@ -8,14 +8,19 @@ mod token;
 mod trivia;
 
 pub use self::{
-    arena::GreenTree,
     builder::GreenNodeBuilder,
+    element::GreenElement,
     node::GreenNode,
     token::GreenToken,
     trivia::{GreenTrivia, GreenTriviaList},
 };
 
-pub(crate) use self::{cache::GreenCache, element::GreenElement};
+pub(crate) use self::{
+    arena::GreenTree,
+    element::GreenElementInTree,
+    node::{GreenChild, GreenNodeInTree},
+    token::GreenTokenInTree,
+};
 
 /// SyntaxKind is a type tag for each token or node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

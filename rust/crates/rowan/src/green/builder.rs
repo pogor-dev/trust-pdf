@@ -1,6 +1,6 @@
 use crate::{
     GreenNode, NodeOrToken,
-    green::{SyntaxKind, cache::GreenCache, element::GreenElement, trivia::GreenTriviaInTree},
+    green::{SyntaxKind, cache::GreenCache, element::GreenElementInTree, trivia::GreenTriviaInTree},
 };
 
 /// A builder for a green tree.
@@ -8,7 +8,7 @@ use crate::{
 pub struct GreenNodeBuilder {
     cache: GreenCache,
     parents: Vec<(SyntaxKind, usize)>,
-    children: Vec<(u64, GreenElement)>,
+    children: Vec<(u64, GreenElementInTree)>,
     current_token: Option<TokenBuilder>,
 }
 
