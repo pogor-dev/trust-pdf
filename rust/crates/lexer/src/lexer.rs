@@ -32,6 +32,7 @@ impl<'source> Lexer<'source> {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
         self.start_lexeme();
         self.scan_token(&mut token_info);
+        self.stop_lexeme();
 
         // TODO: add trailing trivia handling
 
@@ -53,7 +54,7 @@ impl<'source> Lexer<'source> {
             _ => return, // TODO: add a test for this case
         };
 
-        let token_kind = match first_byte {
+        match first_byte {
             b'0'..=b'9' => {
                 self.scan_numeric_literal(token_info);
             }
@@ -112,8 +113,6 @@ impl<'source> Lexer<'source> {
         }
 
         let byte = self.source.get(self.position)?;
-        print!("Advancing byte: {:X}\n", byte);
-
         Some(*byte)
     }
 
@@ -126,11 +125,6 @@ impl<'source> Lexer<'source> {
     #[inline]
     fn peek_by(&self, offset: usize) -> Option<u8> {
         self.source.get(self.position + offset).copied()
-    }
-
-    /// Checks if there is nothing more to consume.
-    fn is_eof(&self) -> bool {
-        self.position >= self.source.len()
     }
 }
 
