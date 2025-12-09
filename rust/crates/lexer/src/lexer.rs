@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn test_numeric_literal_009_and_345() {
+    fn test_numeric_literal_009_space_345() {
         let mut lexer = Lexer::new(b"009 345");
         let actual_node = generate_node_from_lexer(&mut lexer);
 
