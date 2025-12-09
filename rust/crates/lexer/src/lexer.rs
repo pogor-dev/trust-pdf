@@ -59,8 +59,8 @@ impl<'source> Lexer<'source> {
         };
 
         match first_byte {
-            b'0'..=b'9' | b'+' | b'-' => {
-                // TODO: Architectural limits on numeric literals
+            b'0'..=b'9' | b'+' | b'-' | b'.' => {
+                // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
                 self.scan_numeric_literal(token_info);
             }
             _ => {}
@@ -68,23 +68,27 @@ impl<'source> Lexer<'source> {
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
         self.advance(); // consume the first digit
 
         while let Some(byte) = self.peek() {
             match byte {
                 b'0'..=b'9' => {
-                    self.advance();
+                    self.advance(); // consume the digit
+                }
+                b'.' => {
+                    self.advance(); // consume the dot
                 }
                 b'+' | b'-' => {
                     // Sign not allowed after first digit (e.g., `12+34` is invalid).
                     // According to PDF Compacted Syntax Matrix, integer and/or real numbers should be separated by delimiters.
-                    break;
+                    token_info.kind = SyntaxKind::BadToken; // mark as bad token
+                    self.advance();
                 }
                 _ => break,
             }
         }
 
-        token_info.kind = SyntaxKind::NumericLiteralToken;
         token_info.bytes = self.get_lexeme_bytes();
     }
 
@@ -198,7 +202,7 @@ mod tests {
     fn test_numeric_literal_123() {
         let mut lexer = Lexer::new(b"123");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"123");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"123");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
@@ -206,7 +210,7 @@ mod tests {
     fn test_numeric_literal_43445() {
         let mut lexer = Lexer::new(b"43445");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"43445");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"43445");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
@@ -214,7 +218,7 @@ mod tests {
     fn test_numeric_literal_plus_17() {
         let mut lexer = Lexer::new(b"+17");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"+17");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+17");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
@@ -222,7 +226,7 @@ mod tests {
     fn test_numeric_literal_minus_98() {
         let mut lexer = Lexer::new(b"-98");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"-98");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-98");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
@@ -230,7 +234,7 @@ mod tests {
     fn test_numeric_literal_0() {
         let mut lexer = Lexer::new(b"0");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"0");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"0");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
@@ -238,12 +242,79 @@ mod tests {
     fn test_numeric_literal_00987() {
         let mut lexer = Lexer::new(b"00987");
         let token = lexer.next_token().unwrap();
-        assert_numeric_literal_token(&token, b"00987");
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"00987");
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
-    fn assert_numeric_literal_token(token: &GreenToken, expected_bytes: &[u8]) {
-        assert_eq!(token.kind(), SyntaxKind::NumericLiteralToken.into());
+    #[test]
+    fn test_numeric_literal_34_5() {
+        let mut lexer = Lexer::new(b"34.5");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"34.5");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_minus_3_62() {
+        let mut lexer = Lexer::new(b"-3.62");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-3.62");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_plus_123_6() {
+        let mut lexer = Lexer::new(b"+123.6");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+123.6");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_4_() {
+        let mut lexer = Lexer::new(b"4.");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"4.");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_numeric_literal_minus__002() {
+        let mut lexer = Lexer::new(b"-.002");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-.002");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_009_87() {
+        let mut lexer = Lexer::new(b"009.87");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"009.87");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_numeric_literal__3_4() {
+        let mut lexer = Lexer::new(b".34");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b".34");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_numeric_plus_plus_invalid() {
+        let mut lexer = Lexer::new(b"++");
+        let token: GreenToken = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"++");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    fn assert_numeric_literal_token(token: &GreenToken, expected_kind: SyntaxKind, expected_bytes: &[u8]) {
+        assert_eq!(Into::<SyntaxKind>::into(token.kind()), expected_kind);
         assert_eq!(token.bytes(), expected_bytes);
         assert_eq!(token.width(), expected_bytes.len() as u32);
         assert_eq!(token.full_width(), expected_bytes.len() as u32);
@@ -252,7 +323,7 @@ mod tests {
     }
 
     fn assert_eof_token(token: &GreenToken) {
-        assert_eq!(token.kind(), SyntaxKind::EndOfFileToken.into());
+        assert_eq!(Into::<SyntaxKind>::into(token.kind()), SyntaxKind::EndOfFileToken);
         assert_eq!(token.bytes(), b"");
         assert_eq!(token.width(), 0);
         assert_eq!(token.full_width(), 0);
