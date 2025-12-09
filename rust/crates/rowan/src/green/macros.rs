@@ -178,7 +178,7 @@ macro_rules! tree {
     // Must be last since ($($tt:tt)*) matches everything
     // Returns (GreenNode, UniqueArc<GreenTree>) - caller must keep arena alive
     ($($tt:tt)*) => {{
-        let mut builder = $crate::green::builder::GreenNodeBuilder::new();
+        let mut builder = $crate::GreenNodeBuilder::new();
         $crate::tree!(@elements builder, $($tt)*);
         builder.finish()
     }};

@@ -40,7 +40,8 @@ impl Default for GreenCache {
 }
 
 impl GreenCache {
-    pub(crate) fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaInTree) {
+    // TODO: add alloc_trivia_list method to cache trivia lists
+    pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaInTree) {
         let hash = {
             let mut h = FxHasher::default();
             kind.hash(&mut h);
@@ -65,7 +66,7 @@ impl GreenCache {
         (hash, trivia)
     }
 
-    pub(crate) fn token(
+    pub fn token(
         &mut self,
         kind: SyntaxKind,
         text: &[u8],
@@ -99,7 +100,7 @@ impl GreenCache {
         (hash, token)
     }
 
-    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElementInTree)>, first_child: usize) -> (u64, GreenNodeInTree) {
+    pub fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElementInTree)>, first_child: usize) -> (u64, GreenNodeInTree) {
         let mut build_node = |children: &mut Vec<(u64, GreenElementInTree)>| {
             let full_width = children[first_child..].iter().map(|(_, child)| child.full_width()).sum();
 

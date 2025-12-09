@@ -9,10 +9,11 @@ mod trivia;
 
 pub use self::{
     builder::GreenNodeBuilder,
+    cache::GreenCache,
     element::GreenElement,
     node::GreenNode,
     token::GreenToken,
-    trivia::{GreenTrivia, GreenTriviaList},
+    trivia::{GreenTrivia, GreenTriviaInTree, GreenTriviaList},
 };
 
 pub(crate) use self::{

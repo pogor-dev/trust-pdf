@@ -1,11 +1,12 @@
 use std::ops::Range;
 
-use syntax::{GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind};
+use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
     source: &'source [u8],
     position: usize,
     lexeme: Option<Range<usize>>, // start=position, end=start+width
+    cache: GreenCache,
 }
 
 #[derive(Debug, Default)]
@@ -20,24 +21,37 @@ impl<'source> Lexer<'source> {
             source,
             position: 0,
             lexeme: None,
+            cache: GreenCache::default(),
         }
     }
 
     pub fn next_token(&mut self) -> Option<GreenToken> {
+        // TODO: Replace with GreenTokenInTree to use caching, otherwise every token is re-allocated
+        // TODO: Replace with GreenCache
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::LexerNode.into());
 
-        // TODO: add leading trivia handling
+        let leading_trivia = self.scan_trivia();
 
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
         self.start_lexeme();
         self.scan_token(&mut token_info);
         self.stop_lexeme();
 
-        // TODO: add trailing trivia handling
+        let trailing_trivia = self.scan_trivia();
 
         builder.start_token(token_info.kind.into());
+
+        for trivia in &leading_trivia {
+            builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation, we should add the entire list at once
+        }
+
         builder.token_text(token_info.bytes);
+
+        for trivia in &trailing_trivia {
+            builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation, we should add the entire list at once
+        }
+
         builder.finish_token();
         builder.finish_node();
         let node = builder.finish();
@@ -65,6 +79,26 @@ impl<'source> Lexer<'source> {
             }
             _ => {}
         };
+    }
+
+    fn scan_trivia(&mut self) -> Vec<GreenTriviaInTree> {
+        let mut trivia = Vec::new();
+        loop {
+            let first_byte = match self.peek() {
+                Some(byte) => byte,
+                _ => break,
+            };
+
+            match first_byte {
+                b' ' => {
+                    self.advance(); // consume space
+                    let (_, trivia_piece) = self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), b" ");
+                    trivia.push(trivia_piece);
+                }
+                _ => break,
+            }
+        }
+        trivia
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
@@ -195,8 +229,10 @@ fn is_delimiter(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::lexer;
+
     use super::Lexer;
-    use syntax::{GreenToken, SyntaxKind};
+    use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind, tree};
 
     #[test]
     fn test_numeric_literal_123() {
@@ -305,7 +341,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
     fn test_numeric_plus_plus_invalid() {
         let mut lexer = Lexer::new(b"++");
         let token: GreenToken = lexer.next_token().unwrap();
@@ -313,21 +348,121 @@ mod tests {
         assert_eof_token(&lexer.next_token().unwrap());
     }
 
+    #[test]
+    fn test_numeric_plus_minus_345_minus_36_invalid() {
+        let mut lexer = Lexer::new(b"+345-36");
+        let token: GreenToken = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"+345-36");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_009_and_345() {
+        let mut lexer = Lexer::new(b"009 345");
+        let actual_node = generate_node_from_lexer(&mut lexer);
+
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (SyntaxKind::NumericLiteralToken.into()) => {
+                    text(b"009"),
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+                },
+                (SyntaxKind::NumericLiteralToken.into(), b"345")
+            }
+        };
+
+        assert_nodes_equal(&expected_node, &actual_node);
+    }
+
+    fn assert_nodes_equal(expected: &GreenNode, actual: &GreenNode) {
+        let actual_children: Vec<GreenToken> = actual
+            .children()
+            .filter_map(|child| match child {
+                NodeOrToken::Token(token) => Some(token),
+                _ => None,
+            })
+            .collect();
+
+        let expected_children: Vec<GreenToken> = expected
+            .children()
+            .filter_map(|child| match child {
+                NodeOrToken::Token(token) => Some(token),
+                _ => None,
+            })
+            .collect();
+
+        let actual_debug = actual_children.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
+        let expected_debug = expected_children.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
+        assert_eq!(actual_debug, expected_debug);
+    }
+
+    fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
+        let mut tokens = Vec::new();
+
+        while let Some(token) = lexer.next_token() {
+            if token.kind() == SyntaxKind::EndOfFileToken.into() {
+                break;
+            }
+
+            tokens.push(token);
+        }
+
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::LexerNode.into());
+
+        for token in tokens {
+            builder.start_token(token.kind());
+
+            for trivia in token.leading_trivia().pieces() {
+                builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation
+            }
+
+            builder.token_text(&token.bytes());
+
+            for trivia in token.trailing_trivia().pieces() {
+                builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation
+            }
+
+            builder.finish_token();
+        }
+
+        builder.finish_node();
+        builder.finish()
+    }
+
     fn assert_numeric_literal_token(token: &GreenToken, expected_kind: SyntaxKind, expected_bytes: &[u8]) {
-        assert_eq!(Into::<SyntaxKind>::into(token.kind()), expected_kind);
-        assert_eq!(token.bytes(), expected_bytes);
-        assert_eq!(token.width(), expected_bytes.len() as u32);
-        assert_eq!(token.full_width(), expected_bytes.len() as u32);
-        assert_eq!(token.trailing_trivia().pieces().len(), 0);
-        assert_eq!(token.leading_trivia().pieces().len(), 0);
+        let actual_node = generate_lexer_node_tree(token);
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (expected_kind.into(), expected_bytes)
+            }
+        };
+
+        let actual_token = actual_node.children().next().unwrap();
+        let expected_token = expected_node.children().next().unwrap();
+        assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
+        assert_eq!(actual_node, expected_node);
     }
 
     fn assert_eof_token(token: &GreenToken) {
-        assert_eq!(Into::<SyntaxKind>::into(token.kind()), SyntaxKind::EndOfFileToken);
-        assert_eq!(token.bytes(), b"");
-        assert_eq!(token.width(), 0);
-        assert_eq!(token.full_width(), 0);
-        assert_eq!(token.trailing_trivia().pieces().len(), 0);
-        assert_eq!(token.leading_trivia().pieces().len(), 0);
+        let actual_node = generate_lexer_node_tree(token);
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (SyntaxKind::EndOfFileToken.into(), b"")
+            }
+        };
+
+        let actual_token = actual_node.children().next().unwrap();
+        let expected_token = expected_node.children().next().unwrap();
+        assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
+        assert_eq!(actual_node, expected_node);
+    }
+
+    fn generate_lexer_node_tree(token: &GreenToken) -> GreenNode {
+        tree! {
+            SyntaxKind::LexerNode.into() => {
+                (token.kind(), &token.bytes())
+            }
+        }
     }
 }
