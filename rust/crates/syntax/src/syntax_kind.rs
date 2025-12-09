@@ -18,8 +18,7 @@ pub enum SyntaxKind {
     CommentTrivia,
 
     // primitives
-    IntegerLiteralToken,
-    RealLiteralToken,
+    NumericLiteralToken,
     NameLiteralToken,
     StringLiteralToken,
     HexStringLiteralToken,

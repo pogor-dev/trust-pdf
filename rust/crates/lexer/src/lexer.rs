@@ -51,11 +51,16 @@ impl<'source> Lexer<'source> {
     fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
         let first_byte = match self.peek() {
             Some(first_byte) => first_byte,
-            _ => return, // TODO: add a test for this case
+            _ => {
+                token_info.kind = SyntaxKind::EndOfFileToken;
+                token_info.bytes = b"";
+                return;
+            }
         };
 
         match first_byte {
-            b'0'..=b'9' => {
+            b'0'..=b'9' | b'+' | b'-' => {
+                // TODO: Architectural limits on numeric literals
                 self.scan_numeric_literal(token_info);
             }
             _ => {}
@@ -70,11 +75,16 @@ impl<'source> Lexer<'source> {
                 b'0'..=b'9' => {
                     self.advance();
                 }
+                b'+' | b'-' => {
+                    // Sign not allowed after first digit (e.g., `12+34` is invalid).
+                    // According to PDF Compacted Syntax Matrix, integer and/or real numbers should be separated by delimiters.
+                    break;
+                }
                 _ => break,
             }
         }
 
-        token_info.kind = SyntaxKind::IntegerLiteralToken;
+        token_info.kind = SyntaxKind::NumericLiteralToken;
         token_info.bytes = self.get_lexeme_bytes();
     }
 
@@ -181,17 +191,72 @@ fn is_delimiter(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use syntax::SyntaxKind;
-
     use super::Lexer;
+    use syntax::{GreenToken, SyntaxKind};
 
     #[test]
-    fn test_numeric_literal() {
-        let source = b"12345";
-        let mut lexer = Lexer::new(source);
+    fn test_numeric_literal_123() {
+        let mut lexer = Lexer::new(b"123");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"123");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
 
-        let token = lexer.next_token().unwrap(); // unwrap is not recommended in production code, but acceptable in tests
-        assert_eq!(token.kind(), SyntaxKind::IntegerLiteralToken.into());
-        assert_eq!(token.bytes(), b"12345");
+    #[test]
+    fn test_numeric_literal_43445() {
+        let mut lexer = Lexer::new(b"43445");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"43445");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_plus_17() {
+        let mut lexer = Lexer::new(b"+17");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"+17");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_minus_98() {
+        let mut lexer = Lexer::new(b"-98");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"-98");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_0() {
+        let mut lexer = Lexer::new(b"0");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"0");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    #[test]
+    fn test_numeric_literal_00987() {
+        let mut lexer = Lexer::new(b"00987");
+        let token = lexer.next_token().unwrap();
+        assert_numeric_literal_token(&token, b"00987");
+        assert_eof_token(&lexer.next_token().unwrap());
+    }
+
+    fn assert_numeric_literal_token(token: &GreenToken, expected_bytes: &[u8]) {
+        assert_eq!(token.kind(), SyntaxKind::NumericLiteralToken.into());
+        assert_eq!(token.bytes(), expected_bytes);
+        assert_eq!(token.width(), expected_bytes.len() as u32);
+        assert_eq!(token.full_width(), expected_bytes.len() as u32);
+        assert_eq!(token.trailing_trivia().pieces().len(), 0);
+        assert_eq!(token.leading_trivia().pieces().len(), 0);
+    }
+
+    fn assert_eof_token(token: &GreenToken) {
+        assert_eq!(token.kind(), SyntaxKind::EndOfFileToken.into());
+        assert_eq!(token.bytes(), b"");
+        assert_eq!(token.width(), 0);
+        assert_eq!(token.full_width(), 0);
+        assert_eq!(token.trailing_trivia().pieces().len(), 0);
+        assert_eq!(token.leading_trivia().pieces().len(), 0);
     }
 }
