@@ -1,4 +1,4 @@
-use std::{fmt, hash, ptr::NonNull, slice};
+use std::{fmt, ptr::NonNull, slice};
 
 use countme::Count;
 use triomphe::Arc;
@@ -152,15 +152,6 @@ impl PartialEq for GreenTokenInTree {
 
 impl Eq for GreenTokenInTree {}
 
-impl hash::Hash for GreenTokenInTree {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.kind().hash(state);
-        self.bytes().hash(state);
-        self.leading_trivia().hash(state);
-        self.trailing_trivia().hash(state);
-    }
-}
-
 impl fmt::Debug for GreenTokenInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let full_bytes = self.full_bytes();
@@ -249,13 +240,6 @@ impl PartialEq for GreenToken {
 }
 
 impl Eq for GreenToken {}
-
-impl hash::Hash for GreenToken {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.token.hash(state);
-    }
-}
 
 impl fmt::Debug for GreenToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -620,40 +604,6 @@ mod token_tests {
 
         let debug_output = format!("{:?}", token);
         assert_eq!(debug_output, "GreenToken { kind: SyntaxKind(1), full_text: \"  42\\n\", full_width: 5 }");
-    }
-
-    #[test]
-    fn test_hash() {
-        let mut arena = GreenTree::new();
-        let empty_trivia = arena.alloc_trivia_list(&[]);
-
-        let token1 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
-        let token2 = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
-        let shareable = arena.shareable();
-        let token1 = token1.to_green_token(shareable.clone());
-        let token2 = token2.to_green_token(shareable.clone());
-
-        let mut hasher1 = DefaultHasher::new();
-        token1.hash(&mut hasher1);
-        let hash1 = hasher1.finish();
-
-        let mut hasher2 = DefaultHasher::new();
-        token2.hash(&mut hasher2);
-        let hash2 = hasher2.finish();
-
-        assert_eq!(hash1, hash2);
-
-        // Different kind
-        let mut arena = GreenTree::new();
-        let token3 = arena.alloc_token(WHITESPACE_KIND, b"42", empty_trivia, empty_trivia);
-        let shareable = arena.shareable();
-        let token3 = token3.to_green_token(shareable.clone());
-
-        let mut hasher3 = DefaultHasher::new();
-        token3.hash(&mut hasher3);
-        let hash3 = hasher3.finish();
-
-        assert_ne!(hash1, hash3);
     }
 
     #[test]
