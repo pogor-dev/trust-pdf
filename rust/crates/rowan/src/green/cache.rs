@@ -11,7 +11,7 @@ use crate::{
         arena::GreenTree,
         node::{GreenChild, GreenNodeInTree},
         token::GreenTokenInTree,
-        trivia::GreenTriviaInTree,
+        trivia::{GreenTriviaInTree, GreenTriviaListInTree},
     },
 };
 
@@ -24,6 +24,7 @@ struct NoHash<T>(T);
 pub struct GreenCache {
     nodes: HashMap<NoHash<GreenNodeInTree>, ()>,
     tokens: HashMap<NoHash<GreenTokenInTree>, ()>,
+    trivia_lists: HashMap<NoHash<GreenTriviaListInTree>, ()>,
     trivias: HashMap<NoHash<GreenTriviaInTree>, ()>,
     pub(super) arena: UniqueArc<GreenTree>,
 }
@@ -35,13 +36,13 @@ impl Default for GreenCache {
             nodes: HashMap::default(),
             tokens: HashMap::default(),
             trivias: HashMap::default(),
+            trivia_lists: HashMap::default(),
             arena: GreenTree::new(),
         }
     }
 }
 
 impl GreenCache {
-    // TODO: add alloc_trivia_list method to cache trivia lists
     pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaInTree) {
         let hash = trivia_hash(kind, text);
         let entry = self
@@ -59,6 +60,26 @@ impl GreenCache {
         };
 
         (hash, trivia)
+    }
+
+    pub fn trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> (u64, GreenTriviaListInTree) {
+        let hash = trivia_list_hash(pieces);
+        let entry = self.trivia_lists.raw_entry_mut().from_hash(hash, |list| {
+            let is_length_equal = list.0.pieces().len() == pieces.len();
+            let are_pieces_equal = list.0.pieces().iter().zip(pieces).all(|(a, b)| a.kind() == b.kind() && a.bytes() == b.bytes());
+            is_length_equal && are_pieces_equal
+        });
+
+        let trivia_list = match entry {
+            RawEntryMut::Occupied(entry) => entry.key().0,
+            RawEntryMut::Vacant(entry) => {
+                let trivia_list = self.arena.alloc_trivia_list(pieces);
+                entry.insert_with_hasher(hash, NoHash(trivia_list), (), |l| trivia_list_hash(&l.0.pieces()));
+                trivia_list
+            }
+        };
+
+        (hash, trivia_list)
     }
 
     pub fn token(
@@ -182,6 +203,15 @@ fn trivia_hash(kind: SyntaxKind, bytes: &[u8]) -> u64 {
     let mut h = FxHasher::default();
     kind.hash(&mut h);
     bytes.hash(&mut h);
+    h.finish()
+}
+
+fn trivia_list_hash(pieces: &[GreenTriviaInTree]) -> u64 {
+    let mut h = FxHasher::default();
+    pieces.len().hash(&mut h);
+    for piece in pieces {
+        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
+    }
     h.finish()
 }
 
