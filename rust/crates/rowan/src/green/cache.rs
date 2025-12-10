@@ -17,6 +17,7 @@ use crate::{
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
+/// Wrapper for values stored as HashMap keys with externally-provided hash functions.
 #[derive(Debug)]
 struct NoHash<T>(T);
 
@@ -42,13 +43,7 @@ impl Default for GreenCache {
 impl GreenCache {
     // TODO: add alloc_trivia_list method to cache trivia lists
     pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaInTree) {
-        let hash = {
-            let mut h = FxHasher::default();
-            kind.hash(&mut h);
-            text.hash(&mut h);
-            h.finish()
-        };
-
+        let hash = trivia_hash(kind, text);
         let entry = self
             .trivias
             .raw_entry_mut()
@@ -58,7 +53,7 @@ impl GreenCache {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
                 let trivia = self.arena.alloc_trivia(kind, text);
-                entry.insert_with_hasher(hash, NoHash(trivia), (), |t| trivia_hash(&t.0));
+                entry.insert_with_hasher(hash, NoHash(trivia), (), |t| trivia_hash(t.0.kind(), t.0.bytes()));
                 trivia
             }
         };
@@ -183,10 +178,10 @@ impl GreenCache {
     }
 }
 
-fn trivia_hash(trivia: &GreenTriviaInTree) -> u64 {
+fn trivia_hash(kind: SyntaxKind, bytes: &[u8]) -> u64 {
     let mut h = FxHasher::default();
-    trivia.kind().hash(&mut h);
-    trivia.bytes().hash(&mut h);
+    kind.hash(&mut h);
+    bytes.hash(&mut h);
     h.finish()
 }
 
@@ -196,11 +191,11 @@ fn token_hash(token: &GreenTokenInTree) -> u64 {
     token.bytes().hash(&mut h);
 
     for piece in token.leading_trivia().pieces() {
-        trivia_hash(piece).hash(&mut h);
+        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
     }
 
     for piece in token.trailing_trivia().pieces() {
-        trivia_hash(piece).hash(&mut h);
+        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
     }
 
     h.finish()
