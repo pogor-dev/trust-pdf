@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
+use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
     source: &'source [u8],
@@ -217,8 +217,6 @@ fn is_delimiter(byte: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer;
-
     use super::Lexer;
     use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind, tree};
 
