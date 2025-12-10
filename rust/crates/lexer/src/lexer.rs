@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, NodeOrToken, SyntaxKind};
+use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
     source: &'source [u8],
@@ -25,40 +25,24 @@ impl<'source> Lexer<'source> {
         }
     }
 
-    pub fn next_token(&mut self) -> Option<GreenToken> {
-        // TODO: Replace with GreenTokenInTree to use caching, otherwise every token is re-allocated
-        // TODO: Replace with GreenCache
-        let mut builder = GreenNodeBuilder::new();
-        builder.start_node(SyntaxKind::LexerNode.into());
-
-        let leading_trivia = self.scan_trivia();
-
+    /// Returns the next token from the source.
+    /// If the end of the source is reached, returns an EOF token.
+    pub fn next_token(&mut self) -> GreenToken {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
-        self.start_lexeme();
+        let leading_trivia = self.scan_trivia();
         self.scan_token(&mut token_info);
-        self.stop_lexeme();
-
         let trailing_trivia = self.scan_trivia();
 
-        builder.start_token(token_info.kind.into());
-
-        for trivia in &leading_trivia {
-            builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation, we should add the entire list at once
-        }
-
-        builder.token_text(token_info.bytes);
-
-        for trivia in &trailing_trivia {
-            builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation, we should add the entire list at once
-        }
-
-        builder.finish_token();
+        // Build the token
+        let mut builder = GreenNodeBuilder::new();
+        builder.start_node(SyntaxKind::LexerNode.into());
+        builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
         builder.finish_node();
         let node = builder.finish();
 
         match node.children().next() {
-            Some(NodeOrToken::Token(token)) => Some(token),
-            _ => None,
+            Some(NodeOrToken::Token(token)) => token,
+            _ => panic!("Expected a token node"),
         }
     }
 
@@ -72,6 +56,8 @@ impl<'source> Lexer<'source> {
             }
         };
 
+        self.start_lexeme();
+
         match first_byte {
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
@@ -79,9 +65,11 @@ impl<'source> Lexer<'source> {
             }
             _ => {}
         };
+
+        self.stop_lexeme();
     }
 
-    fn scan_trivia(&mut self) -> Vec<GreenTriviaInTree> {
+    fn scan_trivia(&mut self) -> GreenTriviaListInTree {
         let mut trivia = Vec::new();
         loop {
             let first_byte = match self.peek() {
@@ -98,7 +86,7 @@ impl<'source> Lexer<'source> {
                 _ => break,
             }
         }
-        trivia
+        self.cache.trivia_list(&trivia).1
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
@@ -237,123 +225,123 @@ mod tests {
     #[test]
     fn test_numeric_literal_123() {
         let mut lexer = Lexer::new(b"123");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"123");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_43445() {
         let mut lexer = Lexer::new(b"43445");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"43445");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_plus_17() {
         let mut lexer = Lexer::new(b"+17");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+17");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_minus_98() {
         let mut lexer = Lexer::new(b"-98");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-98");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_0() {
         let mut lexer = Lexer::new(b"0");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"0");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_00987() {
         let mut lexer = Lexer::new(b"00987");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"00987");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_34_5() {
         let mut lexer = Lexer::new(b"34.5");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"34.5");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_minus_3_62() {
         let mut lexer = Lexer::new(b"-3.62");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-3.62");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_plus_123_6() {
         let mut lexer = Lexer::new(b"+123.6");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+123.6");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_4_() {
         let mut lexer = Lexer::new(b"4.");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"4.");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     #[allow(non_snake_case)]
     fn test_numeric_literal_minus__002() {
         let mut lexer = Lexer::new(b"-.002");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-.002");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_literal_009_87() {
         let mut lexer = Lexer::new(b"009.87");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"009.87");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     #[allow(non_snake_case)]
     fn test_numeric_literal__3_4() {
         let mut lexer = Lexer::new(b".34");
-        let token = lexer.next_token().unwrap();
+        let token = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b".34");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_plus_plus_invalid() {
         let mut lexer = Lexer::new(b"++");
-        let token: GreenToken = lexer.next_token().unwrap();
+        let token: GreenToken = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"++");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
     fn test_numeric_plus_minus_345_minus_36_invalid() {
         let mut lexer = Lexer::new(b"+345-36");
-        let token: GreenToken = lexer.next_token().unwrap();
+        let token: GreenToken = lexer.next_token();
         assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"+345-36");
-        assert_eof_token(&lexer.next_token().unwrap());
+        assert_eof_token(&lexer.next_token());
     }
 
     #[test]
@@ -397,35 +385,15 @@ mod tests {
     }
 
     fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
-        let mut tokens = Vec::new();
-
-        while let Some(token) = lexer.next_token() {
-            if token.kind() == SyntaxKind::EndOfFileToken.into() {
-                break;
-            }
-
-            tokens.push(token);
-        }
+        let tokens: Vec<_> = std::iter::from_fn(|| Some(lexer.next_token()))
+            .take_while(|t| t.kind() != SyntaxKind::EndOfFileToken.into())
+            .collect();
 
         let mut builder = GreenNodeBuilder::new();
         builder.start_node(SyntaxKind::LexerNode.into());
-
-        for token in tokens {
-            builder.start_token(token.kind());
-
-            for trivia in token.leading_trivia().pieces() {
-                builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation
-            }
-
-            builder.token_text(&token.bytes());
-
-            for trivia in token.trailing_trivia().pieces() {
-                builder.trivia(trivia.kind(), trivia.bytes()); // TODO: optimize to avoid double allocation
-            }
-
-            builder.finish_token();
-        }
-
+        tokens.iter().for_each(|token| {
+            builder.token(token.kind(), &token.bytes(), token.leading_trivia().pieces(), token.trailing_trivia().pieces());
+        });
         builder.finish_node();
         builder.finish()
     }

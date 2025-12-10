@@ -41,6 +41,8 @@ impl GreenNodeBuilder {
     /// Adds new token to the current branch.
     #[inline]
     pub fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: &[GreenTriviaInTree], trailing_trivia: &[GreenTriviaInTree]) {
+        let leading_trivia = self.cache.trivia_list(leading_trivia).1;
+        let trailing_trivia = self.cache.trivia_list(trailing_trivia).1;
         let (hash, token) = self.cache.token(kind, text, leading_trivia, trailing_trivia);
         self.children.push((hash, token.into()));
     }
@@ -75,11 +77,10 @@ impl GreenNodeBuilder {
     pub fn finish_token(&mut self) {
         let token_builder = self.current_token.take().expect("No current token to finish");
         let text = token_builder.text.expect("Token text must be set before finishing the token");
+        let leading_trivia = self.cache.trivia_list(&token_builder.leading_trivia).1;
+        let trailing_trivia = self.cache.trivia_list(&token_builder.trailing_trivia).1;
 
-        let (hash, token) = self
-            .cache
-            .token(token_builder.kind, &text, &token_builder.leading_trivia, &token_builder.trailing_trivia);
-
+        let (hash, token) = self.cache.token(token_builder.kind, &text, leading_trivia, trailing_trivia);
         self.children.push((hash, token.into()));
     }
 

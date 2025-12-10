@@ -43,17 +43,17 @@ impl Default for GreenCache {
 }
 
 impl GreenCache {
-    pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTriviaInTree) {
-        let hash = trivia_hash(kind, text);
+    pub fn trivia(&mut self, kind: SyntaxKind, bytes: &[u8]) -> (u64, GreenTriviaInTree) {
+        let hash = trivia_hash(kind, bytes);
         let entry = self
             .trivias
             .raw_entry_mut()
-            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.bytes() == text);
+            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.bytes() == bytes);
 
         let trivia = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
-                let trivia = self.arena.alloc_trivia(kind, text);
+                let trivia = self.arena.alloc_trivia(kind, bytes);
                 entry.insert_with_hasher(hash, NoHash(trivia), (), |t| trivia_hash(t.0.kind(), t.0.bytes()));
                 trivia
             }
@@ -85,30 +85,23 @@ impl GreenCache {
     pub fn token(
         &mut self,
         kind: SyntaxKind,
-        text: &[u8],
-        leading_trivia: &[GreenTriviaInTree],
-        trailing_trivia: &[GreenTriviaInTree],
+        bytes: &[u8],
+        leading_trivia: GreenTriviaListInTree,
+        trailing_trivia: GreenTriviaListInTree,
     ) -> (u64, GreenTokenInTree) {
-        let hash = {
-            let mut h = FxHasher::default();
-            kind.hash(&mut h);
-            text.hash(&mut h);
-            h.finish()
-        };
-
+        let hash = token_hash(kind, bytes, leading_trivia, trailing_trivia);
         let entry = self
             .tokens
             .raw_entry_mut()
-            .from_hash(hash, |token| token.0.kind() == kind && token.0.bytes().as_slice() == text);
+            .from_hash(hash, |token| token.0.kind() == kind && token.0.bytes().as_slice() == bytes);
 
         let token = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
-                // TODO: optimize trivia allocation to avoid double allocations
-                let leading_trivia_list = self.arena.alloc_trivia_list(leading_trivia);
-                let trailing_trivia_list = self.arena.alloc_trivia_list(trailing_trivia);
-                let token = self.arena.alloc_token(kind, text, leading_trivia_list, trailing_trivia_list);
-                entry.insert_with_hasher(hash, NoHash(token), (), |t| token_hash(&t.0));
+                let token = self.arena.alloc_token(kind, bytes, leading_trivia, trailing_trivia);
+                entry.insert_with_hasher(hash, NoHash(token), (), |t| {
+                    token_hash(t.0.kind(), t.0.bytes().as_slice(), *t.0.leading_trivia(), *t.0.trailing_trivia())
+                });
                 token
             }
         };
@@ -215,19 +208,15 @@ fn trivia_list_hash(pieces: &[GreenTriviaInTree]) -> u64 {
     h.finish()
 }
 
-fn token_hash(token: &GreenTokenInTree) -> u64 {
+fn token_hash(kind: SyntaxKind, bytes: &[u8], leading_trivia: GreenTriviaListInTree, trailing_trivia: GreenTriviaListInTree) -> u64 {
     let mut h = FxHasher::default();
-    token.kind().hash(&mut h);
-    token.bytes().hash(&mut h);
-
-    for piece in token.leading_trivia().pieces() {
-        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
-    }
-
-    for piece in token.trailing_trivia().pieces() {
-        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
-    }
-
+    kind.hash(&mut h);
+    bytes.hash(&mut h);
+    leading_trivia
+        .pieces()
+        .iter()
+        .chain(trailing_trivia.pieces().iter())
+        .for_each(|piece| trivia_hash(piece.kind(), piece.bytes()).hash(&mut h));
     h.finish()
 }
 
@@ -237,7 +226,7 @@ fn node_hash(node: &GreenNodeInTree) -> u64 {
     for child in node.children() {
         match child {
             GreenChild::Node { rel_offset: _, node } => node_hash(node),
-            GreenChild::Token { rel_offset: _, token } => token_hash(token),
+            GreenChild::Token { rel_offset: _, token } => token_hash(token.kind(), token.bytes().as_slice(), *token.leading_trivia(), *token.trailing_trivia()),
         }
         .hash(&mut h)
     }
