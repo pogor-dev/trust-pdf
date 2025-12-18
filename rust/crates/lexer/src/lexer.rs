@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
+use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
     pub(super) source: &'source [u8],
@@ -78,15 +78,30 @@ impl<'source> Lexer<'source> {
             };
 
             match first_byte {
-                b' ' => {
-                    self.advance(); // consume space
-                    let (_, trivia_piece) = self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), b" ");
-                    trivia.push(trivia_piece);
+                b' ' | b'\0' | b'\t' | b'\x0C' => {
+                    trivia.push(self.scan_whitespace());
                 }
                 _ => break,
             }
         }
         self.cache.trivia_list(&trivia).1
+    }
+
+    fn scan_whitespace(&mut self) -> GreenTriviaInTree {
+        let pos = self.position;
+        self.advance(); // consume the first whitespace
+
+        while let Some(byte) = self.peek() {
+            match byte {
+                b' ' | b'\0' | b'\t' | b'\x0C' => {
+                    self.advance(); // consume whitespace
+                }
+                _ => break,
+            }
+        }
+
+        let spaces = &self.source[pos..self.position];
+        self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
@@ -127,10 +142,9 @@ impl<'source> Lexer<'source> {
 ///
 /// See: ISO 32000-2:2020, §7.2.3 Character set, Table 1: White-space characters.
 fn is_whitespace(byte: u8) -> bool {
-    matches!(byte, b'\0' | b'\t' | b'\n' | b'\x0C' | b'\r' | b' ')
+    matches!(byte, b'\0' | b'\t' | b'\x0C' | b'\r' | b'\n' | b' ')
 }
 
-/// Check if a sequence of bytes make an EOL (end of line).
 ///
 /// An EOL is defined as either:
 /// - A single LINE FEED (`\n`, 0x0A)
@@ -329,6 +343,28 @@ mod tests {
         assert_nodes_equal(&expected_node, &actual_node);
     }
 
+    #[test]
+    fn test_trivia_different_whitespaces() {
+        let mut lexer = Lexer::new(b"\0009 \t \x0C345\0\t\x0C ");
+        let actual_node = generate_node_from_lexer(&mut lexer);
+
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (SyntaxKind::NumericLiteralToken.into()) => {
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0"),
+                    text(b"009"),
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" \t \x0C"),
+                },
+                (SyntaxKind::NumericLiteralToken.into()) => {
+                    text(b"345"),
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0\t\x0C "),
+                }
+            }
+        };
+
+        assert_nodes_equal(&expected_node, &actual_node);
+    }
+
     fn assert_nodes_equal(expected: &GreenNode, actual: &GreenNode) {
         let actual_children: Vec<GreenToken> = actual
             .children()
@@ -346,9 +382,7 @@ mod tests {
             })
             .collect();
 
-        let actual_debug = actual_children.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
-        let expected_debug = expected_children.iter().map(|t| format!("{:?}", t)).collect::<Vec<_>>();
-        assert_eq!(actual_debug, expected_debug);
+        assert_eq!(actual_children, expected_children);
     }
 
     fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
