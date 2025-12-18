@@ -186,8 +186,8 @@ macro_rules! tree {
 
 #[cfg(test)]
 mod builder_tests {
-
     use crate::SyntaxKind;
+    use pretty_assertions::assert_eq;
 
     const OBJECT: SyntaxKind = SyntaxKind(1000);
     const INDIRECT: SyntaxKind = SyntaxKind(1001);

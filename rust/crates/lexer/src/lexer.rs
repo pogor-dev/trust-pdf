@@ -81,6 +81,9 @@ impl<'source> Lexer<'source> {
                 b' ' | b'\0' | b'\t' | b'\x0C' => {
                     trivia.push(self.scan_whitespace());
                 }
+                b'\r' | b'\n' => {
+                    trivia.push(self.scan_end_of_line());
+                }
                 _ => break,
             }
         }
@@ -95,6 +98,26 @@ impl<'source> Lexer<'source> {
             match byte {
                 b' ' | b'\0' | b'\t' | b'\x0C' => {
                     self.advance(); // consume whitespace
+                }
+                _ => break,
+            }
+        }
+
+        let spaces = &self.source[pos..self.position];
+        self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
+    }
+
+    fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
+        let pos = self.position;
+        self.advance(); // consume the first EOL byte
+
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'\r' if self.peek_by(1) == Some(b'\n') => {
+                    self.advance_by(2); // consume CR LF
+                }
+                b'\r' | b'\n' => {
+                    self.advance(); // consume CARRIAGE RETURN or LINE FEED
                 }
                 _ => break,
             }
@@ -183,6 +206,7 @@ fn is_delimiter(byte: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::Lexer;
+    use pretty_assertions::assert_eq;
     use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind, tree};
 
     #[test]
@@ -345,19 +369,22 @@ mod tests {
 
     #[test]
     fn test_trivia_different_whitespaces() {
-        let mut lexer = Lexer::new(b"\0009 \t \x0C345\0\t\x0C ");
+        let mut lexer = Lexer::new(b"\r\0009 \t \x0C\r\n345\0\t\x0C \n");
         let actual_node = generate_node_from_lexer(&mut lexer);
 
         let expected_node = tree! {
             SyntaxKind::LexerNode.into() => {
                 (SyntaxKind::NumericLiteralToken.into()) => {
+                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
                     trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0"),
                     text(b"009"),
                     trivia(SyntaxKind::WhitespaceTrivia.into(), b" \t \x0C"),
+                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
                 },
                 (SyntaxKind::NumericLiteralToken.into()) => {
                     text(b"345"),
                     trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0\t\x0C "),
+                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
                 }
             }
         };

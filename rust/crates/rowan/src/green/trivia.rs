@@ -166,8 +166,6 @@ impl PartialEq for GreenTriviaList {
 
 impl Eq for GreenTriviaList {}
 
-
-
 impl fmt::Debug for GreenTriviaList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.trivia_list, f)
@@ -333,8 +331,6 @@ impl PartialEq for GreenTrivia {
 
 impl Eq for GreenTrivia {}
 
-
-
 impl fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.trivia, f)
@@ -350,6 +346,7 @@ impl fmt::Display for GreenTrivia {
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_memory_layout() {
@@ -381,13 +378,12 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod trivia_tests {
-    use std::hash::{DefaultHasher, Hash, Hasher};
+    use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::green::arena::GreenTree;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
-    const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
 
     #[test]
     fn test_kind() {
@@ -456,10 +452,9 @@ mod trivia_tests {
 
 #[cfg(test)]
 mod trivia_list_tests {
-
-    use crate::green::arena::GreenTree;
-
     use super::*;
+    use crate::green::arena::GreenTree;
+    use pretty_assertions::assert_eq;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
     const COMMENT_KIND: SyntaxKind = SyntaxKind(2);

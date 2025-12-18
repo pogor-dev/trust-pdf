@@ -26,6 +26,7 @@ hashbrown = "0.16.0"
 la-arena = "0.3.1"
 iai-callgrind = "0.16.1"
 iai-callgrind-macros = "0.6.1"
+pretty_assertions = "1.4.1"
 rustc-hash = "2.1.1"
 triomphe = "0.1.15"
 

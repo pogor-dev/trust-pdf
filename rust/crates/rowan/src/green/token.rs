@@ -154,12 +154,18 @@ impl Eq for GreenTokenInTree {}
 
 impl fmt::Debug for GreenTokenInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let bytes = self.bytes();
         let full_bytes = self.full_bytes();
+        let text_str = String::from_utf8_lossy(&bytes);
         let full_text_str = String::from_utf8_lossy(&full_bytes);
         f.debug_struct("GreenToken")
             .field("kind", &self.kind())
+            .field("text", &text_str)
+            .field("width", &self.width())
             .field("full_text", &full_text_str)
             .field("full_width", &self.full_width())
+            .field("leading_trivia_count", &self.leading_trivia().pieces().len())
+            .field("trailing_trivia_count", &self.trailing_trivia().pieces().len())
             .finish()
     }
 }
@@ -256,6 +262,7 @@ impl fmt::Display for GreenToken {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_memory_layout() {
@@ -275,7 +282,7 @@ mod tests {
 
 #[cfg(test)]
 mod token_tests {
-    use std::hash::{DefaultHasher, Hash, Hasher};
+    use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::green::arena::GreenTree;
@@ -603,7 +610,10 @@ mod token_tests {
             .to_green_token(arena.shareable());
 
         let debug_output = format!("{:?}", token);
-        assert_eq!(debug_output, "GreenToken { kind: SyntaxKind(1), full_text: \"  42\\n\", full_width: 5 }");
+        assert_eq!(
+            debug_output,
+            "GreenToken { kind: SyntaxKind(1), text: \"42\", width: 2, full_text: \"  42\\n\", full_width: 5, leading_trivia_count: 1, trailing_trivia_count: 1 }"
+        );
     }
 
     #[test]

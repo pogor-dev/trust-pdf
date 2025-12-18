@@ -11,5 +11,8 @@ repository.workspace = true
 # Local crates
 syntax = { path = "../syntax" }
 
+[dev-dependencies]
+pretty_assertions.workspace = true
+
 # Non-local crates
 triomphe.workspace = true

@@ -457,8 +457,8 @@ impl FusedIterator for Children<'_> {}
 
 #[cfg(test)]
 mod memory_layout_tests {
-
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_memory_layout() {
@@ -477,6 +477,7 @@ mod memory_layout_tests {
 mod node_tests {
     use super::*;
     use crate::tree;
+    use pretty_assertions::assert_eq;
 
     const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
     const NODE_KIND: SyntaxKind = SyntaxKind(100);
@@ -687,6 +688,7 @@ mod node_tests {
 mod node_children_tests {
     use super::*;
     use crate::tree;
+    use pretty_assertions::assert_eq;
 
     const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
     const NODE_KIND: SyntaxKind = SyntaxKind(100);
