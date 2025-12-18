@@ -3,9 +3,9 @@ use std::ops::Range;
 use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 pub struct Lexer<'source> {
-    source: &'source [u8],
-    position: usize,
-    lexeme: Option<Range<usize>>, // start=position, end=start+width
+    pub(super) source: &'source [u8],
+    pub(super) position: usize,
+    pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
     cache: GreenCache,
 }
 
@@ -112,55 +112,6 @@ impl<'source> Lexer<'source> {
         }
 
         token_info.bytes = self.get_lexeme_bytes();
-    }
-
-    /// Start recording a lexeme from the current position.
-    fn start_lexeme(&mut self) {
-        self.lexeme = Some(self.position..self.position);
-    }
-
-    /// Finalize the current lexeme by setting its end position.
-    fn stop_lexeme(&mut self) {
-        self.lexeme = None;
-    }
-
-    /// Get the current lexeme bytes.
-    fn get_lexeme_bytes(&self) -> &'source [u8] {
-        match &self.lexeme {
-            Some(range) => &self.source[range.clone()],
-            None => b"",
-        }
-    }
-
-    /// Advance the cursor by one byte and return the byte at the new position.
-    fn advance(&mut self) -> Option<u8> {
-        self.advance_by(1)
-    }
-
-    /// Advance the cursor by `offset` bytes and return the byte at the new position.
-    #[inline]
-    fn advance_by(&mut self, offset: usize) -> Option<u8> {
-        assert!(offset > 0, "Offset must be positive");
-        self.position = self.position + offset;
-
-        // Update lexeme range before retrieving byte, so it updates even at EOF
-        if let Some(lexeme) = &mut self.lexeme {
-            lexeme.end += offset;
-        }
-
-        let byte = self.source.get(self.position)?;
-        Some(*byte)
-    }
-
-    /// Peek at the first byte without advancing the cursor.
-    fn peek(&self) -> Option<u8> {
-        self.peek_by(0)
-    }
-
-    /// Peek at the byte at `offset` without advancing the cursor.
-    #[inline]
-    fn peek_by(&self, offset: usize) -> Option<u8> {
-        self.source.get(self.position + offset).copied()
     }
 }
 
@@ -343,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    fn test_numeric_literal_009_space_345() {
+    fn test_trivia_single_space() {
         let mut lexer = Lexer::new(b"009 345");
         let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -352,6 +303,24 @@ mod tests {
                 (SyntaxKind::NumericLiteralToken.into()) => {
                     text(b"009"),
                     trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+                },
+                (SyntaxKind::NumericLiteralToken.into(), b"345")
+            }
+        };
+
+        assert_nodes_equal(&expected_node, &actual_node);
+    }
+
+    #[test]
+    fn test_trivia_multiple_spaces() {
+        let mut lexer = Lexer::new(b"009       345");
+        let actual_node = generate_node_from_lexer(&mut lexer);
+
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (SyntaxKind::NumericLiteralToken.into()) => {
+                    text(b"009"),
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"       "),
                 },
                 (SyntaxKind::NumericLiteralToken.into(), b"345")
             }
