@@ -46,7 +46,7 @@ impl<'source> Lexer<'source> {
 
     /// Peek at the byte at `offset` without advancing the cursor.
     #[inline]
-    pub(crate) fn peek_by(&self, offset: usize) -> Option<u8> {
+    pub(super) fn peek_by(&self, offset: usize) -> Option<u8> {
         self.source.get(self.position + offset).copied()
     }
 }

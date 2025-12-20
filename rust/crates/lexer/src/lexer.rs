@@ -27,8 +27,28 @@ impl<'source> Lexer<'source> {
         }
     }
 
-    /// Returns the next token from the source.
-    /// If the end of the source is reached, returns an EOF token.
+    /// Scans and returns the next token from the source, including its associated trivia.
+    ///
+    /// The token includes:
+    /// - **Leading trivia**: whitespace, end-of-line sequences, and comments appearing before the token
+    /// - **Token text**: the actual token bytes (e.g., numeric literal)
+    /// - **Trailing trivia**: whitespace, end-of-line sequences, and comments appearing after the token
+    ///
+    /// Trivia is preserved for full-fidelity reconstruction of the source PDF. The token's width
+    /// includes only the token text, while `full_width()` includes both trivia and text.
+    ///
+    /// # Returns
+    ///
+    /// A [`GreenToken`] representing the next lexical element. When the end of the source is reached,
+    /// returns an `EndOfFileToken` with empty text and no trivia.
+    ///
+    /// # Example
+    ///
+    /// ```text
+    /// Input: "  123 % comment\n"
+    /// Token: kind=NumericLiteralToken, text="123"
+    ///        leading="  ", trailing=" % comment\n"
+    /// ```
     pub fn next_token(&mut self) -> GreenToken {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
         let leading_trivia = self.scan_trivia();
@@ -48,6 +68,17 @@ impl<'source> Lexer<'source> {
         }
     }
 
+    /// Scans the main token content from the current position.
+    ///
+    /// This function examines the first byte at the current position and dispatches
+    /// to the appropriate token-specific scanner (e.g., numeric literals). It populates
+    /// the provided `token_info` with the token's kind and byte slice.
+    ///
+    /// Currently supports:
+    /// - Numeric literals (integers and reals): `0-9`, `+`, `-`, `.`
+    ///
+    /// For unsupported characters, the token_info remains in its default state (kind=Unknown, bytes=empty).
+    /// When EOF is reached, sets `EndOfFileToken` with empty bytes.
     fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
         let first_byte = match self.peek() {
             Some(first_byte) => first_byte,
@@ -65,12 +96,25 @@ impl<'source> Lexer<'source> {
                 // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
                 self.scan_numeric_literal(token_info);
             }
+            // TODO: Add test coverage for unknown/unsupported characters (e.g., @, #) to verify error handling behavior
             _ => {}
         };
 
         self.stop_lexeme();
     }
 
+    /// Scans consecutive trivia (non-semantic elements) from the current position.
+    ///
+    /// Trivia includes whitespace, end-of-line sequences, and comments that don't affect
+    /// the semantic meaning of the PDF but must be preserved for full-fidelity reconstruction.
+    ///
+    /// Recognized trivia types:
+    /// - Whitespace: space, NULL, tab, form feed
+    /// - End-of-line: CR, LF, or CR+LF sequences
+    /// - Comments: `%` to end of line
+    ///
+    /// Trivia is scanned greedily until a non-trivia character is encountered.
+    /// Returns a cached trivia list for efficient memory usage and deduplication.
     fn scan_trivia(&mut self) -> GreenTriviaListInTree {
         let mut trivia = Vec::new();
         loop {
@@ -95,6 +139,13 @@ impl<'source> Lexer<'source> {
         self.cache.trivia_list(&trivia).1
     }
 
+    /// Scans consecutive whitespace characters and returns a cached trivia entry.
+    ///
+    /// Consumes space (0x20), NULL (0x00), tab (0x09), and form feed (0x0C) characters
+    /// greedily until a non-whitespace character is encountered. The scanned bytes are
+    /// cached for memory efficiency and deduplication.
+    ///
+    /// Does not consume end-of-line sequences (CR/LF) - those are handled separately.
     fn scan_whitespace(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
         self.advance(); // consume the first whitespace
@@ -112,6 +163,16 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
     }
 
+    // TODO: Potential bug - multiple consecutive line breaks (e.g., "\n\n") are consumed as single trivia piece.
+    // TODO: Add test coverage for consecutive EOL sequences (\n\n, \r\r, \r\n\r\n) to verify/document intended behavior.
+    // Each EOL sequence should likely be tracked as separate EndOfLineTrivia entries for proper PDF semantics.
+    /// Scans end-of-line sequences and returns a cached trivia entry.
+    ///
+    /// Recognizes PDF EOL formats: LF (0x0A), CR (0x0D), and CR+LF (0x0D 0x0A).
+    /// Currently consumes multiple consecutive EOL sequences as a single trivia piece
+    /// for efficiency, though this may need refinement for strict PDF semantics.
+    ///
+    /// The scanned bytes are cached for memory efficiency.
     fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
         self.advance(); // consume the first EOL byte
@@ -128,10 +189,17 @@ impl<'source> Lexer<'source> {
             }
         }
 
-        let spaces = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::EndOfLineTrivia.into(), spaces).1
+        let eol_bytes = &self.source[pos..self.position];
+        self.cache.trivia(SyntaxKind::EndOfLineTrivia.into(), eol_bytes).1
     }
 
+    /// Scans a PDF comment and returns a cached trivia entry.
+    ///
+    /// Comments in PDF begin with `%` and extend to the end of the line.
+    /// The comment includes the `%` character but stops before the EOL sequence.
+    /// The EOL is handled separately by `scan_trivia()` as its own trivia piece.
+    ///
+    /// The scanned bytes (including `%`) are cached for memory efficiency.
     fn scan_comment(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
         self.advance(); // consume the '%'
@@ -149,6 +217,19 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::CommentTrivia.into(), comment_bytes).1
     }
 
+    // TODO: Bug - allows multiple decimal points (e.g., "1.2.3.4" accepted as single token).
+    // Should track if decimal point seen and mark as BadToken on subsequent decimal points.
+    /// Scans a numeric literal (integer or real number) and populates token_info.
+    ///
+    /// Accepts digits (0-9), decimal points (.), and signs (+/-) at the start.
+    /// Signs after the first character mark the token as `BadToken` since PDF requires
+    /// numeric literals to be delimiter-separated.
+    ///
+    /// Updates token_info with:
+    /// - `kind`: `NumericLiteralToken` for valid numbers, `BadToken` for invalid ones
+    /// - `bytes`: the complete scanned byte sequence
+    ///
+    /// The bytes are extracted from the lexeme range and not cached directly.
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
         self.advance(); // consume the first digit
@@ -363,6 +444,8 @@ mod tests {
         assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"+345-36");
         assert_eof_token(&lexer.next_token());
     }
+
+    // TODO: Add test coverage for multiple decimal points (e.g., "1.2.3", "4.5.6.7") to verify proper BadToken handling.
 
     #[test]
     fn test_trivia_single_space() {

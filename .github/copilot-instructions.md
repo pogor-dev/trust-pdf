@@ -30,7 +30,7 @@ cargo llvm-cov --lcov --output-path target/lcov.info
 ```
 
 ### Toolchain Requirements
-- Rust 1.90.0 (pinned via `rust-toolchain.toml`)
+- Rust 1.92.0 (pinned via `rust-toolchain.toml`)
 - LLVM tools for coverage: `rustup component add llvm-tools-preview`
 
 ## Project-Specific Patterns

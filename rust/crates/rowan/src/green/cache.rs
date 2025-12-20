@@ -65,9 +65,7 @@ impl GreenCache {
     pub fn trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> (u64, GreenTriviaListInTree) {
         let hash = trivia_list_hash(pieces);
         let entry = self.trivia_lists.raw_entry_mut().from_hash(hash, |list| {
-            let is_length_equal = list.0.pieces().len() == pieces.len();
-            let are_pieces_equal = list.0.pieces().iter().zip(pieces).all(|(a, b)| a.kind() == b.kind() && a.bytes() == b.bytes());
-            is_length_equal && are_pieces_equal
+            list.0.pieces().len() == pieces.len() && list.0.pieces().iter().zip(pieces).all(|(a, b)| a.kind() == b.kind() && a.bytes() == b.bytes())
         });
 
         let trivia_list = match entry {
