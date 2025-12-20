@@ -91,6 +91,7 @@ impl<'source> Lexer<'source> {
 
         self.start_lexeme();
 
+        // TODO: stop lexing when encountering delimiter characters
         match first_byte {
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
@@ -316,4 +317,3 @@ fn is_eol(bytes: &[u8]) -> bool {
 fn is_delimiter(byte: u8) -> bool {
     matches!(byte, b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%')
 }
-
