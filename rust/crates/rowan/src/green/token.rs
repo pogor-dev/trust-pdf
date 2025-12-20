@@ -158,14 +158,28 @@ impl fmt::Debug for GreenTokenInTree {
         let full_bytes = self.full_bytes();
         let text_str = String::from_utf8_lossy(&bytes);
         let full_text_str = String::from_utf8_lossy(&full_bytes);
+        let leading_trivia: Vec<_> = self
+            .leading_trivia()
+            .pieces()
+            .iter()
+            .map(|t| (t.kind(), String::from_utf8_lossy(t.bytes()).into_owned()))
+            .collect();
+
+        let trailing_trivia: Vec<_> = self
+            .trailing_trivia()
+            .pieces()
+            .iter()
+            .map(|t| (t.kind(), String::from_utf8_lossy(t.bytes()).into_owned()))
+            .collect();
+
         f.debug_struct("GreenToken")
             .field("kind", &self.kind())
             .field("text", &text_str)
             .field("width", &self.width())
             .field("full_text", &full_text_str)
             .field("full_width", &self.full_width())
-            .field("leading_trivia_count", &self.leading_trivia().pieces().len())
-            .field("trailing_trivia_count", &self.trailing_trivia().pieces().len())
+            .field("leading_trivia", &leading_trivia)
+            .field("trailing_trivia", &trailing_trivia)
             .finish()
     }
 }
@@ -612,7 +626,7 @@ mod token_tests {
         let debug_output = format!("{:?}", token);
         assert_eq!(
             debug_output,
-            "GreenToken { kind: SyntaxKind(1), text: \"42\", width: 2, full_text: \"  42\\n\", full_width: 5, leading_trivia_count: 1, trailing_trivia_count: 1 }"
+            "GreenToken { kind: SyntaxKind(1), text: \"42\", width: 2, full_text: \"  42\\n\", full_width: 5, leading_trivia: [(SyntaxKind(2), \"  \")], trailing_trivia: [(SyntaxKind(3), \"\\n\")] }"
         );
     }
 

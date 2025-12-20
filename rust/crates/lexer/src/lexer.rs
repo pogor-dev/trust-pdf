@@ -124,7 +124,7 @@ impl<'source> Lexer<'source> {
         }
 
         let spaces = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
+        self.cache.trivia(SyntaxKind::EndOfLineTrivia.into(), spaces).1
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
