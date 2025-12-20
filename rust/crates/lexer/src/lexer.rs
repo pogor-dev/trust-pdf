@@ -2,6 +2,8 @@ use std::ops::Range;
 
 use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
+// TODO: add normal & stream lexer modes
+// TODO: add skip_trivia option
 pub struct Lexer<'source> {
     pub(super) source: &'source [u8],
     pub(super) position: usize,
@@ -84,6 +86,9 @@ impl<'source> Lexer<'source> {
                 b'\r' | b'\n' => {
                     trivia.push(self.scan_end_of_line());
                 }
+                b'%' => {
+                    trivia.push(self.scan_comment());
+                }
                 _ => break,
             }
         }
@@ -125,6 +130,23 @@ impl<'source> Lexer<'source> {
 
         let spaces = &self.source[pos..self.position];
         self.cache.trivia(SyntaxKind::EndOfLineTrivia.into(), spaces).1
+    }
+
+    fn scan_comment(&mut self) -> GreenTriviaInTree {
+        let pos = self.position;
+        self.advance(); // consume the '%'
+
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'\r' | b'\n' => break, // end of comment
+                _ => {
+                    self.advance(); // consume comment character
+                }
+            }
+        }
+
+        let comment_bytes = &self.source[pos..self.position];
+        self.cache.trivia(SyntaxKind::CommentTrivia.into(), comment_bytes).1
     }
 
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
@@ -186,7 +208,9 @@ fn is_eol(bytes: &[u8]) -> bool {
 
 /// Check if a byte is a delimiter character.
 ///
-/// The delimiter characters are:
+/// See: ISO 32000-2:2020, §7.2.3 Character set, Table 2: Delimiter characters.
+///
+/// ## Delimiter characters
 /// - 0x28 LEFT PARENTHESIS (`(`)
 /// - 0x29 RIGHT PARENTHESIS (`)`)
 /// - 0x3C LESS-THAN SIGN (`<`)
@@ -198,7 +222,16 @@ fn is_eol(bytes: &[u8]) -> bool {
 /// - 0x2F SOLIDUS (`/`)
 /// - 0x25 PERCENT SIGN (`%`)
 ///
-/// See: ISO 32000-2:2020, §7.2.3 Character set, Table 2: Delimiter characters.
+/// ## Note on curly brackets
+/// Delimiter characters such as `{` and `}` are only used within Type 4 PostScript calculator functions
+/// (see ISO 32000-2:2020, §7.10.5).
+/// These functions are included in PDF streams.
+///
+/// - In normal lexer mode, these characters will not be recognized as delimiters.
+/// - In stream lexer mode, these characters will be recognized as delimiters.
+///
+/// ## Note on double character delimiters
+/// In addition, double character delimiters (`<<`, `>>`) are used in dictionaries.
 fn is_delimiter(byte: u8) -> bool {
     matches!(byte, b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%')
 }
@@ -346,7 +379,7 @@ mod tests {
             }
         };
 
-        assert_nodes_equal(&expected_node, &actual_node);
+        assert_nodes_equal(&actual_node, &expected_node);
     }
 
     #[test]
@@ -364,7 +397,7 @@ mod tests {
             }
         };
 
-        assert_nodes_equal(&expected_node, &actual_node);
+        assert_nodes_equal(&actual_node, &expected_node);
     }
 
     #[test]
@@ -389,10 +422,32 @@ mod tests {
             }
         };
 
-        assert_nodes_equal(&expected_node, &actual_node);
+        assert_nodes_equal(&actual_node, &expected_node);
     }
 
-    fn assert_nodes_equal(expected: &GreenNode, actual: &GreenNode) {
+    #[test]
+    fn test_trivia_comments() {
+        let mut lexer = Lexer::new(b"% This is a comment\n009 % Another comment\r\n345");
+        let actual_node = generate_node_from_lexer(&mut lexer);
+
+        let expected_node = tree! {
+            SyntaxKind::LexerNode.into() => {
+                (SyntaxKind::NumericLiteralToken.into()) => {
+                    trivia(SyntaxKind::CommentTrivia.into(), b"% This is a comment"),
+                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                    text(b"009"),
+                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+                    trivia(SyntaxKind::CommentTrivia.into(), b"% Another comment"),
+                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                },
+                (SyntaxKind::NumericLiteralToken.into(), b"345"),
+            }
+        };
+
+        assert_nodes_equal(&actual_node, &expected_node);
+    }
+
+    fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {
         let actual_children: Vec<GreenToken> = actual
             .children()
             .filter_map(|child| match child {
