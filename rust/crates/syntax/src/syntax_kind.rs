@@ -2,6 +2,7 @@
 #[repr(u16)]
 pub enum SyntaxKind {
     None,
+    BadToken,
 
     #[doc(hidden)]
     /// Placeholder node for lexer phase.
@@ -18,8 +19,7 @@ pub enum SyntaxKind {
     CommentTrivia,
 
     // primitives
-    IntegerLiteralToken,
-    RealLiteralToken,
+    NumericLiteralToken,
     NameLiteralToken,
     StringLiteralToken,
     HexStringLiteralToken,
@@ -251,6 +251,12 @@ impl From<SyntaxKind> for u16 {
 impl From<SyntaxKind> for rowan::SyntaxKind {
     fn from(kind: SyntaxKind) -> Self {
         rowan::SyntaxKind(kind as u16)
+    }
+}
+
+impl From<rowan::SyntaxKind> for SyntaxKind {
+    fn from(kind: rowan::SyntaxKind) -> Self {
+        SyntaxKind::from(kind.0)
     }
 }
 

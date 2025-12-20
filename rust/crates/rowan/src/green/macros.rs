@@ -178,7 +178,7 @@ macro_rules! tree {
     // Must be last since ($($tt:tt)*) matches everything
     // Returns (GreenNode, UniqueArc<GreenTree>) - caller must keep arena alive
     ($($tt:tt)*) => {{
-        let mut builder = $crate::green::builder::GreenNodeBuilder::new();
+        let mut builder = $crate::GreenNodeBuilder::new();
         $crate::tree!(@elements builder, $($tt)*);
         builder.finish()
     }};
@@ -186,8 +186,8 @@ macro_rules! tree {
 
 #[cfg(test)]
 mod builder_tests {
-
     use crate::SyntaxKind;
+    use pretty_assertions::assert_eq;
 
     const OBJECT: SyntaxKind = SyntaxKind(1000);
     const INDIRECT: SyntaxKind = SyntaxKind(1001);

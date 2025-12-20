@@ -78,21 +78,26 @@ jobs:
       - name: Run tests and convert to JUnit format (Unix)
         if: runner.os != 'Windows'
         working-directory: rust
+        
         run: RUSTC_BOOTSTRAP=1 cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
 
       - name: Run tests and convert to JUnit format (Windows)
         if: runner.os == 'Windows'
         working-directory: rust
+        # report-time option is not currently supported by cargo2junit: https://github.com/johnterickson/cargo2junit/issues/90
         run: |
           $env:RUSTC_BOOTSTRAP=1
           cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
 
       - name: Convert test output to JUnit format
         working-directory: rust
+        # report-time option is not currently supported by cargo2junit: https://github.com/johnterickson/cargo2junit/issues/90
+        if: false
         run: cat test-results.json | cargo2junit > test-results.xml
 
       - name: Test Report
         uses: dorny/test-reporter@v1
+        if: false
         with:
           name: Tests report ${{ matrix.os }} # Name of the check run which will be created
           path: rust/test-results.xml # Path to test results

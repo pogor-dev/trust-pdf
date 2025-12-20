@@ -22,6 +22,7 @@ rustc-hash.workspace = true
 triomphe.workspace = true
 
 [dev-dependencies]
+pretty_assertions.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

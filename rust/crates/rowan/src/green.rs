@@ -9,17 +9,17 @@ mod trivia;
 
 pub use self::{
     builder::GreenNodeBuilder,
+    cache::GreenCache,
     element::GreenElement,
     node::GreenNode,
-    token::GreenToken,
-    trivia::{GreenTrivia, GreenTriviaList},
+    token::{GreenToken, GreenTokenInTree},
+    trivia::{GreenTrivia, GreenTriviaInTree, GreenTriviaList, GreenTriviaListInTree},
 };
 
 pub(crate) use self::{
     arena::GreenTree,
     element::GreenElementInTree,
     node::{GreenChild, GreenNodeInTree},
-    token::GreenTokenInTree,
 };
 
 /// SyntaxKind is a type tag for each token or node.

@@ -1,4 +1,4 @@
-use std::{alloc::Layout, fmt, hash, ptr::NonNull, slice};
+use std::{alloc::Layout, fmt, ptr::NonNull, slice};
 
 use countme::Count;
 use triomphe::Arc;
@@ -108,16 +108,6 @@ impl PartialEq for GreenTriviaListInTree {
 
 impl Eq for GreenTriviaListInTree {}
 
-impl hash::Hash for GreenTriviaListInTree {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.full_width().hash(state);
-        for piece in self.pieces() {
-            piece.hash(state);
-        }
-    }
-}
-
 impl fmt::Debug for GreenTriviaListInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenTriviaList").field("full_width", &self.full_width()).finish()
@@ -175,13 +165,6 @@ impl PartialEq for GreenTriviaList {
 }
 
 impl Eq for GreenTriviaList {}
-
-impl hash::Hash for GreenTriviaList {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.trivia_list.hash(state);
-    }
-}
 
 impl fmt::Debug for GreenTriviaList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -289,15 +272,6 @@ impl PartialEq for GreenTriviaInTree {
 
 impl Eq for GreenTriviaInTree {}
 
-impl hash::Hash for GreenTriviaInTree {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.kind().hash(state);
-        self.full_width().hash(state);
-        self.bytes().hash(state);
-    }
-}
-
 impl fmt::Debug for GreenTriviaInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // SAFETY: `text` is guaranteed to be valid UTF-8 by the node invariant.
@@ -357,13 +331,6 @@ impl PartialEq for GreenTrivia {
 
 impl Eq for GreenTrivia {}
 
-impl hash::Hash for GreenTrivia {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.trivia.hash(state);
-    }
-}
-
 impl fmt::Debug for GreenTrivia {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.trivia, f)
@@ -379,6 +346,7 @@ impl fmt::Display for GreenTrivia {
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_memory_layout() {
@@ -410,13 +378,12 @@ mod memory_layout_tests {
 
 #[cfg(test)]
 mod trivia_tests {
-    use std::hash::{DefaultHasher, Hash, Hasher};
+    use pretty_assertions::assert_eq;
 
     use super::*;
     use crate::green::arena::GreenTree;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
-    const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
 
     #[test]
     fn test_kind() {
@@ -449,39 +416,6 @@ mod trivia_tests {
         assert_eq!(trivia_in_tree.bytes(), b" ");
         assert_eq!(trivia_in_tree, trivia.trivia);
         assert_eq!(Arc::as_ptr(&arc), Arc::as_ptr(&trivia._arena));
-    }
-
-    #[test]
-    fn test_hash() {
-        let cases = [
-            (COMMENT_KIND, b"% Comment".to_vec(), COMMENT_KIND, b"% Comment".to_vec(), true),
-            (COMMENT_KIND, b"% Comment".to_vec(), WHITESPACE_KIND, b"% Comment".to_vec(), false),
-            (COMMENT_KIND, b"% Comment".to_vec(), COMMENT_KIND, b"% Different".to_vec(), false),
-        ];
-
-        for (kind1, text1, kind2, text2, should_be_equal) in cases {
-            let mut arena = GreenTree::new();
-
-            let trivia1 = arena.alloc_trivia(kind1, text1.as_slice());
-            let trivia2 = arena.alloc_trivia(kind2, text2.as_slice());
-            let shareable = arena.shareable();
-            let trivia1 = trivia1.to_green_trivia(shareable.clone());
-            let trivia2 = trivia2.to_green_trivia(shareable);
-
-            let mut hasher1 = DefaultHasher::new();
-            trivia1.hash(&mut hasher1);
-            let hash1 = hasher1.finish();
-
-            let mut hasher2 = DefaultHasher::new();
-            trivia2.hash(&mut hasher2);
-            let hash2 = hasher2.finish();
-
-            if should_be_equal {
-                assert_eq!(hash1, hash2);
-            } else {
-                assert_ne!(hash1, hash2);
-            }
-        }
     }
 
     #[test]
@@ -518,10 +452,9 @@ mod trivia_tests {
 
 #[cfg(test)]
 mod trivia_list_tests {
-
-    use crate::green::arena::GreenTree;
-
     use super::*;
+    use crate::green::arena::GreenTree;
+    use pretty_assertions::assert_eq;
 
     const WHITESPACE_KIND: SyntaxKind = SyntaxKind(1);
     const COMMENT_KIND: SyntaxKind = SyntaxKind(2);
@@ -605,46 +538,6 @@ mod trivia_list_tests {
         let mut arena = GreenTree::new();
         let trivia_list = arena.alloc_trivia_list(&[]).to_green_trivia_list(arena.shareable());
         assert_eq!(trivia_list.full_bytes(), b"");
-    }
-
-    #[test]
-    fn test_hash() {
-        use std::hash::{DefaultHasher, Hash, Hasher};
-        let mut arena = GreenTree::new();
-        let trivia1 = arena.alloc_trivia(WHITESPACE_KIND, b" ");
-        let trivia2 = arena.alloc_trivia(COMMENT_KIND, b"% comment");
-        let trivia3 = arena.alloc_trivia(WHITESPACE_KIND, b"\n");
-
-        let list1 = arena.alloc_trivia_list(&[trivia1, trivia2]);
-        let list2 = arena.alloc_trivia_list(&[trivia1, trivia2]);
-        let list3 = arena.alloc_trivia_list(&[trivia2, trivia1]);
-        let list4 = arena.alloc_trivia_list(&[trivia1, trivia2, trivia3]);
-
-        let shareable = arena.shareable();
-        let list1 = list1.to_green_trivia_list(shareable.clone());
-        let list2 = list2.to_green_trivia_list(shareable.clone());
-        let list3 = list3.to_green_trivia_list(shareable.clone());
-        let list4 = list4.to_green_trivia_list(shareable.clone());
-
-        let mut hasher1 = DefaultHasher::new();
-        list1.hash(&mut hasher1);
-        let hash1 = hasher1.finish();
-
-        let mut hasher2 = DefaultHasher::new();
-        list2.hash(&mut hasher2);
-        let hash2 = hasher2.finish();
-
-        let mut hasher3 = DefaultHasher::new();
-        list3.hash(&mut hasher3);
-        let hash3 = hasher3.finish();
-
-        let mut hasher4 = DefaultHasher::new();
-        list4.hash(&mut hasher4);
-        let hash4 = hasher4.finish();
-
-        assert_eq!(hash1, hash2);
-        assert_ne!(hash1, hash3);
-        assert_ne!(hash1, hash4);
     }
 
     #[test]

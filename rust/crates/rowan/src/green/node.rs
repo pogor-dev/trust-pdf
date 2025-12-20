@@ -1,4 +1,4 @@
-use std::{fmt, hash, iter::FusedIterator, ptr::NonNull, slice};
+use std::{fmt, iter::FusedIterator, ptr::NonNull, slice};
 
 use countme::Count;
 use triomphe::Arc;
@@ -207,16 +207,6 @@ impl PartialEq for GreenNodeInTree {
 
 impl Eq for GreenNodeInTree {}
 
-impl hash::Hash for GreenNodeInTree {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.kind().hash(state);
-        self.full_width().hash(state);
-        for child in self.children() {
-            child.hash(state);
-        }
-    }
-}
-
 impl fmt::Debug for GreenNodeInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GreenNode")
@@ -318,13 +308,6 @@ impl PartialEq for GreenNode {
 
 impl Eq for GreenNode {}
 
-impl hash::Hash for GreenNode {
-    #[inline]
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.node.hash(state);
-    }
-}
-
 impl fmt::Debug for GreenNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.node, f)
@@ -373,21 +356,6 @@ impl GreenChild {
         match self {
             GreenChild::Node { .. } => None,
             GreenChild::Token { token, .. } => Some(token),
-        }
-    }
-}
-
-impl hash::Hash for GreenChild {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        match self {
-            Self::Node { rel_offset, node } => {
-                rel_offset.hash(state);
-                node.hash(state);
-            }
-            Self::Token { rel_offset, token } => {
-                rel_offset.hash(state);
-                token.hash(state);
-            }
         }
     }
 }
@@ -489,8 +457,8 @@ impl FusedIterator for Children<'_> {}
 
 #[cfg(test)]
 mod memory_layout_tests {
-
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_memory_layout() {
@@ -509,6 +477,7 @@ mod memory_layout_tests {
 mod node_tests {
     use super::*;
     use crate::tree;
+    use pretty_assertions::assert_eq;
 
     const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
     const NODE_KIND: SyntaxKind = SyntaxKind(100);
@@ -553,34 +522,6 @@ mod node_tests {
         assert_eq!(node.children_len(), 3);
         assert_eq!(node.leading_trivia().unwrap().full_bytes(), b"  ".to_vec());
         assert_eq!(node.trailing_trivia().unwrap().full_bytes(), b"\n".to_vec());
-    }
-
-    #[test]
-    fn test_hash() {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let node1 = tree! {
-            NODE_KIND => {
-                (TOKEN_KIND, b"test")
-            }
-        };
-
-        let node2 = tree! {
-            NODE_KIND => {
-                (TOKEN_KIND, b"test")
-            }
-        };
-
-        let mut hasher1 = DefaultHasher::new();
-        node1.hash(&mut hasher1);
-        let hash1 = hasher1.finish();
-
-        let mut hasher2 = DefaultHasher::new();
-        node2.hash(&mut hasher2);
-        let hash2 = hasher2.finish();
-
-        assert_eq!(hash1, hash2);
     }
 
     #[test]
@@ -741,45 +682,13 @@ mod node_tests {
             assert_eq!(display_str, "hello");
         }
     }
-
-    #[test]
-    fn test_green_child_hash() {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
-
-        let node1 = tree! {
-            NODE_KIND => {
-                (TOKEN_KIND, b"test")
-            }
-        };
-
-        let node2 = tree! {
-            NODE_KIND => {
-                (TOKEN_KIND, b"test")
-            }
-        };
-
-        let children1 = node1.node.children();
-        let children2 = node2.node.children();
-
-        if let (GreenChild::Token { .. }, GreenChild::Token { .. }) = (&children1[0], &children2[0]) {
-            let mut hasher1 = DefaultHasher::new();
-            children1[0].hash(&mut hasher1);
-            let hash1 = hasher1.finish();
-
-            let mut hasher2 = DefaultHasher::new();
-            children2[0].hash(&mut hasher2);
-            let hash2 = hasher2.finish();
-
-            assert_eq!(hash1, hash2);
-        }
-    }
 }
 
 #[cfg(test)]
 mod node_children_tests {
     use super::*;
     use crate::tree;
+    use pretty_assertions::assert_eq;
 
     const TOKEN_KIND: SyntaxKind = SyntaxKind(1);
     const NODE_KIND: SyntaxKind = SyntaxKind(100);

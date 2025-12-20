@@ -41,7 +41,7 @@ pub type GreenElement = NodeOrToken<GreenNode, GreenToken>;
 
 impl GreenElement {
     #[inline]
-    pub(crate) fn kind(&self) -> SyntaxKind {
+    pub fn kind(&self) -> SyntaxKind {
         match self {
             NodeOrToken::Node(node) => node.kind(),
             NodeOrToken::Token(token) => token.kind(),
@@ -49,7 +49,7 @@ impl GreenElement {
     }
 
     #[inline]
-    pub(crate) fn full_width(&self) -> u32 {
+    pub fn full_width(&self) -> u32 {
         match self {
             NodeOrToken::Node(node) => node.full_width(),
             NodeOrToken::Token(token) => token.full_width(),
