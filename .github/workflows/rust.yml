@@ -78,14 +78,16 @@ jobs:
       - name: Run tests and convert to JUnit format (Unix)
         if: runner.os != 'Windows'
         working-directory: rust
-        run: RUSTC_BOOTSTRAP=1 cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
+        # report-time option is not currently supported by cargo2junit: https://github.com/johnterickson/cargo2junit/issues/90
+        run: RUSTC_BOOTSTRAP=1 cargo test -- -Z unstable-options --format=json --quiet | tee test-results.json
 
       - name: Run tests and convert to JUnit format (Windows)
         if: runner.os == 'Windows'
         working-directory: rust
         run: |
           $env:RUSTC_BOOTSTRAP=1
-          cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
+          # report-time option is not currently supported by cargo2junit: https://github.com/johnterickson/cargo2junit/issues/90
+          cargo test -- -Z unstable-options --format=json --quiet | tee test-results.json
 
       - name: Convert test output to JUnit format
         working-directory: rust
