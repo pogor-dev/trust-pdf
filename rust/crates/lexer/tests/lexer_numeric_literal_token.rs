@@ -1,7 +1,7 @@
-mod lexer_test_support;
+mod support;
 
 use lexer::Lexer;
-use lexer_test_support::{assert_eof_token, assert_numeric_literal_token};
+use support::{assert_eof_token, assert_numeric_literal_token};
 use syntax::{GreenToken, SyntaxKind};
 
 #[test]
