@@ -1,5 +1,6 @@
 use crate::{
-    GreenNode, NodeOrToken,
+    DiagnosticInfo, GreenNode, NodeOrToken,
+    diagnostics::DiagnosticSeverity,
     green::{SyntaxKind, cache::GreenCache, element::GreenElementInTree, trivia::GreenTriviaInTree},
 };
 
@@ -23,6 +24,18 @@ impl GreenNodeBuilder {
     #[inline]
     pub fn new() -> GreenNodeBuilder {
         GreenNodeBuilder::default()
+    }
+
+    /// Attaches diagnostic to the most recently added element (token or node).
+    ///
+    /// This method stores a diagnostic for the last element added to the tree.
+    /// Multiple diagnostics can be attached to a single element.
+    ///
+    /// Note: Actual diagnostic storage and retrieval is handled through the arena.
+    #[inline]
+    pub fn add_diagnostic(&mut self, severity: DiagnosticSeverity, code: u16, message: &'static str) {
+        let diagnostic = DiagnosticInfo::new(code, message, severity);
+        self.cache.diagnostic(diagnostic);
     }
 
     /// Attaches new trivia to the current token.

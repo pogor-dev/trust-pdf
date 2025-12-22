@@ -5,7 +5,7 @@ use triomphe::UniqueArc;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use crate::{
-    NodeOrToken, SyntaxKind,
+    DiagnosticInfo, NodeOrToken, SyntaxKind,
     green::{
         GreenElementInTree,
         arena::GreenTree,
@@ -26,6 +26,7 @@ pub struct GreenCache {
     tokens: HashMap<NoHash<GreenTokenInTree>, ()>,
     trivia_lists: HashMap<NoHash<GreenTriviaListInTree>, ()>,
     trivias: HashMap<NoHash<GreenTriviaInTree>, ()>,
+    diagnostics: HashMap<NoHash<DiagnosticInfo>, ()>,
     pub(super) arena: UniqueArc<GreenTree>,
 }
 
@@ -37,6 +38,7 @@ impl Default for GreenCache {
             tokens: HashMap::default(),
             trivias: HashMap::default(),
             trivia_lists: HashMap::default(),
+            diagnostics: HashMap::default(),
             arena: GreenTree::new(),
         }
     }
@@ -188,6 +190,21 @@ impl GreenCache {
 
         (hash, node)
     }
+
+    pub fn diagnostic(&mut self, diagnostic: DiagnosticInfo) -> (u64, DiagnosticInfo) {
+        let hash = diagnostic_hash(&diagnostic);
+        let entry = self.diagnostics.raw_entry_mut().from_hash(hash, |cached| cached.0 == diagnostic);
+
+        let diag = match entry {
+            RawEntryMut::Occupied(entry) => entry.key().0.clone(),
+            RawEntryMut::Vacant(entry) => {
+                entry.insert_with_hasher(hash, NoHash(diagnostic.clone()), (), |d| diagnostic_hash(&d.0));
+                diagnostic
+            }
+        };
+
+        (hash, diag)
+    }
 }
 
 fn trivia_hash(kind: SyntaxKind, bytes: &[u8]) -> u64 {
@@ -236,4 +253,12 @@ fn element_id(elem: NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>) -> *const 
         NodeOrToken::Node(it) => it.data.as_ptr().cast(),
         NodeOrToken::Token(it) => it.data.as_ptr().cast(),
     }
+}
+
+fn diagnostic_hash(diagnostic: &DiagnosticInfo) -> u64 {
+    let mut h = FxHasher::default();
+    diagnostic.code.hash(&mut h);
+    diagnostic.message.hash(&mut h);
+    diagnostic.severity.hash(&mut h);
+    h.finish()
 }
