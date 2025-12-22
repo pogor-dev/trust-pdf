@@ -40,7 +40,7 @@ impl<'source> Lexer<'source> {
     /// # Returns
     ///
     /// A [`GreenToken`] representing the next lexical element. When the end of the source is reached,
-    /// returns an `EndOfFileToken` with empty text and no trivia.
+    /// returns a [`SyntaxKind::EndOfFileToken`] with empty text and no trivia.
     ///
     /// # Example
     ///
@@ -78,7 +78,7 @@ impl<'source> Lexer<'source> {
     /// - Numeric literals (integers and reals): `0-9`, `+`, `-`, `.`
     ///
     /// For unsupported characters, the token_info remains in its default state (kind=Unknown, bytes=empty).
-    /// When EOF is reached, sets `EndOfFileToken` with empty bytes.
+    /// When EOF is reached, sets [`SyntaxKind::EndOfFileToken`] with empty bytes.
     fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
         let first_byte = match self.peek() {
             Some(first_byte) => first_byte,
@@ -164,21 +164,20 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
     }
 
-    // TODO: Potential bug - multiple consecutive line breaks (e.g., "\n\n") are consumed as single trivia piece.
-    // TODO: Add test coverage for consecutive EOL sequences (\n\n, \r\r, \r\n\r\n) to verify/document intended behavior.
     // Each EOL sequence should likely be tracked as separate EndOfLineTrivia entries for proper PDF semantics.
     /// Scans end-of-line sequences and returns a cached trivia entry.
     ///
-    /// Recognizes PDF EOL formats: LF (0x0A), CR (0x0D), and CR+LF (0x0D 0x0A).
-    /// Currently consumes multiple consecutive EOL sequences as a single trivia piece
-    /// for efficiency, though this may need refinement for strict PDF semantics.
+    /// Recognizes PDF EOL formats: [`SyntaxKind::EndOfLineTrivia`] for LF (0x0A), CR (0x0D), and CR+LF (0x0D 0x0A).
+    /// Each EOL sequence (whether single CR, single LF, or CR+LF pair) is tracked as a separate trivia entry
+    /// for proper PDF semantics. This ensures that multiple consecutive line breaks (e.g., "\n\n") are
+    /// represented as separate [`SyntaxKind::EndOfLineTrivia`] pieces.
     ///
     /// The scanned bytes are cached for memory efficiency.
     fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
-        self.advance(); // consume the first EOL byte
 
-        while let Some(byte) = self.peek() {
+        if let Some(byte) = self.peek() {
+            debug_assert!(byte == b'\r' || byte == b'\n', "scan_end_of_line called on non-EOL byte");
             match byte {
                 b'\r' if self.peek_by(1) == Some(b'\n') => {
                     self.advance_by(2); // consume CR LF
@@ -186,7 +185,7 @@ impl<'source> Lexer<'source> {
                 b'\r' | b'\n' => {
                     self.advance(); // consume CARRIAGE RETURN or LINE FEED
                 }
-                _ => break,
+                _ => {}
             }
         }
 
@@ -218,21 +217,24 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::CommentTrivia.into(), comment_bytes).1
     }
 
-    // TODO: Bug - allows multiple decimal points (e.g., "1.2.3.4" accepted as single token).
-    // Should track if decimal point seen and mark as BadToken on subsequent decimal points.
     /// Scans a numeric literal (integer or real number) and populates token_info.
     ///
     /// Accepts digits (0-9), decimal points (.), and signs (+/-) at the start.
-    /// Signs after the first character mark the token as `BadToken` since PDF requires
-    /// numeric literals to be delimiter-separated.
+    /// Marks the token as [`SyntaxKind::BadToken`] when:
+    /// - Multiple decimal points are encountered (e.g., `12.34.56`, `.1.2.3`)
+    /// - Signs appear after the first character (e.g., `12+34`, `12-34`)
+    ///
+    /// According to the PDF Syntax Matrix, numbers must be delimiter-separated,
+    /// so consecutive numeric characters with multiple signs or dots are invalid.
     ///
     /// Updates token_info with:
-    /// - `kind`: `NumericLiteralToken` for valid numbers, `BadToken` for invalid ones
+    /// - `kind`: [`SyntaxKind::NumericLiteralToken`] for valid numbers, [`SyntaxKind::BadToken`] for invalid ones
     /// - `bytes`: the complete scanned byte sequence
     ///
     /// The bytes are extracted from the lexeme range and not cached directly.
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
+        let mut seen_dot = false;
         self.advance(); // consume the first digit
 
         while let Some(byte) = self.peek() {
@@ -241,6 +243,12 @@ impl<'source> Lexer<'source> {
                     self.advance(); // consume the digit
                 }
                 b'.' => {
+                    if seen_dot {
+                        // SafeDocs' PDF syntax matrix specifies that numbers should be split by delimiters or whitespace
+                        // So if we encounter numers as `12.34.56` or `.1.2.3`, we should mark it as invalid token
+                        token_info.kind = SyntaxKind::BadToken;
+                    }
+                    seen_dot = true;
                     self.advance(); // consume the dot
                 }
                 b'+' | b'-' => {

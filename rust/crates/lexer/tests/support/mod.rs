@@ -1,5 +1,6 @@
 use lexer::Lexer;
-use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind, tree};
+use pretty_assertions::assert_eq;
+use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind};
 
 pub fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {
     let actual_children: Vec<GreenToken> = actual

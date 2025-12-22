@@ -86,3 +86,80 @@ fn test_trivia_comments() {
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+
+#[test]
+fn test_trivia_consecutive_eol_two_lf() {
+    let mut lexer = Lexer::new(b"009\n\n345");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::NumericLiteralToken.into()) => {
+                text(b"009"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+            },
+            (SyntaxKind::NumericLiteralToken.into(), b"345")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_trivia_consecutive_eol_two_cr() {
+    let mut lexer = Lexer::new(b"009\r\r345");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::NumericLiteralToken.into()) => {
+                text(b"009"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
+            },
+            (SyntaxKind::NumericLiteralToken.into(), b"345")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_trivia_consecutive_eol_two_crlf() {
+    let mut lexer = Lexer::new(b"009\r\n\r\n345");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::NumericLiteralToken.into()) => {
+                text(b"009"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+            },
+            (SyntaxKind::NumericLiteralToken.into(), b"345")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_trivia_consecutive_eol_mixed() {
+    let mut lexer = Lexer::new(b"009\n\r\r\n345");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::NumericLiteralToken.into()) => {
+                text(b"009"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+            },
+            (SyntaxKind::NumericLiteralToken.into(), b"345")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}

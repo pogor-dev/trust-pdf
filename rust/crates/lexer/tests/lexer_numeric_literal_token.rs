@@ -216,4 +216,30 @@ fn test_numeric_plus_minus_345_minus_36_invalid() {
     assert_nodes_equal(&actual_node, &expected_node);
 }
 
-// TODO: Add test coverage for multiple decimal points (e.g., "1.2.3", "4.5.6.7") to verify proper BadToken handling.
+#[test]
+fn test_numeric_multiple_decimal_points_invalid() {
+    let mut lexer = Lexer::new(b"12.34.56");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::BadToken.into(), b"12.34.56")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_numeric_multiple_decimal_points_starts_with_decimal_point_invalid() {
+    let mut lexer = Lexer::new(b".1.2.3");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::BadToken.into(), b".1.2.3")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
