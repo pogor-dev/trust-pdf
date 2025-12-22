@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{fmt, hash::BuildHasherDefault};
 
 use bumpalo::Bump;
-use hashbrown::HashMap;
+use rustc_hash::FxHasher;
 use triomphe::UniqueArc;
 
 use crate::{
@@ -13,6 +13,8 @@ use crate::{
         trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
     },
 };
+
+type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 pub(crate) struct GreenTree {
     arena: Bump,
