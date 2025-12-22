@@ -34,39 +34,3 @@ pub fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
     builder.finish_node();
     builder.finish()
 }
-
-pub fn assert_numeric_literal_token(token: &GreenToken, expected_kind: SyntaxKind, expected_bytes: &[u8]) {
-    let actual_node = generate_lexer_node_tree(token);
-    let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (expected_kind.into(), expected_bytes)
-        }
-    };
-
-    let actual_token = actual_node.children().next().unwrap();
-    let expected_token = expected_node.children().next().unwrap();
-    assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
-    assert_eq!(actual_node, expected_node);
-}
-
-pub fn assert_eof_token(token: &GreenToken) {
-    let actual_node = generate_lexer_node_tree(token);
-    let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::EndOfFileToken.into(), b"")
-        }
-    };
-
-    let actual_token = actual_node.children().next().unwrap();
-    let expected_token = expected_node.children().next().unwrap();
-    assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
-    assert_eq!(actual_node, expected_node);
-}
-
-fn generate_lexer_node_tree(token: &GreenToken) -> GreenNode {
-    tree! {
-        SyntaxKind::LexerNode.into() => {
-            (token.kind(), &token.bytes())
-        }
-    }
-}
