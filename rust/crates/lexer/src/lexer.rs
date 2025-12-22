@@ -77,7 +77,8 @@ impl<'source> Lexer<'source> {
     /// Currently supports:
     /// - Numeric literals (integers and reals): `0-9`, `+`, `-`, `.`
     ///
-    /// For unsupported characters, the token_info remains in its default state (kind=Unknown, bytes=empty).
+    /// Unknown/unsupported characters are scanned as [`SyntaxKind::BadToken`] and continue until
+    /// a delimiter, whitespace, or EOF is encountered.
     /// When EOF is reached, sets [`SyntaxKind::EndOfFileToken`] with empty bytes.
     fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
         let first_byte = match self.peek() {
@@ -97,8 +98,9 @@ impl<'source> Lexer<'source> {
                 // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
                 self.scan_numeric_literal(token_info);
             }
-            // TODO: Add test coverage for unknown/unsupported characters (e.g., @, #) to verify error handling behavior
-            _ => {}
+            _ => {
+                self.scan_bad_token(token_info);
+            }
         };
 
         self.stop_lexeme();
@@ -263,6 +265,25 @@ impl<'source> Lexer<'source> {
 
         token_info.bytes = self.get_lexeme_bytes();
     }
+
+    /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
+    ///
+    /// Consumes characters greedily until a delimiter, whitespace, or EOF is encountered.
+    /// This ensures that sequences like `@#$%` are captured as a single bad token for better
+    /// error reporting and recovery.
+    fn scan_bad_token(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::BadToken;
+        self.advance(); // consume the first bad character
+
+        while let Some(byte) = self.peek() {
+            // Stop at whitespace or delimiters (excluding % which can be part of bad tokens)
+            if is_whitespace(byte, true) || is_delimiter(byte, false) {
+                break;
+            }
+            self.advance(); // consume the bad character
+        }
+        token_info.bytes = self.get_lexeme_bytes();
+    }
 }
 
 /// Check if a byte is a white-space character.
@@ -276,8 +297,12 @@ impl<'source> Lexer<'source> {
 /// - 0x20 SPACE (` `)
 ///
 /// See: ISO 32000-2:2020, §7.2.3 Character set, Table 1: White-space characters.
-fn is_whitespace(byte: u8) -> bool {
-    matches!(byte, b'\0' | b'\t' | b'\x0C' | b'\r' | b'\n' | b' ')
+fn is_whitespace(byte: u8, include_eol: bool) -> bool {
+    match byte {
+        b'\0' | b'\t' | b'\x0C' | b' ' => true,
+        b'\r' | b'\n' if include_eol => true,
+        _ => false,
+    }
 }
 
 ///
@@ -322,6 +347,10 @@ fn is_eol(bytes: &[u8]) -> bool {
 ///
 /// ## Note on double character delimiters
 /// In addition, double character delimiters (`<<`, `>>`) are used in dictionaries.
-fn is_delimiter(byte: u8) -> bool {
-    matches!(byte, b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%')
+fn is_delimiter(byte: u8, include_postscript_delimiters: bool) -> bool {
+    match byte {
+        b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'/' | b'%' => true,
+        b'{' | b'}' if include_postscript_delimiters => true,
+        _ => false,
+    }
 }
