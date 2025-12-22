@@ -274,17 +274,34 @@ impl<'source> Lexer<'source> {
     /// A literal string in PDF is enclosed in parentheses: `(...)`.
     /// Scans from the opening `(` through the closing `)` and marks it as [`SyntaxKind::StringLiteralToken`].
     ///
+    /// Balanced pairs of parentheses within a string require no special treatment.
+    /// Nesting level tracks open parentheses, and the string closes only when nesting returns to zero.
+    ///
     /// Updates token_info with:
     /// - `kind`: [`SyntaxKind::StringLiteralToken`]
     /// - `bytes`: the complete scanned byte sequence including parentheses
     fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::StringLiteralToken;
         self.advance(); // consume the opening '('
+        let mut nesting = 0;
 
         while let Some(byte) = self.peek() {
-            self.advance();
-            if byte == b')' {
-                break; // consume the closing ')' and stop
+            match byte {
+                b'(' => {
+                    nesting += 1;
+                    self.advance();
+                }
+                b')' if nesting == 0 => {
+                    self.advance(); // consume the closing ')'
+                    break; // exit the string
+                }
+                b')' => {
+                    nesting -= 1;
+                    self.advance();
+                }
+                _ => {
+                    self.advance();
+                }
             }
         }
 
