@@ -95,8 +95,10 @@ impl<'source> Lexer<'source> {
         // TODO: stop lexing when encountering delimiter characters
         match first_byte {
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
-                // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
                 self.scan_numeric_literal(token_info);
+            }
+            b'(' => {
+                self.scan_literal_string(token_info);
             }
             _ => {
                 self.scan_bad_token(token_info);
@@ -235,6 +237,7 @@ impl<'source> Lexer<'source> {
     ///
     /// The bytes are extracted from the lexeme range and not cached directly.
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
+        // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
         let mut seen_dot = false;
         self.advance(); // consume the first digit
@@ -260,6 +263,28 @@ impl<'source> Lexer<'source> {
                     self.advance();
                 }
                 _ => break,
+            }
+        }
+
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans a literal string token and populates token_info.
+    ///
+    /// A literal string in PDF is enclosed in parentheses: `(...)`.
+    /// Scans from the opening `(` through the closing `)` and marks it as [`SyntaxKind::StringLiteralToken`].
+    ///
+    /// Updates token_info with:
+    /// - `kind`: [`SyntaxKind::StringLiteralToken`]
+    /// - `bytes`: the complete scanned byte sequence including parentheses
+    fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::StringLiteralToken;
+        self.advance(); // consume the opening '('
+
+        while let Some(byte) = self.peek() {
+            self.advance();
+            if byte == b')' {
+                break; // consume the closing ')' and stop
             }
         }
 
