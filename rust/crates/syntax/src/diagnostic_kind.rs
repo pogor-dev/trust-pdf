@@ -15,8 +15,8 @@ impl DiagnosticKind {
 }
 
 impl From<u16> for DiagnosticKind {
-    #[inline]
     /// Converts a serialized discriminant into a diagnostic kind; panics on unknown values.
+    #[inline]
     fn from(d: u16) -> DiagnosticKind {
         match d {
             1 => DiagnosticKind::UnbalancedStringLiteral,
@@ -26,8 +26,8 @@ impl From<u16> for DiagnosticKind {
 }
 
 impl From<DiagnosticKind> for u16 {
-    #[inline]
     /// Serializes a diagnostic kind to its numeric discriminant for storage or transport.
+    #[inline]
     fn from(k: DiagnosticKind) -> u16 {
         k as u16
     }

@@ -246,8 +246,8 @@ impl GreenToken {
         &self.token.trailing_trivia()
     }
 
-    #[inline]
     /// Returns all diagnostics recorded for this token via the shared arena.
+    #[inline]
     pub fn diagnostics(&self) -> &[DiagnosticInfo] {
         self.arena.get_diagnostics(&self.token.into())
     }

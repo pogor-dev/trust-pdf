@@ -293,8 +293,8 @@ impl GreenNode {
         self.node.trailing_trivia()
     }
 
-    #[inline]
     /// Returns all diagnostics recorded for this node via the shared arena.
+    #[inline]
     pub fn diagnostics(&self) -> &[DiagnosticInfo] {
         self.arena.get_diagnostics(&self.node.into())
     }

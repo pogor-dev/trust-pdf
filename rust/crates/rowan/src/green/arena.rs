@@ -95,8 +95,8 @@ impl GreenTree {
         node
     }
 
-    #[inline]
     /// Stores a diagnostic associated with the given green element.
+    #[inline]
     pub(crate) fn alloc_diagnostic(&mut self, element: &GreenElementInTree, diagnostic: DiagnosticInfo) {
         let hash = diagnostic_element_hash(&element);
         let entry = self.diagnostics.raw_entry_mut().from_hash(hash, |cached| cached == element);
@@ -111,8 +111,8 @@ impl GreenTree {
         }
     }
 
-    #[inline]
     /// Returns all diagnostics recorded for the given green element.
+    #[inline]
     pub(crate) fn get_diagnostics(&self, element: &GreenElementInTree) -> &[DiagnosticInfo] {
         let hash = diagnostic_element_hash(&element);
         let entry = self.diagnostics.raw_entry().from_hash(hash, |cached| cached == element);
