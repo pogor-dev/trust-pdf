@@ -35,7 +35,8 @@ impl GreenNodeBuilder {
     #[inline]
     pub fn add_diagnostic(&mut self, severity: DiagnosticSeverity, code: u16, message: &'static str) {
         let diagnostic = DiagnosticInfo::new(code, message, severity);
-        self.cache.diagnostic(diagnostic);
+        let element = self.children.last().expect("No element to attach diagnostic to").1.clone();
+        self.cache.arena.alloc_diagnostic(&element, diagnostic);
     }
 
     /// Attaches new trivia to the current token.

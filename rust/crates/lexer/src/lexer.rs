@@ -56,7 +56,7 @@ impl<'source> Lexer<'source> {
         let trailing_trivia = self.scan_trivia();
 
         // Build the token
-        let mut builder = GreenNodeBuilder::new();
+        let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
         builder.start_node(SyntaxKind::LexerNode.into());
         builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
         builder.finish_node();

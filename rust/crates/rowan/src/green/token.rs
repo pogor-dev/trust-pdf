@@ -4,7 +4,7 @@ use countme::Count;
 use triomphe::Arc;
 
 use crate::{
-    SyntaxKind,
+    DiagnosticInfo, SyntaxKind,
     green::{arena::GreenTree, trivia::GreenTriviaListInTree},
 };
 
@@ -95,7 +95,7 @@ impl GreenTokenInTree {
 
     #[inline]
     pub fn to_green_token(self, arena: Arc<GreenTree>) -> GreenToken {
-        GreenToken { token: self, _arena: arena }
+        GreenToken { token: self, arena }
     }
 
     /// Writes the token to a byte vector with conditional trivia inclusion
@@ -201,7 +201,7 @@ unsafe impl Sync for GreenTokenInTree {}
 #[derive(Clone)]
 pub struct GreenToken {
     pub(super) token: GreenTokenInTree,
-    pub(super) _arena: Arc<GreenTree>,
+    pub(super) arena: Arc<GreenTree>,
 }
 
 impl GreenToken {
@@ -247,8 +247,13 @@ impl GreenToken {
     }
 
     #[inline]
+    pub fn diagnostics(&self) -> &[DiagnosticInfo] {
+        self.arena.get_diagnostics(&self.token.into())
+    }
+
+    #[inline]
     pub(crate) fn into_raw_parts(self) -> (GreenTokenInTree, Arc<GreenTree>) {
-        (self.token, self._arena)
+        (self.token, self.arena)
     }
 }
 
@@ -299,6 +304,7 @@ mod token_tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
+    use crate::diagnostics::DiagnosticSeverity::{Error, Info, Warning};
     use crate::green::arena::GreenTree;
 
     const INTEGER_KIND: SyntaxKind = SyntaxKind(1);
@@ -642,6 +648,56 @@ mod token_tests {
         let (raw_token, raw_arena) = token.clone().into_raw_parts();
 
         assert_eq!(raw_token, token.token);
-        assert_eq!(Arc::as_ptr(&raw_arena), Arc::as_ptr(&token._arena));
+        assert_eq!(Arc::as_ptr(&raw_arena), Arc::as_ptr(&token.arena));
+    }
+
+    #[test]
+    fn test_diagnostics_when_no_diagnostics_expect_empty() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+        let token = arena
+            .alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia)
+            .to_green_token(arena.shareable());
+
+        assert_eq!(token.diagnostics().len(), 0);
+    }
+
+    #[test]
+    fn test_diagnostics_when_single_diagnostic_expect_returned() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+        let token_in_tree = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+
+        let diagnostic = DiagnosticInfo::new(1, "test error", Error);
+        arena.alloc_diagnostic(&token_in_tree.into(), diagnostic.clone());
+
+        let token = token_in_tree.to_green_token(arena.shareable());
+        let diagnostics = token.diagnostics();
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0], diagnostic);
+    }
+
+    #[test]
+    fn test_diagnostics_when_multiple_diagnostics_expect_all_returned() {
+        let mut arena = GreenTree::new();
+        let empty_trivia = arena.alloc_trivia_list(&[]);
+        let token_in_tree = arena.alloc_token(INTEGER_KIND, b"42", empty_trivia, empty_trivia);
+
+        let diag1 = DiagnosticInfo::new(1, "error 1", Error);
+        let diag2 = DiagnosticInfo::new(2, "warning 1", Warning);
+        let diag3 = DiagnosticInfo::new(3, "info 1", Info);
+
+        arena.alloc_diagnostic(&token_in_tree.into(), diag1.clone());
+        arena.alloc_diagnostic(&token_in_tree.into(), diag2.clone());
+        arena.alloc_diagnostic(&token_in_tree.into(), diag3.clone());
+
+        let token = token_in_tree.to_green_token(arena.shareable());
+        let diagnostics = token.diagnostics();
+
+        assert_eq!(diagnostics.len(), 3);
+        assert_eq!(diagnostics[0], diag1);
+        assert_eq!(diagnostics[1], diag2);
+        assert_eq!(diagnostics[2], diag3);
     }
 }

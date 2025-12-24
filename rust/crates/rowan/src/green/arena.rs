@@ -1,6 +1,7 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use bumpalo::Bump;
+use hashbrown::hash_map::RawEntryMut;
 use rustc_hash::FxHasher;
 use triomphe::UniqueArc;
 
@@ -8,6 +9,7 @@ use crate::{
     DiagnosticInfo, SyntaxKind,
     green::{
         GreenElementInTree,
+        cache::diagnostic_element_hash,
         node::{GreenChild, GreenNodeHead, GreenNodeInTree},
         token::{GreenTokenHead, GreenTokenInTree},
         trivia::{GreenTriviaHead, GreenTriviaInTree, GreenTriviaListHead, GreenTriviaListInTree},
@@ -16,7 +18,7 @@ use crate::{
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
-pub(crate) struct GreenTree {
+pub struct GreenTree {
     arena: Bump,
     diagnostics: HashMap<GreenElementInTree, Vec<DiagnosticInfo>>,
 }
@@ -90,6 +92,34 @@ impl GreenTree {
         }
         debug_assert!(children.next().is_none(), "too many children");
         node
+    }
+
+    #[inline]
+    pub(crate) fn alloc_diagnostic(&mut self, element: &GreenElementInTree, diagnostic: DiagnosticInfo) {
+        let hash = diagnostic_element_hash(&element);
+        let entry = self.diagnostics.raw_entry_mut().from_hash(hash, |cached| cached == element);
+
+        match entry {
+            RawEntryMut::Occupied(mut entry) => {
+                entry.get_mut().push(diagnostic.clone());
+            }
+            RawEntryMut::Vacant(entry) => {
+                let mut diagnostics = Vec::new();
+                diagnostics.push(diagnostic.clone());
+                entry.insert_with_hasher(hash, element.clone(), diagnostics, |e| diagnostic_element_hash(&e));
+            }
+        }
+    }
+
+    #[inline]
+    pub(crate) fn get_diagnostics(&self, element: &GreenElementInTree) -> &[DiagnosticInfo] {
+        let hash = diagnostic_element_hash(&element);
+        let entry = self.diagnostics.raw_entry().from_hash(hash, |cached| cached == element);
+
+        match entry {
+            Some((_, diags)) => diags.as_slice(),
+            None => &[],
+        }
     }
 
     /// # Safety
