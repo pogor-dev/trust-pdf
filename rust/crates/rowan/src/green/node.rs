@@ -294,6 +294,7 @@ impl GreenNode {
     }
 
     #[inline]
+    /// Returns all diagnostics recorded for this node via the shared arena.
     pub fn diagnostics(&self) -> &[DiagnosticInfo] {
         self.arena.get_diagnostics(&self.node.into())
     }

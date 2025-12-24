@@ -20,7 +20,7 @@ impl fmt::Display for DiagnosticInfo {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum DiagnosticSeverity {
     Info,

@@ -238,6 +238,7 @@ fn element_id(elem: NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>) -> *const 
     }
 }
 
+/// Computes a stable hash for a green element used as the diagnostics map key.
 pub(super) fn diagnostic_element_hash(element: &GreenElementInTree) -> u64 {
     let mut h = FxHasher::default();
     let element_hash = match element {

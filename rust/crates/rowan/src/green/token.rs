@@ -247,6 +247,7 @@ impl GreenToken {
     }
 
     #[inline]
+    /// Returns all diagnostics recorded for this token via the shared arena.
     pub fn diagnostics(&self) -> &[DiagnosticInfo] {
         self.arena.get_diagnostics(&self.token.into())
     }

@@ -62,7 +62,7 @@ impl<'source> Lexer<'source> {
         builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
         // Attach all diagnostics to the token just added
         for (severity, code, message) in &token_info.diagnostics {
-            builder.add_diagnostic(severity.clone(), *code, *message);
+            builder.add_diagnostic(*severity, *code, *message);
         }
         builder.finish_node();
         let node = builder.finish();
@@ -255,7 +255,7 @@ impl<'source> Lexer<'source> {
                 b'.' => {
                     if seen_dot {
                         // SafeDocs' PDF syntax matrix specifies that numbers should be split by delimiters or whitespace
-                        // So if we encounter numers as `12.34.56` or `.1.2.3`, we should mark it as invalid token
+                        // So if we encounter numbers as `12.34.56` or `.1.2.3`, we should mark it as invalid token
                         token_info.kind = SyntaxKind::BadToken;
                     }
                     seen_dot = true;

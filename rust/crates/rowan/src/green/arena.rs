@@ -18,6 +18,7 @@ use crate::{
 
 type HashMap<K, V> = hashbrown::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
+/// Arena-backed storage for green syntax nodes and tokens, keeping diagnostics alongside tree elements.
 pub struct GreenTree {
     arena: Bump,
     diagnostics: HashMap<GreenElementInTree, Vec<DiagnosticInfo>>,
@@ -95,23 +96,25 @@ impl GreenTree {
     }
 
     #[inline]
+    /// Stores a diagnostic associated with the given green element.
     pub(crate) fn alloc_diagnostic(&mut self, element: &GreenElementInTree, diagnostic: DiagnosticInfo) {
         let hash = diagnostic_element_hash(&element);
         let entry = self.diagnostics.raw_entry_mut().from_hash(hash, |cached| cached == element);
 
         match entry {
             RawEntryMut::Occupied(mut entry) => {
-                entry.get_mut().push(diagnostic.clone());
+                entry.get_mut().push(diagnostic);
             }
             RawEntryMut::Vacant(entry) => {
                 let mut diagnostics = Vec::new();
-                diagnostics.push(diagnostic.clone());
+                diagnostics.push(diagnostic);
                 entry.insert_with_hasher(hash, element.clone(), diagnostics, |e| diagnostic_element_hash(&e));
             }
         }
     }
 
     #[inline]
+    /// Returns all diagnostics recorded for the given green element.
     pub(crate) fn get_diagnostics(&self, element: &GreenElementInTree) -> &[DiagnosticInfo] {
         let hash = diagnostic_element_hash(&element);
         let entry = self.diagnostics.raw_entry().from_hash(hash, |cached| cached == element);
