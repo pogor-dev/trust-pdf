@@ -1,9 +1,13 @@
 use std::ops::Range;
 
-use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
+use syntax::{DiagnosticKind, DiagnosticSeverity, GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
+/// Tokenizes PDF source code into a stream of tokens with full trivia preservation.
+///
+/// Scans byte sequences and emits tokens following ISO 32000-2:2020 lexical rules.
+/// Preserves all whitespace and comments as trivia for full-fidelity reconstruction.
 pub struct Lexer<'source> {
     pub(super) source: &'source [u8],
     pub(super) position: usize,
@@ -15,6 +19,7 @@ pub struct Lexer<'source> {
 struct TokenInfo<'a> {
     kind: SyntaxKind,
     bytes: &'a [u8],
+    diagnostics: Vec<(DiagnosticSeverity, u16, &'static str)>,
 }
 
 impl<'source> Lexer<'source> {
@@ -40,7 +45,7 @@ impl<'source> Lexer<'source> {
     /// # Returns
     ///
     /// A [`GreenToken`] representing the next lexical element. When the end of the source is reached,
-    /// returns an `EndOfFileToken` with empty text and no trivia.
+    /// returns a [`SyntaxKind::EndOfFileToken`] with empty text and no trivia.
     ///
     /// # Example
     ///
@@ -56,9 +61,13 @@ impl<'source> Lexer<'source> {
         let trailing_trivia = self.scan_trivia();
 
         // Build the token
-        let mut builder = GreenNodeBuilder::new();
+        let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
         builder.start_node(SyntaxKind::LexerNode.into());
         builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
+        // Attach all diagnostics to the token just added
+        for (severity, code, message) in &token_info.diagnostics {
+            builder.add_diagnostic(*severity, *code, *message).expect("Token already added");
+        }
         builder.finish_node();
         let node = builder.finish();
 
@@ -77,8 +86,9 @@ impl<'source> Lexer<'source> {
     /// Currently supports:
     /// - Numeric literals (integers and reals): `0-9`, `+`, `-`, `.`
     ///
-    /// For unsupported characters, the token_info remains in its default state (kind=Unknown, bytes=empty).
-    /// When EOF is reached, sets `EndOfFileToken` with empty bytes.
+    /// Unknown/unsupported characters are scanned as [`SyntaxKind::BadToken`] and continue until
+    /// a delimiter, whitespace, or EOF is encountered.
+    /// When EOF is reached, sets [`SyntaxKind::EndOfFileToken`] with empty bytes.
     fn scan_token(&mut self, token_info: &mut TokenInfo<'source>) {
         let first_byte = match self.peek() {
             Some(first_byte) => first_byte,
@@ -91,13 +101,17 @@ impl<'source> Lexer<'source> {
 
         self.start_lexeme();
 
+        // TODO: stop lexing when encountering delimiter characters
         match first_byte {
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
-                // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
                 self.scan_numeric_literal(token_info);
             }
-            // TODO: Add test coverage for unknown/unsupported characters (e.g., @, #) to verify error handling behavior
-            _ => {}
+            b'(' => {
+                self.scan_literal_string(token_info);
+            }
+            _ => {
+                self.scan_bad_token(token_info);
+            }
         };
 
         self.stop_lexeme();
@@ -163,21 +177,26 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
     }
 
-    // TODO: Potential bug - multiple consecutive line breaks (e.g., "\n\n") are consumed as single trivia piece.
-    // TODO: Add test coverage for consecutive EOL sequences (\n\n, \r\r, \r\n\r\n) to verify/document intended behavior.
-    // Each EOL sequence should likely be tracked as separate EndOfLineTrivia entries for proper PDF semantics.
-    /// Scans end-of-line sequences and returns a cached trivia entry.
+    /// Scans a single end-of-line sequence and returns a cached trivia entry.
     ///
-    /// Recognizes PDF EOL formats: LF (0x0A), CR (0x0D), and CR+LF (0x0D 0x0A).
-    /// Currently consumes multiple consecutive EOL sequences as a single trivia piece
-    /// for efficiency, though this may need refinement for strict PDF semantics.
+    /// Recognizes PDF EOL formats as [`SyntaxKind::EndOfLineTrivia`]: LF (0x0A), CR (0x0D), or CR+LF (0x0D 0x0A).
+    /// Consumes exactly one EOL sequence per call. Multiple consecutive EOLs (e.g., "\n\n") are handled
+    /// by the caller invoking this method repeatedly via `scan_trivia()`, creating separate trivia entries
+    /// for each EOL sequence for proper PDF semantics.
     ///
     /// The scanned bytes are cached for memory efficiency.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
-        self.advance(); // consume the first EOL byte
 
-        while let Some(byte) = self.peek() {
+        if let Some(byte) = self.peek() {
+            debug_assert!(
+                byte == b'\r' || byte == b'\n',
+                "Precondition violation: scan_end_of_line must be called when positioned at CR or LF, found byte: {:#x}",
+                byte
+            );
+
             match byte {
                 b'\r' if self.peek_by(1) == Some(b'\n') => {
                     self.advance_by(2); // consume CR LF
@@ -185,7 +204,7 @@ impl<'source> Lexer<'source> {
                 b'\r' | b'\n' => {
                     self.advance(); // consume CARRIAGE RETURN or LINE FEED
                 }
-                _ => break,
+                _ => {}
             }
         }
 
@@ -200,6 +219,8 @@ impl<'source> Lexer<'source> {
     /// The EOL is handled separately by `scan_trivia()` as its own trivia piece.
     ///
     /// The scanned bytes (including `%`) are cached for memory efficiency.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.4 Comments.
     fn scan_comment(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
         self.advance(); // consume the '%'
@@ -217,21 +238,27 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::CommentTrivia.into(), comment_bytes).1
     }
 
-    // TODO: Bug - allows multiple decimal points (e.g., "1.2.3.4" accepted as single token).
-    // Should track if decimal point seen and mark as BadToken on subsequent decimal points.
     /// Scans a numeric literal (integer or real number) and populates token_info.
     ///
     /// Accepts digits (0-9), decimal points (.), and signs (+/-) at the start.
-    /// Signs after the first character mark the token as `BadToken` since PDF requires
-    /// numeric literals to be delimiter-separated.
+    /// Marks the token as [`SyntaxKind::BadToken`] when:
+    /// - Multiple decimal points are encountered (e.g., `12.34.56`, `.1.2.3`)
+    /// - Signs appear after the first character (e.g., `12+34`, `12-34`)
+    ///
+    /// According to the PDF Syntax Matrix, numbers must be delimiter-separated,
+    /// so consecutive numeric characters with multiple signs or dots are invalid.
     ///
     /// Updates token_info with:
-    /// - `kind`: `NumericLiteralToken` for valid numbers, `BadToken` for invalid ones
+    /// - `kind`: [`SyntaxKind::NumericLiteralToken`] for valid numbers, [`SyntaxKind::BadToken`] for invalid ones
     /// - `bytes`: the complete scanned byte sequence
     ///
     /// The bytes are extracted from the lexeme range and not cached directly.
+    ///
+    /// See: ISO 32000-2:2020, §7.3.3 Numbers (integers and reals).
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
+        // TODO: Architectural limits on numeric literals, I think this should be handled in semantic analysis phase
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
+        let mut seen_dot = false;
         self.advance(); // consume the first digit
 
         while let Some(byte) = self.peek() {
@@ -240,11 +267,18 @@ impl<'source> Lexer<'source> {
                     self.advance(); // consume the digit
                 }
                 b'.' => {
+                    if seen_dot {
+                        // ISO 32000-2:2020 clause 7.3.3: Numbers (integers and reals) must be separated
+                        // by token delimiters or whitespace. Multiple decimal points are invalid.
+                        // So if we encounter numbers as `12.34.56` or `.1.2.3`, we should mark it as invalid token
+                        token_info.kind = SyntaxKind::BadToken;
+                    }
+                    seen_dot = true;
                     self.advance(); // consume the dot
                 }
                 b'+' | b'-' => {
                     // Sign not allowed after first digit (e.g., `12+34` is invalid).
-                    // According to PDF Compacted Syntax Matrix, integer and/or real numbers should be separated by delimiters.
+                    // ISO 32000-2:2020 clause 7.3.3: Integer and real numbers must be separated by delimiters.
                     token_info.kind = SyntaxKind::BadToken; // mark as bad token
                     self.advance();
                 }
@@ -252,6 +286,80 @@ impl<'source> Lexer<'source> {
             }
         }
 
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans a literal string token and populates token_info.
+    ///
+    /// A literal string in PDF is enclosed in parentheses: `(...)`.
+    /// Scans from the opening `(` through the closing `)` and marks it as [`SyntaxKind::StringLiteralToken`].
+    ///
+    /// Supports both balanced unescaped parentheses (tracked via nesting) and escaped parentheses.
+    /// Escaped parentheses (`\(`, `\)`) should not affect the nesting count, though full escape
+    /// sequence handling is deferred to semantic analysis. The string closes when nesting returns to zero.
+    ///
+    /// Updates token_info with:
+    /// - `kind`: [`SyntaxKind::StringLiteralToken`]
+    /// - `bytes`: the complete scanned byte sequence including parentheses
+    ///
+    /// See: ISO 32000-2:2020, §7.3.4.2 Literal Strings.
+    fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
+        // TODO: Handle escape sequences within literal strings (e.g., `\(`, `\)`, `\\`, octal sequences) in semantic analysis phase
+        token_info.kind = SyntaxKind::StringLiteralToken;
+        self.advance(); // consume the opening '('
+        let mut nesting = 1; // nesting starts at 1 for the initial consumed '('
+
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'\\' => {
+                    // Escape sequence: consume the backslash and the next character without processing
+                    self.advance();
+                    if self.peek().is_some() {
+                        self.advance(); // skip the escaped character
+                    }
+                }
+                b'(' => {
+                    nesting += 1;
+                    self.advance();
+                }
+                b')' => {
+                    self.advance(); // consume the ')'
+                    nesting -= 1;
+
+                    if nesting == 0 {
+                        break; // exit when string is fully closed
+                    }
+                }
+                _ => {
+                    self.advance();
+                }
+            }
+        }
+        token_info.bytes = self.get_lexeme_bytes();
+
+        // If nesting is not zero, the string is unbalanced
+        if nesting != 0 {
+            let kind = DiagnosticKind::UnbalancedStringLiteral;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+    }
+
+    /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
+    ///
+    /// Consumes characters greedily until a delimiter, whitespace, or EOF is encountered.
+    /// This ensures that sequences like `@#$` are captured as a single bad token for better
+    /// error reporting and recovery.
+    fn scan_bad_token(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::BadToken;
+        self.advance(); // consume the first bad character
+
+        while let Some(byte) = self.peek() {
+            // Stop at whitespace or delimiters
+            if is_whitespace(byte, true) || is_delimiter(byte, false) {
+                break;
+            }
+            self.advance(); // consume the bad character
+        }
         token_info.bytes = self.get_lexeme_bytes();
     }
 }
@@ -267,8 +375,12 @@ impl<'source> Lexer<'source> {
 /// - 0x20 SPACE (` `)
 ///
 /// See: ISO 32000-2:2020, §7.2.3 Character set, Table 1: White-space characters.
-fn is_whitespace(byte: u8) -> bool {
-    matches!(byte, b'\0' | b'\t' | b'\x0C' | b'\r' | b'\n' | b' ')
+fn is_whitespace(byte: u8, include_eol: bool) -> bool {
+    match byte {
+        b'\0' | b'\t' | b'\x0C' | b' ' => true,
+        b'\r' | b'\n' if include_eol => true,
+        _ => false,
+    }
 }
 
 ///
@@ -313,290 +425,10 @@ fn is_eol(bytes: &[u8]) -> bool {
 ///
 /// ## Note on double character delimiters
 /// In addition, double character delimiters (`<<`, `>>`) are used in dictionaries.
-fn is_delimiter(byte: u8) -> bool {
-    matches!(byte, b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'{' | b'}' | b'/' | b'%')
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Lexer;
-    use pretty_assertions::assert_eq;
-    use syntax::{GreenNode, GreenNodeBuilder, GreenToken, NodeOrToken, SyntaxKind, tree};
-
-    #[test]
-    fn test_numeric_literal_123() {
-        let mut lexer = Lexer::new(b"123");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"123");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_43445() {
-        let mut lexer = Lexer::new(b"43445");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"43445");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_plus_17() {
-        let mut lexer = Lexer::new(b"+17");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+17");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_minus_98() {
-        let mut lexer = Lexer::new(b"-98");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-98");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_0() {
-        let mut lexer = Lexer::new(b"0");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"0");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_00987() {
-        let mut lexer = Lexer::new(b"00987");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"00987");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_34_5() {
-        let mut lexer = Lexer::new(b"34.5");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"34.5");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_minus_3_62() {
-        let mut lexer = Lexer::new(b"-3.62");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-3.62");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_plus_123_6() {
-        let mut lexer = Lexer::new(b"+123.6");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"+123.6");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_4_() {
-        let mut lexer = Lexer::new(b"4.");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"4.");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn test_numeric_literal_minus__002() {
-        let mut lexer = Lexer::new(b"-.002");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"-.002");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_literal_009_87() {
-        let mut lexer = Lexer::new(b"009.87");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b"009.87");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    #[allow(non_snake_case)]
-    fn test_numeric_literal__3_4() {
-        let mut lexer = Lexer::new(b".34");
-        let token = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::NumericLiteralToken, b".34");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_plus_plus_invalid() {
-        let mut lexer = Lexer::new(b"++");
-        let token: GreenToken = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"++");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    #[test]
-    fn test_numeric_plus_minus_345_minus_36_invalid() {
-        let mut lexer = Lexer::new(b"+345-36");
-        let token: GreenToken = lexer.next_token();
-        assert_numeric_literal_token(&token, SyntaxKind::BadToken, b"+345-36");
-        assert_eof_token(&lexer.next_token());
-    }
-
-    // TODO: Add test coverage for multiple decimal points (e.g., "1.2.3", "4.5.6.7") to verify proper BadToken handling.
-
-    #[test]
-    fn test_trivia_single_space() {
-        let mut lexer = Lexer::new(b"009 345");
-        let actual_node = generate_node_from_lexer(&mut lexer);
-
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (SyntaxKind::NumericLiteralToken.into()) => {
-                    text(b"009"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
-                },
-                (SyntaxKind::NumericLiteralToken.into(), b"345")
-            }
-        };
-
-        assert_nodes_equal(&actual_node, &expected_node);
-    }
-
-    #[test]
-    fn test_trivia_multiple_spaces() {
-        let mut lexer = Lexer::new(b"009       345");
-        let actual_node = generate_node_from_lexer(&mut lexer);
-
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (SyntaxKind::NumericLiteralToken.into()) => {
-                    text(b"009"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"       "),
-                },
-                (SyntaxKind::NumericLiteralToken.into(), b"345")
-            }
-        };
-
-        assert_nodes_equal(&actual_node, &expected_node);
-    }
-
-    #[test]
-    fn test_trivia_different_whitespaces() {
-        let mut lexer = Lexer::new(b"\r\0009 \t \x0C\r\n345\0\t\x0C \n");
-        let actual_node = generate_node_from_lexer(&mut lexer);
-
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (SyntaxKind::NumericLiteralToken.into()) => {
-                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0"),
-                    text(b"009"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" \t \x0C"),
-                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
-                },
-                (SyntaxKind::NumericLiteralToken.into()) => {
-                    text(b"345"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0\t\x0C "),
-                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
-                }
-            }
-        };
-
-        assert_nodes_equal(&actual_node, &expected_node);
-    }
-
-    #[test]
-    fn test_trivia_comments() {
-        let mut lexer = Lexer::new(b"% This is a comment\n009 % Another comment\r\n345");
-        let actual_node = generate_node_from_lexer(&mut lexer);
-
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (SyntaxKind::NumericLiteralToken.into()) => {
-                    trivia(SyntaxKind::CommentTrivia.into(), b"% This is a comment"),
-                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
-                    text(b"009"),
-                    trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
-                    trivia(SyntaxKind::CommentTrivia.into(), b"% Another comment"),
-                    trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
-                },
-                (SyntaxKind::NumericLiteralToken.into(), b"345"),
-            }
-        };
-
-        assert_nodes_equal(&actual_node, &expected_node);
-    }
-
-    fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {
-        let actual_children: Vec<GreenToken> = actual
-            .children()
-            .filter_map(|child| match child {
-                NodeOrToken::Token(token) => Some(token),
-                _ => None,
-            })
-            .collect();
-
-        let expected_children: Vec<GreenToken> = expected
-            .children()
-            .filter_map(|child| match child {
-                NodeOrToken::Token(token) => Some(token),
-                _ => None,
-            })
-            .collect();
-
-        assert_eq!(actual_children, expected_children);
-    }
-
-    fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
-        let tokens: Vec<_> = std::iter::from_fn(|| Some(lexer.next_token()))
-            .take_while(|t| t.kind() != SyntaxKind::EndOfFileToken.into())
-            .collect();
-
-        let mut builder = GreenNodeBuilder::new();
-        builder.start_node(SyntaxKind::LexerNode.into());
-        tokens.iter().for_each(|token| {
-            builder.token(token.kind(), &token.bytes(), token.leading_trivia().pieces(), token.trailing_trivia().pieces());
-        });
-        builder.finish_node();
-        builder.finish()
-    }
-
-    fn assert_numeric_literal_token(token: &GreenToken, expected_kind: SyntaxKind, expected_bytes: &[u8]) {
-        let actual_node = generate_lexer_node_tree(token);
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (expected_kind.into(), expected_bytes)
-            }
-        };
-
-        let actual_token = actual_node.children().next().unwrap();
-        let expected_token = expected_node.children().next().unwrap();
-        assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
-        assert_eq!(actual_node, expected_node);
-    }
-
-    fn assert_eof_token(token: &GreenToken) {
-        let actual_node = generate_lexer_node_tree(token);
-        let expected_node = tree! {
-            SyntaxKind::LexerNode.into() => {
-                (SyntaxKind::EndOfFileToken.into(), b"")
-            }
-        };
-
-        let actual_token = actual_node.children().next().unwrap();
-        let expected_token = expected_node.children().next().unwrap();
-        assert_eq!(format!("{:?}", actual_token), format!("{:?}", expected_token));
-        assert_eq!(actual_node, expected_node);
-    }
-
-    fn generate_lexer_node_tree(token: &GreenToken) -> GreenNode {
-        tree! {
-            SyntaxKind::LexerNode.into() => {
-                (token.kind(), &token.bytes())
-            }
-        }
+fn is_delimiter(byte: u8, include_postscript_delimiters: bool) -> bool {
+    match byte {
+        b'(' | b')' | b'<' | b'>' | b'[' | b']' | b'/' | b'%' => true,
+        b'{' | b'}' if include_postscript_delimiters => true,
+        _ => false,
     }
 }

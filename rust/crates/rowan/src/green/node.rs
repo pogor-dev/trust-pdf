@@ -4,7 +4,7 @@ use countme::Count;
 use triomphe::Arc;
 
 use crate::{
-    GreenToken, NodeOrToken, SyntaxKind,
+    DiagnosticInfo, GreenToken, NodeOrToken, SyntaxKind,
     green::{GreenElement, arena::GreenTree, token::GreenTokenInTree, trivia::GreenTriviaListInTree},
 };
 
@@ -121,7 +121,7 @@ impl GreenNodeInTree {
         let mut output = Vec::new();
 
         // Use explicit stack to handle deeply recursive structures without stack overflow
-        let mut stack: Vec<(NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>, bool, bool)> = Vec::new();
+        let mut stack: Vec<(NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>, bool, bool)> = Vec::with_capacity(64);
         stack.push((NodeOrToken::Node(self), leading, trailing));
 
         while let Some((item, current_leading, current_trailing)) = stack.pop() {
@@ -293,6 +293,12 @@ impl GreenNode {
         self.node.trailing_trivia()
     }
 
+    /// Returns all diagnostics recorded for this node via the shared arena.
+    #[inline]
+    pub fn diagnostics(&self) -> &[DiagnosticInfo] {
+        self.arena.get_diagnostics(&self.node.into())
+    }
+
     #[inline]
     pub(crate) fn into_raw_parts(self) -> (GreenNodeInTree, Arc<GreenTree>) {
         (self.node, self.arena)
@@ -331,7 +337,7 @@ impl GreenChild {
     pub(crate) fn as_green_element(&self, arena: Arc<GreenTree>) -> GreenElement {
         match self {
             GreenChild::Node { node, .. } => NodeOrToken::Node(GreenNode { node: *node, arena }),
-            GreenChild::Token { token, .. } => NodeOrToken::Token(GreenToken { token: *token, _arena: arena }),
+            GreenChild::Token { token, .. } => NodeOrToken::Token(GreenToken { token: *token, arena }),
         }
     }
 
@@ -687,6 +693,7 @@ mod node_tests {
 #[cfg(test)]
 mod node_children_tests {
     use super::*;
+    use crate::diagnostics::DiagnosticSeverity::{Error, Info, Warning};
     use crate::tree;
     use pretty_assertions::assert_eq;
 
@@ -851,5 +858,56 @@ mod node_children_tests {
         let (lower, upper) = children.size_hint();
         assert_eq!(lower, 2);
         assert_eq!(upper, Some(2));
+    }
+
+    #[test]
+    fn test_diagnostics_when_no_diagnostics_expect_empty() {
+        let node = tree! {
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+
+        assert_eq!(node.diagnostics().len(), 0);
+    }
+
+    #[test]
+    fn test_diagnostics_when_single_diagnostic_expect_returned() {
+        let node = tree! {
+            @diagnostic(Error, 1, "test error"),
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+        let diagnostics = node.diagnostics();
+
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].code, 1);
+        assert_eq!(diagnostics[0].message, "test error");
+        assert_eq!(diagnostics[0].severity, Error);
+    }
+
+    #[test]
+    fn test_diagnostics_when_multiple_diagnostics_expect_all_returned() {
+        let node = tree! {
+            @diagnostic(Error, 1, "error 1"),
+            @diagnostic(Warning, 2, "warning 1"),
+            @diagnostic(Info, 3, "info 1"),
+            NODE_KIND => {
+                (TOKEN_KIND, b"test")
+            }
+        };
+        let diagnostics = node.diagnostics();
+
+        assert_eq!(diagnostics.len(), 3);
+        assert_eq!(diagnostics[0].code, 1);
+        assert_eq!(diagnostics[0].message, "error 1");
+        assert_eq!(diagnostics[0].severity, Error);
+        assert_eq!(diagnostics[1].code, 2);
+        assert_eq!(diagnostics[1].message, "warning 1");
+        assert_eq!(diagnostics[1].severity, Warning);
+        assert_eq!(diagnostics[2].code, 3);
+        assert_eq!(diagnostics[2].message, "info 1");
+        assert_eq!(diagnostics[2].severity, Info);
     }
 }

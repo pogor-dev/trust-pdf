@@ -34,7 +34,13 @@
 /// 6. Token content processing (`@token_content`):
 ///    - Translates `text(value)` → `builder.token_text(value)`
 ///    - Translates `trivia(kind, value)` → `builder.trivia(kind, value)`
+///    - Translates `diagnostic(...)` → `builder.diagnostic(...)`
 ///    - Processes calls sequentially, preserving order for leading/trailing trivia
+///
+/// 7. Diagnostic decorators (`@diagnostic(...)`):
+///    - Can be placed above nodes or tokens
+///    - Multiple diagnostics are supported
+///    - Diagnostics are added to the element immediately following them
 ///
 /// # Example Usage
 ///
@@ -49,6 +55,7 @@
 ///
 /// let tree = tree! {
 ///     PARENT => {
+///         @diagnostic(DiagnosticSeverity::Error, 1001, "Error message"),
 ///         (TOKEN) => { trivia(SPACE, b" "), text(b"foo") },
 ///         CHILD => {
 ///             (TOKEN, b"bar")
@@ -93,8 +100,82 @@
 /// - Token shorthand: `(KIND, text)` - direct text assignment without trivia
 /// - Token content: Comma-separated calls to `text()` and `trivia(kind, value)`
 /// - Trivia placement: Calls before `text()` become leading trivia, calls after become trailing trivia
+/// - Diagnostics: `@diagnostic(severity, code, "message")` - placed above tokens or nodes
 #[macro_export]
 macro_rules! tree {
+    // [Diagnostic Collection Phase] Recursively collect consecutive @diagnostic decorators
+    // Accumulates all diagnostics before processing the element they're attached to
+
+    // Collect another diagnostic and continue collecting
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], @diagnostic($($diag:tt)*), $($rest:tt)*) => {
+        $crate::tree!(@collect_diagnostics $builder, [$($diags)* ($($diag)*),], $($rest)*);
+    };
+
+    // Done collecting diagnostics, found token shorthand (last element)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], ($kind:expr, $text:expr)) => {{
+        $builder.start_token($kind);
+        $builder.token_text($text);
+        $builder.finish_token();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+    }};
+
+    // Done collecting diagnostics, found token shorthand (with more elements)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], ($kind:expr, $text:expr), $($rest:tt)*) => {{
+        $builder.start_token($kind);
+        $builder.token_text($text);
+        $builder.finish_token();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+        $crate::tree!(@elements $builder, $($rest)*);
+    }};
+
+    // Done collecting diagnostics, found expanded token (last element)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], ($kind:expr) => { $($content:tt)* }) => {{
+        $builder.start_token($kind);
+        { $crate::tree!(@token_content $builder, $($content)*); }
+        $builder.finish_token();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+    }};
+
+    // Done collecting diagnostics, found expanded token (with more elements)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], ($kind:expr) => { $($content:tt)* }, $($rest:tt)*) => {{
+        $builder.start_token($kind);
+        { $crate::tree!(@token_content $builder, $($content)*); }
+        $builder.finish_token();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+        $crate::tree!(@elements $builder, $($rest)*);
+    }};
+
+    // Done collecting diagnostics, found node (last element)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], $kind:expr => { $($children:tt)* }) => {{
+        $builder.start_node($kind);
+        $crate::tree!(@elements $builder, $($children)*);
+        $builder.finish_node();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+    }};
+
+    // Done collecting diagnostics, found node (with more elements)
+    (@collect_diagnostics $builder:ident, [$($diags:tt)*], $kind:expr => { $($children:tt)* }, $($rest:tt)*) => {{
+        $builder.start_node($kind);
+        $crate::tree!(@elements $builder, $($children)*);
+        $builder.finish_node();
+        $crate::tree!(@apply_diagnostics $builder, $($diags)*);
+        $crate::tree!(@elements $builder, $($rest)*);
+    }};
+
+    // [Apply Diagnostics] Recursively apply each collected diagnostic
+    (@apply_diagnostics $builder:ident, ($($diag:tt)*), $($rest:tt)*) => {
+        $builder.add_diagnostic($($diag)*).expect("Element already added in tree! macro");
+        $crate::tree!(@apply_diagnostics $builder, $($rest)*);
+    };
+
+    // Base case: no more diagnostics to apply
+    (@apply_diagnostics $builder:ident,) => {};
+
+    // [Entry to diagnostic collection] Start collecting when we see @diagnostic
+    (@elements $builder:ident, @diagnostic($($diag:tt)*), $($rest:tt)*) => {
+        $crate::tree!(@collect_diagnostics $builder, [($($diag)*),], $($rest)*);
+    };
+
     // [Step 1a] Token expansion (last token in sequence)
     // Matches: (KIND) => { content }
     (@elements $builder:ident, ($kind:expr) => { $($content:tt)* }) => {{
@@ -261,6 +342,38 @@ mod builder_tests {
 
         let expected = b"1 0 obj\n<<\n  /Type /Catalog\n>>endobj\n% This is a comment";
         assert_eq!(tree.to_string(), String::from_utf8_lossy(expected));
+        assert_eq!(tree.full_bytes(), expected);
+    }
+
+    /// Example of building a tree with diagnostic decorators.
+    ///
+    /// Demonstrates using `@diagnostic()` decorators above tokens and nodes.
+    /// Multiple diagnostics can be attached to the same element.
+    #[test]
+    fn test_macro_with_diagnostics() {
+        use crate::diagnostics::DiagnosticSeverity::{Error, Info, Warning};
+        let tree = tree! {
+            OBJECT => {
+                @diagnostic(Error, 1, "Unexpected token in object"),
+                @diagnostic(Warning, 2, "Missing object number"),
+                @diagnostic(Error, 3, "Invalid object syntax"),
+                @diagnostic(Error, 4, "Object header malformed"),
+                (KEYWORD, b"obj"),
+                @diagnostic(Warning, 5, "Dictionary missing key"),
+                DICTIONARY => {
+                    @diagnostic(Error, 6, "Invalid delimiter"),
+                    (DELIMITER, b"<<"),
+                    (NAME, b"/Type"),
+                    @diagnostic(Info, 7, "Invalid name value"),
+                    @diagnostic(Warning, 8, "Type should be specified"),
+                    @diagnostic(Error, 9, "Name format incorrect"),
+                    (NAME, b"/Catalog"),
+                    (DELIMITER, b">>")
+                }
+            }
+        };
+
+        let expected = b"obj<</Type/Catalog>>";
         assert_eq!(tree.full_bytes(), expected);
     }
 }

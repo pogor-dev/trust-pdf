@@ -237,3 +237,11 @@ fn element_id(elem: NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>) -> *const 
         NodeOrToken::Token(it) => it.data.as_ptr().cast(),
     }
 }
+
+/// Computes a stable hash for a green element used as the diagnostics map key.
+pub(super) fn diagnostic_element_hash(element: &GreenElementInTree) -> u64 {
+    match element {
+        NodeOrToken::Node(node) => node_hash(node),
+        NodeOrToken::Token(token) => token_hash(token.kind(), token.bytes().as_slice(), *token.leading_trivia(), *token.trailing_trivia()),
+    }
+}

@@ -35,10 +35,19 @@ cargo llvm-cov --lcov --output-path target/lcov.info
 
 ## Project-Specific Patterns
 
-### Memory Management
-- **Arena allocation**: Syntax trees use arena allocation for cache-friendly access
-- **Inline storage**: `GreenNodeData` stores children inline after the header
-- **Reference counting**: Uses `triomphe::Arc` for shared ownership
+### Memory Management & Performance
+
+**Performance and memory efficiency are critical priorities for this project.** The compiler processes potentially large PDF files and must maintain low overhead. All architectural decisions prioritize cache-friendly access and minimal allocations.
+
+Key principles:
+- **Arena allocation**: Syntax trees use arena allocation for cache-friendly access and efficient memory layout
+- **Inline storage**: `GreenNodeData` stores children inline after the header to reduce indirection
+- **Reference counting**: Uses `triomphe::Arc` for shared ownership with minimal overhead
+- **Avoid redundant allocations**: Use `Vec::with_capacity()` for pre-sized collections and `vec![]` macro for single-element vectors instead of `Vec::new()` followed by `push()`
+- **Stack-based operations**: Prefer stack allocation and iterators over heap allocations when possible
+- **Memory pooling**: Cache and reuse frequently allocated structures
+
+Consider performance implications in every change, especially in hot paths like lexing, parsing, and tree traversal.
 
 ### Error Handling & Resilience
 - **Error recovery**: Parser continues processing after errors for IDE-like experience
@@ -64,12 +73,36 @@ PDF syntax has strict whitespace rules that must be preserved:
 - Document edge cases and error conditions
 - Use analogies for complex compiler concepts
 - Keep documentation concise (few lines per item)
+- **Doc comments placement**: Always place `///` doc comments **before** all attributes (e.g., `#[derive]`, `#[repr]`, `#[inline]`)
+  - Incorrect: `#[derive(...)]` `#[repr(...)]` `/// docs` `pub struct Foo`
+  - Correct: `/// docs` `#[derive(...)]` `#[repr(...)]` `pub struct Foo`
 
 ### Testing Conventions
 Test naming: `test_<function>_when_<condition>_expect_<result>`
 - Cover both spec-compliant and malformed PDF cases
 - Test proportional to code complexity
 - Avoid testing implementation details
+
+## SafeDocs and PDF Syntax Compliance
+
+**Context**: SafeDocs is a DARPA-funded research program dedicated to improving detection and handling of invalid or maliciously crafted data in electronic documents, including PDF files. A key artifact of this program is the **PDF Compacted Syntax Matrix** and associated test suite.
+
+**What it means**:
+- The SafeDocs program produced detailed specification of all 121 possible adjacent PDF token pairings
+- This matrix documents which tokens can appear next to each other without whitespace delimiters
+- It validates that PDF parsers correctly handle minimal whitespace scenarios (e.g., `/Type/XObject`, `<</A/B>>>>`, `(cat)(sat)`)
+- The test suite ensures lexical analyzers comply with ISO 32000-2:2020 clauses 7.2.3 and 7.3.3
+
+**When referencing in comments**:
+- Always cite the specific ISO 32000-2:2020 clause (e.g., §7.3.3, §7.3.4.2)
+- Example: "ISO 32000-2:2020 clause 7.3.3: Numbers must be separated by token delimiters"
+- When validation is based on SafeDocs test matrix insights, reference both the clause AND explain the specific constraint
+- This maintains clarity for developers unfamiliar with SafeDocs while acknowledging the specification source
+
+**Reference materials**:
+- ISO 32000-2:2020 (official PDF 2.0 specification)
+- PDF Association GitHub repository: SafeDocs test matrix and artifacts
+- Use the official specification as the primary reference in code comments
 
 ## Critical Dependencies
 
