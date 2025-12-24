@@ -20,6 +20,13 @@ pub fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {
         .collect();
 
     assert_eq!(actual_children, expected_children);
+
+    // Also verify diagnostics equality at node and token levels.
+    assert_eq!(actual.diagnostics(), expected.diagnostics());
+
+    for (actual_tok, expected_tok) in actual_children.iter().zip(expected_children.iter()) {
+        assert_eq!(actual_tok.diagnostics(), expected_tok.diagnostics());
+    }
 }
 
 pub fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
@@ -31,6 +38,10 @@ pub fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
     builder.start_node(SyntaxKind::LexerNode.into());
     tokens.iter().for_each(|token| {
         builder.token(token.kind(), &token.bytes(), token.leading_trivia().pieces(), token.trailing_trivia().pieces());
+        // Propagate token diagnostics into the rebuilt node so comparisons include them
+        for diag in token.diagnostics() {
+            builder.add_diagnostic(diag.severity.clone(), diag.code, diag.message);
+        }
     });
     builder.finish_node();
     builder.finish()

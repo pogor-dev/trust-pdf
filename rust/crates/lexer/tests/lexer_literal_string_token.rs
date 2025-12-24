@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{SyntaxKind, tree};
+use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 #[test]
 fn test_string_literal_simple() {
@@ -81,6 +81,7 @@ fn test_string_literal_unbalanced_unclosed() {
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::UnbalancedStringLiteral.into(), "Unbalanced string literal"),
             (SyntaxKind::StringLiteralToken.into(), b"(This is unclosed")
         }
     };
@@ -95,6 +96,7 @@ fn test_string_literal_unbalanced_extra_open() {
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::UnbalancedStringLiteral.into(), "Unbalanced string literal"),
             (SyntaxKind::StringLiteralToken.into(), b"(()")
         }
     };

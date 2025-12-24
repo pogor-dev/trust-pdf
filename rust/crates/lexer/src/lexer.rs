@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax::{GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
+use syntax::{DiagnosticKind, DiagnosticSeverity, GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
@@ -15,6 +15,7 @@ pub struct Lexer<'source> {
 struct TokenInfo<'a> {
     kind: SyntaxKind,
     bytes: &'a [u8],
+    diagnostics: Vec<(DiagnosticSeverity, u16, &'static str)>,
 }
 
 impl<'source> Lexer<'source> {
@@ -59,6 +60,10 @@ impl<'source> Lexer<'source> {
         let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
         builder.start_node(SyntaxKind::LexerNode.into());
         builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
+        // Attach all diagnostics to the token just added
+        for (severity, code, message) in &token_info.diagnostics {
+            builder.add_diagnostic(severity.clone(), *code, *message);
+        }
         builder.finish_node();
         let node = builder.finish();
 
@@ -283,7 +288,7 @@ impl<'source> Lexer<'source> {
     fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::StringLiteralToken;
         self.advance(); // consume the opening '('
-        let mut nesting = 0;
+        let mut nesting = 1; // nesting starts at 1 for the initial consumed '('
 
         while let Some(byte) = self.peek() {
             match byte {
@@ -304,8 +309,12 @@ impl<'source> Lexer<'source> {
                 }
             }
         }
-
         token_info.bytes = self.get_lexeme_bytes();
+        // Flag only when outer string is unclosed and we saw inner '('.
+        if nesting != 0 {
+            let kind = DiagnosticKind::UnbalancedStringLiteral;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
     }
 
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
