@@ -71,6 +71,27 @@ Test naming: `test_<function>_when_<condition>_expect_<result>`
 - Test proportional to code complexity
 - Avoid testing implementation details
 
+## SafeDocs and PDF Syntax Compliance
+
+**Context**: SafeDocs is a DARPA-funded research program dedicated to improving detection and handling of invalid or maliciously crafted data in electronic documents, including PDF files. A key artifact of this program is the **PDF Compacted Syntax Matrix** and associated test suite.
+
+**What it means**:
+- The SafeDocs program produced detailed specification of all 121 possible adjacent PDF token pairings
+- This matrix documents which tokens can appear next to each other without whitespace delimiters
+- It validates that PDF parsers correctly handle minimal whitespace scenarios (e.g., `/Type/XObject`, `<</A/B>>>>`, `(cat)(sat)`)
+- The test suite ensures lexical analyzers comply with ISO 32000-2:2020 clauses 7.2.3 and 7.3.3
+
+**When referencing in comments**:
+- Always cite the specific ISO 32000-2:2020 clause (e.g., §7.3.3, §7.3.4.2)
+- Example: "ISO 32000-2:2020 clause 7.3.3: Numbers must be separated by token delimiters"
+- When validation is based on SafeDocs test matrix insights, reference both the clause AND explain the specific constraint
+- This maintains clarity for developers unfamiliar with SafeDocs while acknowledging the specification source
+
+**Reference materials**:
+- ISO 32000-2:2020 (official PDF 2.0 specification)
+- PDF Association GitHub repository: SafeDocs test matrix and artifacts
+- Use the official specification as the primary reference in code comments
+
 ## Critical Dependencies
 
 Minimal dependency philosophy - only essential crates:

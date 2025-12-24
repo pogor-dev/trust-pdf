@@ -181,6 +181,8 @@ impl<'source> Lexer<'source> {
     /// for each EOL sequence for proper PDF semantics.
     ///
     /// The scanned bytes are cached for memory efficiency.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
 
@@ -213,6 +215,8 @@ impl<'source> Lexer<'source> {
     /// The EOL is handled separately by `scan_trivia()` as its own trivia piece.
     ///
     /// The scanned bytes (including `%`) are cached for memory efficiency.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.4 Comments.
     fn scan_comment(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
         self.advance(); // consume the '%'
@@ -245,6 +249,8 @@ impl<'source> Lexer<'source> {
     /// - `bytes`: the complete scanned byte sequence
     ///
     /// The bytes are extracted from the lexeme range and not cached directly.
+    ///
+    /// See: ISO 32000-2:2020, §7.3.3 Numbers (integers and reals).
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
         // TODO: Architectural limits on numeric literals, I think this should be handled in semantic analysis phase
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
@@ -258,7 +264,8 @@ impl<'source> Lexer<'source> {
                 }
                 b'.' => {
                     if seen_dot {
-                        // SafeDocs' PDF syntax matrix specifies that numbers should be split by delimiters or whitespace
+                        // ISO 32000-2:2020 clause 7.3.3: Numbers (integers and reals) must be separated
+                        // by token delimiters or whitespace. Multiple decimal points are invalid.
                         // So if we encounter numbers as `12.34.56` or `.1.2.3`, we should mark it as invalid token
                         token_info.kind = SyntaxKind::BadToken;
                     }
@@ -267,7 +274,7 @@ impl<'source> Lexer<'source> {
                 }
                 b'+' | b'-' => {
                     // Sign not allowed after first digit (e.g., `12+34` is invalid).
-                    // According to PDF Compacted Syntax Matrix, integer and/or real numbers should be separated by delimiters.
+                    // ISO 32000-2:2020 clause 7.3.3: Integer and real numbers must be separated by delimiters.
                     token_info.kind = SyntaxKind::BadToken; // mark as bad token
                     self.advance();
                 }
@@ -290,6 +297,8 @@ impl<'source> Lexer<'source> {
     /// Updates token_info with:
     /// - `kind`: [`SyntaxKind::StringLiteralToken`]
     /// - `bytes`: the complete scanned byte sequence including parentheses
+    ///
+    /// See: ISO 32000-2:2020, §7.3.4.2 Literal Strings.
     fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
         // TODO: Handle escape sequences within literal strings (e.g., `\(`, `\)`, `\\`, octal sequences) in semantic analysis phase
         token_info.kind = SyntaxKind::StringLiteralToken;
@@ -298,6 +307,13 @@ impl<'source> Lexer<'source> {
 
         while let Some(byte) = self.peek() {
             match byte {
+                b'\\' => {
+                    // Escape sequence: consume the backslash and the next character without processing
+                    self.advance();
+                    if self.peek().is_some() {
+                        self.advance(); // skip the escaped character
+                    }
+                }
                 b'(' => {
                     nesting += 1;
                     self.advance();

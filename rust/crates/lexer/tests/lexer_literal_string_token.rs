@@ -186,3 +186,36 @@ fn test_scan_literal_string_when_unknown_escape_sequence_expect_string_literal_t
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+#[test]
+fn test_scan_literal_string_when_escaped_parentheses_expect_string_literal_token() {
+    // Escaped parentheses should not affect nesting count
+    // Input: (a \( b) - the \( should be skipped, leaving only one closing paren
+    let input = b"(a \\( b)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_literal_string_when_escaped_closing_paren_expect_string_literal_token() {
+    // Escaped closing paren should not terminate the string
+    // Input: (text \) more) - the \) is escaped, so it doesn't close the string
+    let input = b"(text \\) more)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
