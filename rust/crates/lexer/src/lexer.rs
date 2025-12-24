@@ -297,13 +297,13 @@ impl<'source> Lexer<'source> {
                     nesting += 1;
                     self.advance();
                 }
-                b')' if nesting == 0 => {
-                    self.advance(); // consume the closing ')'
-                    break; // exit the string
-                }
                 b')' => {
+                    self.advance(); // consume the ')'
                     nesting -= 1;
-                    self.advance();
+
+                    if nesting == 0 {
+                        break; // exit when string is fully closed
+                    }
                 }
                 _ => {
                     self.advance();
@@ -322,14 +322,14 @@ impl<'source> Lexer<'source> {
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
     ///
     /// Consumes characters greedily until a delimiter, whitespace, or EOF is encountered.
-    /// This ensures that sequences like `@#$%` are captured as a single bad token for better
+    /// This ensures that sequences like `@#$` are captured as a single bad token for better
     /// error reporting and recovery.
     fn scan_bad_token(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::BadToken;
         self.advance(); // consume the first bad character
 
         while let Some(byte) = self.peek() {
-            // Stop at whitespace or delimiters (excluding % which can be part of bad tokens)
+            // Stop at whitespace or delimiters
             if is_whitespace(byte, true) || is_delimiter(byte, false) {
                 break;
             }

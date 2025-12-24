@@ -75,6 +75,24 @@ fn test_string_literal_with_zero_content() {
 }
 
 #[test]
+fn test_string_literal_two_strings_with_space() {
+    let mut lexer = Lexer::new(b"(first) (second)");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into()) => {
+                text(b"(first)"),
+                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+            },
+            (SyntaxKind::StringLiteralToken.into(), b"(second)")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
 fn test_string_literal_unbalanced_unclosed() {
     let mut lexer = Lexer::new(b"(This is unclosed");
     let actual_node = generate_node_from_lexer(&mut lexer);
