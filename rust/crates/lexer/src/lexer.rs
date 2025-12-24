@@ -242,7 +242,7 @@ impl<'source> Lexer<'source> {
     ///
     /// The bytes are extracted from the lexeme range and not cached directly.
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
-        // TODO: Architectural limits on numeric literals, I think this should be handled in Semantic analysis phase
+        // TODO: Architectural limits on numeric literals, I think this should be handled in semantic analysis phase
         token_info.kind = SyntaxKind::NumericLiteralToken; // default to numeric literal
         let mut seen_dot = false;
         self.advance(); // consume the first digit
@@ -286,6 +286,7 @@ impl<'source> Lexer<'source> {
     /// - `kind`: [`SyntaxKind::StringLiteralToken`]
     /// - `bytes`: the complete scanned byte sequence including parentheses
     fn scan_literal_string(&mut self, token_info: &mut TokenInfo<'source>) {
+        // TODO: Handle escape sequences within literal strings (e.g., `\(`, `\)`, `\\`, octal sequences) in semantic analysis phase
         token_info.kind = SyntaxKind::StringLiteralToken;
         self.advance(); // consume the opening '('
         let mut nesting = 1; // nesting starts at 1 for the initial consumed '('
@@ -310,7 +311,8 @@ impl<'source> Lexer<'source> {
             }
         }
         token_info.bytes = self.get_lexeme_bytes();
-        // Flag only when outer string is unclosed and we saw inner '('.
+
+        // If nesting is not zero, the string is unbalanced
         if nesting != 0 {
             let kind = DiagnosticKind::UnbalancedStringLiteral;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));

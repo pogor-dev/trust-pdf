@@ -103,3 +103,68 @@ fn test_string_literal_unbalanced_extra_open() {
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+
+#[test]
+fn test_string_literal_with_escape_sequences() {
+    // Verify recognized escape sequences are consumed and do not break lexing
+    let input = b"(line\\n feed \\r cr \\t tab \\b bs \\f ff \\( left \\) right \\\\ backslash)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_string_literal_escaped_parens_do_not_affect_nesting() {
+    // Escaped parentheses should not change nesting; string remains balanced
+    let input = b"(a \\( b \\) c)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_string_literal_trailing_backslash_at_eof() {
+    // Reverse solidus at EOF should be consumed and treated as unbalanced string
+    let input = b"(trailing backslash\\";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::UnbalancedStringLiteral.into(), "Unbalanced string literal"),
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_string_literal_unknown_escape_backslash_x() {
+    // Unknown escape: backslash should be ignored, next char handled normally
+    let input = b"(hello \\x world)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
