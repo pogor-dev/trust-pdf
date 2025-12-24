@@ -30,7 +30,7 @@ pub fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {
     }
 }
 
-/// Rebuilds a lexer node from emitted tokens while preserving their diagnostics.
+/// Rebuilds a lexer node from emitted tokens while preserving token-level diagnostics.
 pub fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
     let tokens: Vec<_> = std::iter::from_fn(|| Some(lexer.next_token()))
         .take_while(|t| t.kind() != SyntaxKind::EndOfFileToken.into())
@@ -42,7 +42,7 @@ pub fn generate_node_from_lexer(lexer: &mut Lexer) -> GreenNode {
         builder.token(token.kind(), &token.bytes(), token.leading_trivia().pieces(), token.trailing_trivia().pieces());
         // Propagate token diagnostics into the rebuilt node so comparisons include them
         for diag in token.diagnostics() {
-            builder.add_diagnostic(diag.severity, diag.code, diag.message);
+            builder.add_diagnostic(diag.severity, diag.code, diag.message).expect("Token already added");
         }
     });
     builder.finish_node();

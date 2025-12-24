@@ -62,7 +62,7 @@ impl<'source> Lexer<'source> {
         builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
         // Attach all diagnostics to the token just added
         for (severity, code, message) in &token_info.diagnostics {
-            builder.add_diagnostic(*severity, *code, *message);
+            builder.add_diagnostic(*severity, *code, *message).expect("Token already added");
         }
         builder.finish_node();
         let node = builder.finish();
@@ -173,20 +173,24 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
     }
 
-    // Each EOL sequence should likely be tracked as separate EndOfLineTrivia entries for proper PDF semantics.
-    /// Scans end-of-line sequences and returns a cached trivia entry.
+    /// Scans a single end-of-line sequence and returns a cached trivia entry.
     ///
-    /// Recognizes PDF EOL formats: [`SyntaxKind::EndOfLineTrivia`] for LF (0x0A), CR (0x0D), and CR+LF (0x0D 0x0A).
-    /// Each EOL sequence (whether single CR, single LF, or CR+LF pair) is tracked as a separate trivia entry
-    /// for proper PDF semantics. This ensures that multiple consecutive line breaks (e.g., "\n\n") are
-    /// represented as separate [`SyntaxKind::EndOfLineTrivia`] pieces.
+    /// Recognizes PDF EOL formats as [`SyntaxKind::EndOfLineTrivia`]: LF (0x0A), CR (0x0D), or CR+LF (0x0D 0x0A).
+    /// Consumes exactly one EOL sequence per call. Multiple consecutive EOLs (e.g., "\n\n") are handled
+    /// by the caller invoking this method repeatedly via `scan_trivia()`, creating separate trivia entries
+    /// for each EOL sequence for proper PDF semantics.
     ///
     /// The scanned bytes are cached for memory efficiency.
     fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
         let pos = self.position;
 
         if let Some(byte) = self.peek() {
-            debug_assert!(byte == b'\r' || byte == b'\n', "scan_end_of_line called on non-EOL byte");
+            debug_assert!(
+                byte == b'\r' || byte == b'\n',
+                "Precondition violation: scan_end_of_line must be called when positioned at CR or LF, found byte: {:#x}",
+                byte
+            );
+
             match byte {
                 b'\r' if self.peek_by(1) == Some(b'\n') => {
                     self.advance_by(2); // consume CR LF
@@ -279,8 +283,9 @@ impl<'source> Lexer<'source> {
     /// A literal string in PDF is enclosed in parentheses: `(...)`.
     /// Scans from the opening `(` through the closing `)` and marks it as [`SyntaxKind::StringLiteralToken`].
     ///
-    /// Balanced pairs of parentheses within a string require no special treatment.
-    /// Nesting level tracks open parentheses, and the string closes only when nesting returns to zero.
+    /// Supports both balanced unescaped parentheses (tracked via nesting) and escaped parentheses.
+    /// Escaped parentheses (`\(`, `\)`) should not affect the nesting count, though full escape
+    /// sequence handling is deferred to semantic analysis. The string closes when nesting returns to zero.
     ///
     /// Updates token_info with:
     /// - `kind`: [`SyntaxKind::StringLiteralToken`]

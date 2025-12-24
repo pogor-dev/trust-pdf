@@ -31,12 +31,15 @@ impl GreenNodeBuilder {
     /// This method stores a diagnostic for the last element added to the tree.
     /// Multiple diagnostics can be attached to a single element.
     ///
+    /// Returns `Err` if no elements have been added yet.
+    ///
     /// Note: Actual diagnostic storage and retrieval is handled through the arena.
     #[inline]
-    pub fn add_diagnostic(&mut self, severity: DiagnosticSeverity, code: u16, message: &'static str) {
+    pub fn add_diagnostic(&mut self, severity: DiagnosticSeverity, code: u16, message: &'static str) -> Result<(), &'static str> {
         let diagnostic = DiagnosticInfo::new(code, message, severity);
-        let element = self.children.last().expect("No element to attach diagnostic to").1.clone();
+        let element = self.children.last().ok_or("No element to attach diagnostic to")?.1.clone();
         self.cache.arena.alloc_diagnostic(&element, diagnostic);
+        Ok(())
     }
 
     /// Attaches new trivia to the current token.

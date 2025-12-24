@@ -164,7 +164,7 @@ macro_rules! tree {
 
     // [Apply Diagnostics] Recursively apply each collected diagnostic
     (@apply_diagnostics $builder:ident, ($($diag:tt)*), $($rest:tt)*) => {
-        $builder.add_diagnostic($($diag)*);
+        $builder.add_diagnostic($($diag)*).expect("Element already added in tree! macro");
         $crate::tree!(@apply_diagnostics $builder, $($rest)*);
     };
 
