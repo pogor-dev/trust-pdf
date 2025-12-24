@@ -4,6 +4,10 @@ use syntax::{DiagnosticKind, DiagnosticSeverity, GreenCache, GreenNodeBuilder, G
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
+/// Tokenizes PDF source code into a stream of tokens with full trivia preservation.
+///
+/// Scans byte sequences and emits tokens following ISO 32000-2:2020 lexical rules.
+/// Preserves all whitespace and comments as trivia for full-fidelity reconstruction.
 pub struct Lexer<'source> {
     pub(super) source: &'source [u8],
     pub(super) position: usize,

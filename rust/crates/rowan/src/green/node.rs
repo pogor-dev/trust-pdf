@@ -121,7 +121,7 @@ impl GreenNodeInTree {
         let mut output = Vec::new();
 
         // Use explicit stack to handle deeply recursive structures without stack overflow
-        let mut stack: Vec<(NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>, bool, bool)> = Vec::new();
+        let mut stack: Vec<(NodeOrToken<&GreenNodeInTree, &GreenTokenInTree>, bool, bool)> = Vec::with_capacity(64);
         stack.push((NodeOrToken::Node(self), leading, trailing));
 
         while let Some((item, current_leading, current_trailing)) = stack.pop() {
