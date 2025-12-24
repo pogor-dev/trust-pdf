@@ -5,7 +5,7 @@ use support::{assert_nodes_equal, generate_node_from_lexer};
 use syntax::{SyntaxKind, tree};
 
 #[test]
-fn test_trivia_single_space() {
+fn test_scan_trivia_when_single_space_expect_whitespace_trivia() {
     let mut lexer = Lexer::new(b"009 345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -23,7 +23,7 @@ fn test_trivia_single_space() {
 }
 
 #[test]
-fn test_trivia_multiple_spaces() {
+fn test_scan_trivia_when_multiple_spaces_expect_whitespace_trivia() {
     let mut lexer = Lexer::new(b"009       345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -41,7 +41,7 @@ fn test_trivia_multiple_spaces() {
 }
 
 #[test]
-fn test_trivia_different_whitespaces() {
+fn test_scan_trivia_when_mixed_whitespace_types_expect_appropriate_trivia() {
     let mut lexer = Lexer::new(b"\r\0009 \t \x0C\r\n345\0\t\x0C \n");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -66,7 +66,7 @@ fn test_trivia_different_whitespaces() {
 }
 
 #[test]
-fn test_trivia_comments() {
+fn test_scan_trivia_when_comments_present_expect_comment_trivia() {
     let mut lexer = Lexer::new(b"% This is a comment\n009 % Another comment\r\n345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -88,7 +88,7 @@ fn test_trivia_comments() {
 }
 
 #[test]
-fn test_trivia_consecutive_eol_two_lf() {
+fn test_scan_trivia_when_consecutive_lf_expect_separate_eol_trivia() {
     let mut lexer = Lexer::new(b"009\n\n345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -107,7 +107,7 @@ fn test_trivia_consecutive_eol_two_lf() {
 }
 
 #[test]
-fn test_trivia_consecutive_eol_two_cr() {
+fn test_scan_trivia_when_consecutive_cr_expect_separate_eol_trivia() {
     let mut lexer = Lexer::new(b"009\r\r345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -126,7 +126,7 @@ fn test_trivia_consecutive_eol_two_cr() {
 }
 
 #[test]
-fn test_trivia_consecutive_eol_two_crlf() {
+fn test_scan_trivia_when_consecutive_crlf_expect_separate_eol_trivia() {
     let mut lexer = Lexer::new(b"009\r\n\r\n345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -145,7 +145,7 @@ fn test_trivia_consecutive_eol_two_crlf() {
 }
 
 #[test]
-fn test_trivia_consecutive_eol_mixed() {
+fn test_scan_trivia_when_mixed_eol_sequences_expect_separate_eol_trivia() {
     let mut lexer = Lexer::new(b"009\n\r\r\n345");
     let actual_node = generate_node_from_lexer(&mut lexer);
 

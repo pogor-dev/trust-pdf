@@ -5,7 +5,7 @@ use support::{assert_nodes_equal, generate_node_from_lexer};
 use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 #[test]
-fn test_string_literal_simple() {
+fn test_scan_literal_string_when_simple_string_expect_string_literal_token() {
     let mut lexer = Lexer::new(b"(This is a string)");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -19,7 +19,7 @@ fn test_string_literal_simple() {
 }
 
 #[test]
-fn test_string_literal_with_newlines() {
+fn test_scan_literal_string_when_contains_newlines_expect_string_literal_token() {
     let mut lexer = Lexer::new(b"(Strings can contain newlines\nand such.)");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -33,7 +33,7 @@ fn test_string_literal_with_newlines() {
 }
 
 #[test]
-fn test_string_literal_with_balanced_parentheses() {
+fn test_scan_literal_string_when_balanced_parentheses_expect_string_literal_token() {
     let mut lexer = Lexer::new(b"(Strings can contain balanced parentheses () and special characters ( * ! & } ^ %and so on) .)");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -47,7 +47,7 @@ fn test_string_literal_with_balanced_parentheses() {
 }
 
 #[test]
-fn test_string_literal_empty() {
+fn test_scan_literal_string_when_empty_string_expect_string_literal_token() {
     let mut lexer = Lexer::new(b"()");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -61,7 +61,7 @@ fn test_string_literal_empty() {
 }
 
 #[test]
-fn test_string_literal_with_zero_content() {
+fn test_scan_literal_string_when_nested_parentheses_with_digit_expect_string_literal_token() {
     let mut lexer = Lexer::new(b"(It has zero (0) length.)");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -75,7 +75,7 @@ fn test_string_literal_with_zero_content() {
 }
 
 #[test]
-fn test_string_literal_two_strings_with_space() {
+fn test_scan_literal_string_when_two_strings_delimited_expect_two_string_literal_tokens() {
     let mut lexer = Lexer::new(b"(first) (second)");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -93,7 +93,7 @@ fn test_string_literal_two_strings_with_space() {
 }
 
 #[test]
-fn test_string_literal_unbalanced_unclosed() {
+fn test_scan_literal_string_when_unclosed_string_expect_unbalanced_diagnostic() {
     let mut lexer = Lexer::new(b"(This is unclosed");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -108,7 +108,7 @@ fn test_string_literal_unbalanced_unclosed() {
 }
 
 #[test]
-fn test_string_literal_unbalanced_extra_open() {
+fn test_scan_literal_string_when_extra_open_paren_expect_unbalanced_diagnostic() {
     let mut lexer = Lexer::new(b"(()");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -123,7 +123,7 @@ fn test_string_literal_unbalanced_extra_open() {
 }
 
 #[test]
-fn test_string_literal_with_escape_sequences() {
+fn test_scan_literal_string_when_escape_sequences_expect_string_literal_token() {
     // Verify recognized escape sequences are consumed and do not break lexing
     let input = b"(line\\n feed \\r cr \\t tab \\b bs \\f ff \\( left \\) right \\\\ backslash)";
     let mut lexer = Lexer::new(input);
@@ -139,7 +139,7 @@ fn test_string_literal_with_escape_sequences() {
 }
 
 #[test]
-fn test_string_literal_escaped_parens_do_not_affect_nesting() {
+fn test_scan_literal_string_when_escaped_parens_expect_no_nesting_change() {
     // Escaped parentheses should not change nesting; string remains balanced
     let input = b"(a \\( b \\) c)";
     let mut lexer = Lexer::new(input);
@@ -155,7 +155,7 @@ fn test_string_literal_escaped_parens_do_not_affect_nesting() {
 }
 
 #[test]
-fn test_string_literal_trailing_backslash_at_eof() {
+fn test_scan_literal_string_when_trailing_backslash_at_eof_expect_unbalanced_diagnostic() {
     // Reverse solidus at EOF should be consumed and treated as unbalanced string
     let input = b"(trailing backslash\\";
     let mut lexer = Lexer::new(input);
@@ -172,7 +172,7 @@ fn test_string_literal_trailing_backslash_at_eof() {
 }
 
 #[test]
-fn test_string_literal_unknown_escape_backslash_x() {
+fn test_scan_literal_string_when_unknown_escape_sequence_expect_string_literal_token() {
     // Unknown escape: backslash should be ignored, next char handled normally
     let input = b"(hello \\x world)";
     let mut lexer = Lexer::new(input);

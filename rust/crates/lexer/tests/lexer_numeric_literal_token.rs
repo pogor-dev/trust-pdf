@@ -5,7 +5,7 @@ use support::{assert_nodes_equal, generate_node_from_lexer};
 use syntax::{SyntaxKind, tree};
 
 #[test]
-fn test_numeric_literal_123() {
+fn test_scan_numeric_literal_when_integer_123_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"123");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -19,7 +19,7 @@ fn test_numeric_literal_123() {
 }
 
 #[test]
-fn test_numeric_literal_43445() {
+fn test_scan_numeric_literal_when_integer_43445_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"43445");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -33,7 +33,7 @@ fn test_numeric_literal_43445() {
 }
 
 #[test]
-fn test_numeric_literal_plus_17() {
+fn test_scan_numeric_literal_when_positive_integer_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"+17");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -47,7 +47,7 @@ fn test_numeric_literal_plus_17() {
 }
 
 #[test]
-fn test_numeric_literal_minus_98() {
+fn test_scan_numeric_literal_when_negative_integer_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"-98");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -61,7 +61,7 @@ fn test_numeric_literal_minus_98() {
 }
 
 #[test]
-fn test_numeric_literal_0() {
+fn test_scan_numeric_literal_when_zero_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"0");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -75,7 +75,7 @@ fn test_numeric_literal_0() {
 }
 
 #[test]
-fn test_numeric_literal_00987() {
+fn test_scan_numeric_literal_when_leading_zeros_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"00987");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -89,7 +89,7 @@ fn test_numeric_literal_00987() {
 }
 
 #[test]
-fn test_numeric_literal_34_5() {
+fn test_scan_numeric_literal_when_real_number_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"34.5");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -103,7 +103,7 @@ fn test_numeric_literal_34_5() {
 }
 
 #[test]
-fn test_numeric_literal_minus_3_62() {
+fn test_scan_numeric_literal_when_negative_real_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"-3.62");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -117,7 +117,7 @@ fn test_numeric_literal_minus_3_62() {
 }
 
 #[test]
-fn test_numeric_literal_plus_123_6() {
+fn test_scan_numeric_literal_when_positive_real_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"+123.6");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -131,7 +131,7 @@ fn test_numeric_literal_plus_123_6() {
 }
 
 #[test]
-fn test_numeric_literal_4_() {
+fn test_scan_numeric_literal_when_trailing_decimal_point_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"4.");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -146,7 +146,7 @@ fn test_numeric_literal_4_() {
 
 #[test]
 #[allow(non_snake_case)]
-fn test_numeric_literal_minus__002() {
+fn test_scan_numeric_literal_when_leading_decimal_point_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"-.002");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -160,7 +160,7 @@ fn test_numeric_literal_minus__002() {
 }
 
 #[test]
-fn test_numeric_literal_009_87() {
+fn test_scan_numeric_literal_when_leading_zeros_with_decimal_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b"009.87");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -175,7 +175,7 @@ fn test_numeric_literal_009_87() {
 
 #[test]
 #[allow(non_snake_case)]
-fn test_numeric_literal__3_4() {
+fn test_scan_numeric_literal_when_only_decimal_fraction_expect_numeric_literal_token() {
     let mut lexer = Lexer::new(b".34");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -189,7 +189,7 @@ fn test_numeric_literal__3_4() {
 }
 
 #[test]
-fn test_numeric_plus_plus_invalid() {
+fn test_scan_numeric_literal_when_double_plus_expect_bad_token() {
     let mut lexer = Lexer::new(b"++");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -203,7 +203,7 @@ fn test_numeric_plus_plus_invalid() {
 }
 
 #[test]
-fn test_numeric_plus_minus_345_minus_36_invalid() {
+fn test_scan_numeric_literal_when_sign_mid_number_expect_bad_token() {
     let mut lexer = Lexer::new(b"+345-36");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -217,7 +217,7 @@ fn test_numeric_plus_minus_345_minus_36_invalid() {
 }
 
 #[test]
-fn test_numeric_multiple_decimal_points_invalid() {
+fn test_scan_numeric_literal_when_multiple_decimal_points_expect_bad_token() {
     let mut lexer = Lexer::new(b"12.34.56");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
@@ -231,7 +231,7 @@ fn test_numeric_multiple_decimal_points_invalid() {
 }
 
 #[test]
-fn test_numeric_multiple_decimal_points_starts_with_decimal_point_invalid() {
+fn test_scan_numeric_literal_when_multiple_decimals_starting_with_point_expect_bad_token() {
     let mut lexer = Lexer::new(b".1.2.3");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
