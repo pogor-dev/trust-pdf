@@ -21,3 +21,21 @@ fn test_bad_token() {
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+
+#[test]
+fn test_bad_token_closed_parenthesis() {
+    let mut lexer = Lexer::new(b" ) ");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::BadToken.into()) => {
+                trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+                text(b")"),
+                trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+            }
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
