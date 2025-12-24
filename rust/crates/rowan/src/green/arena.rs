@@ -106,9 +106,7 @@ impl GreenTree {
                 entry.get_mut().push(diagnostic);
             }
             RawEntryMut::Vacant(entry) => {
-                let mut diagnostics = Vec::new();
-                diagnostics.push(diagnostic);
-                entry.insert_with_hasher(hash, element.clone(), diagnostics, |e| diagnostic_element_hash(&e));
+                entry.insert_with_hasher(hash, element.clone(), vec![diagnostic], |e| diagnostic_element_hash(&e));
             }
         }
     }

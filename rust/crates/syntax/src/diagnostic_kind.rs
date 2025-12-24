@@ -1,6 +1,6 @@
+/// Enumerates diagnostic categories emitted by the lexer/parser.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u16)]
-/// Enumerates diagnostic categories emitted by the lexer/parser.
 pub enum DiagnosticKind {
     UnbalancedStringLiteral = 1,
 }

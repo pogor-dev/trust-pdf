@@ -35,10 +35,19 @@ cargo llvm-cov --lcov --output-path target/lcov.info
 
 ## Project-Specific Patterns
 
-### Memory Management
-- **Arena allocation**: Syntax trees use arena allocation for cache-friendly access
-- **Inline storage**: `GreenNodeData` stores children inline after the header
-- **Reference counting**: Uses `triomphe::Arc` for shared ownership
+### Memory Management & Performance
+
+**Performance and memory efficiency are critical priorities for this project.** The compiler processes potentially large PDF files and must maintain low overhead. All architectural decisions prioritize cache-friendly access and minimal allocations.
+
+Key principles:
+- **Arena allocation**: Syntax trees use arena allocation for cache-friendly access and efficient memory layout
+- **Inline storage**: `GreenNodeData` stores children inline after the header to reduce indirection
+- **Reference counting**: Uses `triomphe::Arc` for shared ownership with minimal overhead
+- **Avoid redundant allocations**: Use `Vec::with_capacity()` for pre-sized collections and `vec![]` macro for single-element vectors instead of `Vec::new()` followed by `push()`
+- **Stack-based operations**: Prefer stack allocation and iterators over heap allocations when possible
+- **Memory pooling**: Cache and reuse frequently allocated structures
+
+Consider performance implications in every change, especially in hot paths like lexing, parsing, and tree traversal.
 
 ### Error Handling & Resilience
 - **Error recovery**: Parser continues processing after errors for IDE-like experience
@@ -64,6 +73,9 @@ PDF syntax has strict whitespace rules that must be preserved:
 - Document edge cases and error conditions
 - Use analogies for complex compiler concepts
 - Keep documentation concise (few lines per item)
+- **Doc comments placement**: Always place `///` doc comments **before** all attributes (e.g., `#[derive]`, `#[repr]`, `#[inline]`)
+  - Incorrect: `#[derive(...)]` `#[repr(...)]` `/// docs` `pub struct Foo`
+  - Correct: `/// docs` `#[derive(...)]` `#[repr(...)]` `pub struct Foo`
 
 ### Testing Conventions
 Test naming: `test_<function>_when_<condition>_expect_<result>`
