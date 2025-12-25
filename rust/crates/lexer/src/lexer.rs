@@ -543,10 +543,16 @@ fn is_hexcode(byte: u8) -> bool {
     matches!(byte, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
 }
 
-/// Returns true for regular name characters (ISO 32000-2:2020 §7.3.5): `!` to `~`, excluding `#`.
+/// Returns true for regular name characters according to ISO 32000-2:2020 §7.3.5 Name objects.
+///
+/// Regular characters are bytes in the range `!` to `~` (33–126) **excluding**:
+/// - the number sign (`#`, 0x23), which marks hexadecimal escapes in names
+/// - PDF delimiter characters (see [`is_delimiter`]), which always terminate a name
+///
+/// See: ISO 32000-2:2020, §7.3.5 Name objects.
 #[inline]
 fn is_regular_name_char(byte: u8) -> bool {
-    matches!(byte, b'!'..=b'~') && byte != b'#'
+    matches!(byte, b'!'..=b'~') && byte != b'#' && !is_delimiter(byte, false)
 }
 
 ///
