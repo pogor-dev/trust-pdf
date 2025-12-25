@@ -190,3 +190,20 @@ fn test_scan_hex_string_when_invalid_character_expect_invalid_character_diagnost
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+
+#[test]
+fn test_scan_hex_string_when_unclosed_expect_invalid_character_diagnostic() {
+    // Missing closing '>' should emit a single error diagnostic
+    let input = b"<48A9";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::UnbalancedHexString.into(), "Unbalanced hex string"),
+            (SyntaxKind::HexStringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}

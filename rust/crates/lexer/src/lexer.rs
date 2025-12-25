@@ -402,6 +402,7 @@ impl<'source> Lexer<'source> {
         token_info.kind = SyntaxKind::HexStringLiteralToken;
         self.advance(); // consume the opening '<'
         let mut has_invalid_character = false;
+        let mut closed = false;
 
         while let Some(byte) = self.peek() {
             match byte {
@@ -414,6 +415,7 @@ impl<'source> Lexer<'source> {
                 }
                 b'>' => {
                     self.advance(); // consume closing '>'
+                    closed = true;
                     break;
                 }
                 _ => {
@@ -426,9 +428,14 @@ impl<'source> Lexer<'source> {
 
         token_info.bytes = self.get_lexeme_bytes();
 
-        // Emit single diagnostic if any invalid characters were encountered
+        // Emit diagnostics after scanning
         if has_invalid_character {
             let kind = DiagnosticKind::InvalidCharacterInHexString;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+
+        if !closed {
+            let kind = DiagnosticKind::UnbalancedHexString;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
     }
