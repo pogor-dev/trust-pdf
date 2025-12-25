@@ -314,6 +314,7 @@ impl<'source> Lexer<'source> {
         // SafeDocs PDF Compacted Syntax Matrix: Integer → Boolean/Name/Null requires whitespace.
         // Emit diagnostic if letter follows without whitespace.
         if matches!(self.peek(), Some(b'a'..=b'z' | b'A'..=b'Z')) {
+            // TODO: move in parser phase
             let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
@@ -575,6 +576,7 @@ impl<'source> Lexer<'source> {
         // SafeDocs PDF Compacted Syntax Matrix: Boolean → Integer/Real requires whitespace.
         // Emit diagnostic if numeric start follows without whitespace.
         if token_info.kind != SyntaxKind::BadToken && matches!(self.peek(), Some(b'0'..=b'9' | b'.' | b'+' | b'-')) {
+            // TODO: move in parser phase
             let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
