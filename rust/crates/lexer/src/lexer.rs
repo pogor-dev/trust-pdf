@@ -101,7 +101,6 @@ impl<'source> Lexer<'source> {
 
         self.start_lexeme();
 
-        // TODO: stop lexing when encountering delimiter characters
         match first_byte {
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 self.scan_numeric_literal(token_info);
@@ -109,8 +108,23 @@ impl<'source> Lexer<'source> {
             b'(' => {
                 self.scan_literal_string(token_info);
             }
+            b'<' if self.peek_by(1) == Some(b'<') => {
+                self.scan_dict_open(token_info); // Dictionary opening: `<<`
+            }
             b'<' => {
-                self.scan_hex_string(token_info);
+                self.scan_hex_string(token_info); // Hex string: `<`
+            }
+            b'>' if self.peek_by(1) == Some(b'>') => {
+                self.scan_dict_close(token_info); // Dictionary closing: `>>`
+            }
+            b'>' => {
+                self.scan_bad_token(token_info); // Single `>` is invalid
+            }
+            b'[' => {
+                self.scan_array_open(token_info);
+            }
+            b']' => {
+                self.scan_array_close(token_info);
             }
             b'/' => {
                 self.scan_name(token_info);
@@ -535,6 +549,42 @@ impl<'source> Lexer<'source> {
         };
 
         token_info.bytes = keyword_bytes;
+    }
+
+    /// Scans the array opening bracket `[` as [`SyntaxKind::OpenBracketToken`].
+    ///
+    /// See: ISO 32000-2:2020, §7.3.6 Array objects.
+    fn scan_array_open(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::OpenBracketToken;
+        self.advance(); // consume '['
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans the array closing bracket `]` as [`SyntaxKind::CloseBracketToken`].
+    ///
+    /// See: ISO 32000-2:2020, §7.3.6 Array objects.
+    fn scan_array_close(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::CloseBracketToken;
+        self.advance(); // consume ']'
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans the dictionary opening bracket `<<` as [`SyntaxKind::OpenDictToken`].
+    ///
+    /// See: ISO 32000-2:2020, §7.3.7 Dictionary objects.
+    fn scan_dict_open(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::OpenDictToken;
+        self.advance_by(2); // consume '<<'
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans the dictionary closing bracket `>>` as [`SyntaxKind::CloseDictToken`].
+    ///
+    /// See: ISO 32000-2:2020, §7.3.7 Dictionary objects.
+    fn scan_dict_close(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::CloseDictToken;
+        self.advance_by(2); // consume '>>'
+        token_info.bytes = self.get_lexeme_bytes();
     }
 
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
