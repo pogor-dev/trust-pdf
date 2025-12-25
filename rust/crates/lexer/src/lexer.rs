@@ -268,14 +268,13 @@ impl<'source> Lexer<'source> {
     /// - Multiple decimal points are encountered (e.g., `12.34.56`, `.1.2.3`)
     /// - Signs appear after the first character (e.g., `12+34`, `12-34`)
     ///
-    /// According to the PDF Syntax Matrix, numbers must be delimiter-separated,
-    /// so consecutive numeric characters with multiple signs or dots are invalid.
+    /// According to the SafeDocs PDF Compacted Syntax Matrix and ISO 32000-2:2020 §7.2.3,
+    /// numeric literals immediately followed by letters require whitespace (Integer → Boolean/Name/Null).
+    /// A diagnostic is emitted when a numeric is directly followed by a letter.
     ///
     /// Updates token_info with:
     /// - `kind`: [`SyntaxKind::NumericLiteralToken`] for valid numbers, [`SyntaxKind::BadToken`] for invalid ones
     /// - `bytes`: the complete scanned byte sequence
-    ///
-    /// The bytes are extracted from the lexeme range and not cached directly.
     ///
     /// See: ISO 32000-2:2020, §7.3.3 Numbers (integers and reals).
     fn scan_numeric_literal(&mut self, token_info: &mut TokenInfo<'source>) {
@@ -310,6 +309,14 @@ impl<'source> Lexer<'source> {
         }
 
         token_info.bytes = self.get_lexeme_bytes();
+
+        // Check if this numeric is immediately followed by a letter.
+        // SafeDocs PDF Compacted Syntax Matrix: Integer → Boolean/Name/Null requires whitespace.
+        // Emit diagnostic if letter follows without whitespace.
+        if matches!(self.peek(), Some(b'a'..=b'z' | b'A'..=b'Z')) {
+            let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
     }
 
     /// Scans a literal string token and populates token_info.
@@ -521,6 +528,10 @@ impl<'source> Lexer<'source> {
     /// known keywords (`true`, `false`, `null`). Unrecognized keywords are scanned as
     /// [`SyntaxKind::BadToken`].
     ///
+    /// According to the SafeDocs PDF Compacted Syntax Matrix and ISO 32000-2:2020 §7.2.3,
+    /// boolean literals immediately followed by digits require whitespace (Boolean → Integer/Real).
+    /// A diagnostic is emitted when a keyword is directly followed by a digit, dot, or sign.
+    ///
     /// This approach is efficient—it scans the entire word once, then matches, avoiding
     /// excessive character-by-character lookahead.
     ///
@@ -549,6 +560,14 @@ impl<'source> Lexer<'source> {
         };
 
         token_info.bytes = keyword_bytes;
+
+        // Check if this is a keyword immediately followed by a digit, dot, or sign.
+        // SafeDocs PDF Compacted Syntax Matrix: Boolean → Integer/Real requires whitespace.
+        // Emit diagnostic if numeric start follows without whitespace.
+        if token_info.kind != SyntaxKind::BadToken && matches!(self.peek(), Some(b'0'..=b'9' | b'.' | b'+' | b'-')) {
+            let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
     }
 
     /// Scans the array opening bracket `[` as [`SyntaxKind::OpenBracketToken`].

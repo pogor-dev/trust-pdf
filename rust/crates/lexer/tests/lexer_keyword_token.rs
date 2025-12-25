@@ -166,12 +166,13 @@ fn test_scan_keyword_when_multiple_keywords_expect_separate_tokens() {
 fn test_scan_keyword_when_true_followed_by_digit_expect_keyword_and_numeric_token() {
     // ISO 32000-2:2020 §7.2.3: Tokens must be separated by delimiters or whitespace.
     // SafeDocs PDF Compacted Syntax Matrix verifies that letter-to-digit transitions
-    // are NOT allowed without delimiters, so "true0" scans as two tokens.
+    // require whitespace. "true0" scans as two tokens with a diagnostic.
     let mut lexer = Lexer::new(b"true0");
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::TrueKeyword.into(), b"true"),
             (SyntaxKind::NumericLiteralToken.into(), b"0")
         }
@@ -187,6 +188,7 @@ fn test_scan_keyword_when_false_followed_by_digit_expect_keyword_and_numeric_tok
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::FalseKeyword.into(), b"false"),
             (SyntaxKind::NumericLiteralToken.into(), b"9")
         }
@@ -202,6 +204,7 @@ fn test_scan_keyword_when_null_followed_by_digit_expect_keyword_and_numeric_toke
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::NullKeyword.into(), b"null"),
             (SyntaxKind::NumericLiteralToken.into(), b"1")
         }
@@ -217,6 +220,7 @@ fn test_scan_keyword_when_true_followed_by_multidigit_number_expect_keyword_and_
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::TrueKeyword.into(), b"true"),
             (SyntaxKind::NumericLiteralToken.into(), b"123")
         }
@@ -232,6 +236,7 @@ fn test_scan_keyword_when_false_followed_by_decimal_expect_keyword_and_numeric_t
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::FalseKeyword.into(), b"false"),
             (SyntaxKind::NumericLiteralToken.into(), b"3.14")
         }
@@ -247,6 +252,7 @@ fn test_scan_keyword_when_null_followed_by_negative_number_expect_keyword_and_nu
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(syntax::DiagnosticSeverity::Error, syntax::DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
             (SyntaxKind::NullKeyword.into(), b"null"),
             (SyntaxKind::NumericLiteralToken.into(), b"-5")
         }

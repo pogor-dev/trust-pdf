@@ -9,6 +9,7 @@ pub enum DiagnosticKind {
     UnbalancedHexString = 4,
     InvalidHexEscapeInName = 5,
     InvalidNonRegularCharacterInName = 6,
+    MissingWhitespaceBeforeToken = 7,
 }
 
 impl DiagnosticKind {
@@ -21,6 +22,7 @@ impl DiagnosticKind {
             DiagnosticKind::UnbalancedHexString => "Unbalanced hex string",
             DiagnosticKind::InvalidHexEscapeInName => "Invalid hex escape in name",
             DiagnosticKind::InvalidNonRegularCharacterInName => "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation",
+            DiagnosticKind::MissingWhitespaceBeforeToken => "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)",
             DiagnosticKind::Unknown => "Unknown diagnostic",
         }
     }
@@ -37,6 +39,7 @@ impl From<u16> for DiagnosticKind {
             4 => DiagnosticKind::UnbalancedHexString,
             5 => DiagnosticKind::InvalidHexEscapeInName,
             6 => DiagnosticKind::InvalidNonRegularCharacterInName,
+            7 => DiagnosticKind::MissingWhitespaceBeforeToken,
             _ => DiagnosticKind::Unknown, // Default to unknown diagnostic type
         }
     }
