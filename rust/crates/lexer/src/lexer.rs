@@ -446,7 +446,7 @@ impl<'source> Lexer<'source> {
     /// Scans a name object beginning with `/` as defined in §7.3.5.
     ///
     /// Stops at delimiter characters or whitespace and accepts `#xx` hex escapes.
-    /// Emits an error diagnostic when a `#` is not followed by two hexadecimal digits.
+    /// Emits error diagnostics for invalid hex escapes or non-regular characters that should be hex-escaped.
     fn scan_name(&mut self, token_info: &mut TokenInfo<'source>) {
         // TODO: Architectural limits on name length, I think this should be handled in semantic analysis phase
         token_info.kind = SyntaxKind::NameLiteralToken;

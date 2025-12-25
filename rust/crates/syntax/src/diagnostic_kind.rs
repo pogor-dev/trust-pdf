@@ -20,7 +20,7 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidCharacterInHexString => "Invalid character in hex string",
             DiagnosticKind::UnbalancedHexString => "Unbalanced hex string",
             DiagnosticKind::InvalidHexEscapeInName => "Invalid hex escape in name",
-            DiagnosticKind::InvalidNonRegularCharacterInName => "Invalid non-regular character in name. Only hex escapes are allowed.",
+            DiagnosticKind::InvalidNonRegularCharacterInName => "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation",
             DiagnosticKind::Unknown => "Unknown diagnostic",
         }
     }

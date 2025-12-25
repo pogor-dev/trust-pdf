@@ -181,7 +181,7 @@ fn test_scan_name_when_non_regular_ascii_expect_invalid_non_regular_character_di
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
-            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid non-regular character in name. Only hex escapes are allowed."),
+            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
             (SyntaxKind::NameLiteralToken.into(), input)
         }
     };
@@ -197,7 +197,7 @@ fn test_scan_name_when_high_byte_expect_invalid_non_regular_character_diagnostic
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
-            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid non-regular character in name. Only hex escapes are allowed."),
+            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
             (SyntaxKind::NameLiteralToken.into(), input)
         }
     };
@@ -206,7 +206,7 @@ fn test_scan_name_when_high_byte_expect_invalid_non_regular_character_diagnostic
 }
 
 #[test]
-fn test_scan_name_when_whitespace_in_body_splits_token_expect_whitespace_then_bad_token() {
+fn test_scan_name_when_whitespace_in_body_splits_token_expect_whitespace_then_numeric_token() {
     // Whitespace inside a name must be hex-escaped; plain space ends the name token.
     let input = b"/Name 123";
     let mut lexer = Lexer::new(input);
@@ -219,6 +219,23 @@ fn test_scan_name_when_whitespace_in_body_splits_token_expect_whitespace_then_ba
                 trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
             },
             (SyntaxKind::NumericLiteralToken.into(), b"123")
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_name_when_single_hex_digit_followed_by_non_hex_expect_invalid_hex_escape_diagnostic() {
+    // Single hex digit followed by non-hex character: #1G should emit diagnostic
+    let input = b"/Name#1G";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::InvalidHexEscapeInName.into(), "Invalid hex escape in name"),
+            (SyntaxKind::NameLiteralToken.into(), input)
         }
     };
 

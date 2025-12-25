@@ -323,3 +323,37 @@ fn test_scan_literal_string_when_escaped_closing_paren_expect_string_literal_tok
 
     assert_nodes_equal(&actual_node, &expected_node);
 }
+
+#[test]
+fn test_scan_literal_string_when_octal_escape_at_eof_expect_unbalanced_diagnostic() {
+    // Octal escape sequence that ends at EOF: \12 at end of file (no closing paren)
+    let input = b"(text \\12";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            @diagnostic(Error, DiagnosticKind::UnbalancedStringLiteral.into(), "Unbalanced string literal"),
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_literal_string_when_line_continuation_with_crlf_expect_string_literal_token() {
+    // Line continuation with CRLF: backslash followed by \r\n should be ignored
+    let input = b"(line\\
+continuation)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
