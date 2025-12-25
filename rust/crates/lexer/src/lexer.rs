@@ -112,6 +112,9 @@ impl<'source> Lexer<'source> {
             b'<' => {
                 self.scan_hex_string(token_info);
             }
+            b'/' => {
+                self.scan_name(token_info);
+            }
             _ => {
                 self.scan_bad_token(token_info);
             }
@@ -406,7 +409,7 @@ impl<'source> Lexer<'source> {
 
         while let Some(byte) = self.peek() {
             match byte {
-                b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f' => {
+                b if is_hexcode(b) => {
                     self.advance(); // consume hex digit
                 }
                 _ if is_whitespace(byte, true) => {
@@ -436,6 +439,61 @@ impl<'source> Lexer<'source> {
 
         if !closed {
             let kind = DiagnosticKind::UnbalancedHexString;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+    }
+
+    /// Scans a name object beginning with `/` as defined in §7.3.5.
+    ///
+    /// Stops at delimiter characters or whitespace and accepts `#xx` hex escapes.
+    /// Emits an error diagnostic when a `#` is not followed by two hexadecimal digits.
+    fn scan_name(&mut self, token_info: &mut TokenInfo<'source>) {
+        // TODO: Architectural limits on name length, I think this should be handled in semantic analysis phase
+        token_info.kind = SyntaxKind::NameLiteralToken;
+        self.advance(); // consume '/'
+
+        let mut has_invalid_hex_escape = false;
+        let mut has_non_regular_character = false;
+
+        while let Some(byte) = self.peek() {
+            if is_whitespace(byte, true) || is_delimiter(byte, false) {
+                break;
+            }
+
+            match byte {
+                b'#' if matches!(self.peek_by(1), Some(b) if is_hexcode(b)) && matches!(self.peek_by(2), Some(b) if is_hexcode(b)) => {
+                    // Valid hex escape: consume '#xx'
+                    self.advance_by(3);
+                }
+                b'#' if matches!(self.peek_by(1), Some(b) if is_hexcode(b)) => {
+                    // Single hex digit or malformed second: consume '#' and first digit, emit diagnostic
+                    has_invalid_hex_escape = true;
+                    self.advance_by(2);
+                }
+                b'#' => {
+                    // '#' not followed by hex digits: consume '#' only, emit diagnostic
+                    has_invalid_hex_escape = true;
+                    self.advance();
+                }
+                b if is_regular_name_char(b) => {
+                    self.advance();
+                }
+                _ => {
+                    has_non_regular_character = true;
+                    self.advance();
+                }
+            }
+        }
+
+        token_info.bytes = self.get_lexeme_bytes();
+
+        if has_invalid_hex_escape {
+            let kind = DiagnosticKind::InvalidHexEscapeInName;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+
+        if has_non_regular_character {
+            let kind = DiagnosticKind::InvalidNonRegularCharacterInName;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
     }
@@ -477,6 +535,18 @@ fn is_whitespace(byte: u8, include_eol: bool) -> bool {
         b'\r' | b'\n' if include_eol => true,
         _ => false,
     }
+}
+
+/// Returns true when the byte is a hexadecimal digit (`0-9`, `A-F`, `a-f`).
+#[inline]
+fn is_hexcode(byte: u8) -> bool {
+    matches!(byte, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
+}
+
+/// Returns true for regular name characters (ISO 32000-2:2020 §7.3.5): `!` to `~`, excluding `#`.
+#[inline]
+fn is_regular_name_char(byte: u8) -> bool {
+    matches!(byte, b'!'..=b'~') && byte != b'#'
 }
 
 ///

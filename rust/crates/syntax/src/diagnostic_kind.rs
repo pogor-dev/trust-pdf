@@ -7,6 +7,8 @@ pub enum DiagnosticKind {
     InvalidEscapeInStringLiteral = 2,
     InvalidCharacterInHexString = 3,
     UnbalancedHexString = 4,
+    InvalidHexEscapeInName = 5,
+    InvalidNonRegularCharacterInName = 6,
 }
 
 impl DiagnosticKind {
@@ -17,6 +19,8 @@ impl DiagnosticKind {
             DiagnosticKind::InvalidEscapeInStringLiteral => "Invalid escape sequence in string literal",
             DiagnosticKind::InvalidCharacterInHexString => "Invalid character in hex string",
             DiagnosticKind::UnbalancedHexString => "Unbalanced hex string",
+            DiagnosticKind::InvalidHexEscapeInName => "Invalid hex escape in name",
+            DiagnosticKind::InvalidNonRegularCharacterInName => "Invalid non-regular character in name. Only hex escapes are allowed.",
             DiagnosticKind::Unknown => "Unknown diagnostic",
         }
     }
@@ -31,6 +35,8 @@ impl From<u16> for DiagnosticKind {
             2 => DiagnosticKind::InvalidEscapeInStringLiteral,
             3 => DiagnosticKind::InvalidCharacterInHexString,
             4 => DiagnosticKind::UnbalancedHexString,
+            5 => DiagnosticKind::InvalidHexEscapeInName,
+            6 => DiagnosticKind::InvalidNonRegularCharacterInName,
             _ => DiagnosticKind::Unknown, // Default to unknown diagnostic type
         }
     }
