@@ -2,7 +2,11 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use syntax::{
+    DiagnosticKind,
+    DiagnosticSeverity::{Error, Warning},
+    SyntaxKind, tree,
+};
 
 #[test]
 fn test_scan_literal_string_when_simple_string_expect_string_literal_token() {
@@ -180,11 +184,99 @@ fn test_scan_literal_string_when_unknown_escape_sequence_expect_string_literal_t
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
+            @diagnostic(Warning, DiagnosticKind::UnknownEscapeInStringLiteral.into(), "Unknown escape sequence in string literal"),
             (SyntaxKind::StringLiteralToken.into(), input)
         }
     };
 
     assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_literal_string_when_numeric_non_octal_escape_expect_unknown_escape_diagnostic() {
+    // Numeric escape starting with 8 or 9 is not a valid octal per §7.3.4.2
+    let input = b"(a \\8 b)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            @diagnostic(Warning, DiagnosticKind::UnknownEscapeInStringLiteral.into(), "Unknown escape sequence in string literal"),
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_literal_string_when_octal_escape_three_digits_followed_by_digit_expect_string_literal_token() {
+    // Example 5 from §7.3.4.2: (\0053) denotes two chars, then digit '3'
+    // Lexer should consume backslash + up to three octal digits, leaving the following digit intact.
+    let input = b"(\\0053)";
+    let mut lexer = Lexer::new(input);
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input)
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
+fn test_scan_literal_string_when_octal_escape_one_or_two_digits_expect_string_literal_token() {
+    // Example 5 from §7.3.4.2: (\053) and (\53) both denote a single '+' character
+    // Lexer should consume backslash + up to three octal digits.
+    let input1 = b"(\\053)";
+    let input2 = b"(\\53)";
+
+    let mut lexer1 = Lexer::new(input1);
+    let mut lexer2 = Lexer::new(input2);
+    let actual_node1 = generate_node_from_lexer(&mut lexer1);
+    let actual_node2 = generate_node_from_lexer(&mut lexer2);
+
+    let expected_node1 = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input1)
+        }
+    };
+    let expected_node2 = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input2)
+        }
+    };
+
+    assert_nodes_equal(&actual_node1, &expected_node1);
+    assert_nodes_equal(&actual_node2, &expected_node2);
+}
+
+#[test]
+fn test_scan_literal_string_when_line_continuation_expect_string_literal_token() {
+    // Example 2 from §7.3.4.2: backslash at end-of-line indicates continuation
+    // Test CRLF variant
+    let input_crlf = b"(These \\\r\ntwo strings \\\r\nare the same.)";
+    let mut lexer_crlf = Lexer::new(input_crlf);
+    let actual_node_crlf = generate_node_from_lexer(&mut lexer_crlf);
+    let expected_node_crlf = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input_crlf)
+        }
+    };
+    assert_nodes_equal(&actual_node_crlf, &expected_node_crlf);
+
+    // Test LF-only variant
+    let input_lf = b"(These \\\ntwo strings \\\nare the same.)";
+    let mut lexer_lf = Lexer::new(input_lf);
+    let actual_node_lf = generate_node_from_lexer(&mut lexer_lf);
+    let expected_node_lf = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input_lf)
+        }
+    };
+    assert_nodes_equal(&actual_node_lf, &expected_node_lf);
 }
 #[test]
 fn test_scan_literal_string_when_escaped_parentheses_expect_string_literal_token() {

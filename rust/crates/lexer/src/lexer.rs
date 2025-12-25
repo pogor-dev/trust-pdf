@@ -311,12 +311,52 @@ impl<'source> Lexer<'source> {
 
         while let Some(byte) = self.peek() {
             match byte {
-                b'\\' => {
-                    // Escape sequence: consume the backslash and the next character without processing
-                    self.advance();
-                    if self.peek().is_some() {
-                        self.advance(); // skip the escaped character
+                b'\\'
+                    if matches!(
+                        self.peek_by(1),
+                        Some(b'(') | Some(b')') | Some(b'\\') | Some(b'n') | Some(b'r') | Some(b't') | Some(b'b') | Some(b'f')
+                    ) =>
+                {
+                    // Handle recognized one-char escape sequences: \n, \r, \t, \b, \f, \(, \), \\
+                    self.advance_by(2); // consume both backslash and escaped character
+                }
+                b'\\' if matches!(self.peek_by(1), Some(b'0'..=b'7')) => {
+                    // Octal escape: \ddd (up to 3 octal digits). Consume backslash + up to 3 octal digits.
+                    self.advance(); // consume backslash
+                    let mut count = 0;
+                    // Consume up to three octal digits
+                    while count < 3 {
+                        if let Some(next) = self.peek() {
+                            if (b'0'..=b'7').contains(&next) {
+                                self.advance();
+                                count += 1;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
                     }
+                }
+                b'\\' if matches!(self.peek_by(1), Some(b'\r' | b'\n')) => {
+                    // Line continuation: backslash followed by EOL is ignored (ISO 32000-2:2020 §7.3.4.2)
+                    self.advance(); // consume backslash
+                    let next = self.advance(); // consume CR/LF
+                    // If CR, consume following LF if present
+                    if next == Some(b'\r') && self.peek() == Some(b'\n') {
+                        self.advance();
+                    }
+                }
+                b'\\' if matches!(self.peek_by(1), Some(_)) => {
+                    // Unknown escape: emit warning, consume backslash only; next char handled normally
+                    let kind = DiagnosticKind::UnknownEscapeInStringLiteral;
+                    token_info.diagnostics.push((DiagnosticSeverity::Warning, kind.into(), kind.as_str()));
+                    self.advance();
+                }
+                b'\\' if matches!(self.peek_by(1), None) => {
+                    // Backslash at EOF: consume backslash only and exit loop; string will be unbalanced
+                    self.advance();
+                    break;
                 }
                 b'(' => {
                     nesting += 1;
