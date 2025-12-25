@@ -115,6 +115,9 @@ impl<'source> Lexer<'source> {
             b'/' => {
                 self.scan_name(token_info);
             }
+            b'a'..=b'z' | b'A'..=b'Z' => {
+                self.scan_keyword(token_info);
+            }
             _ => {
                 self.scan_bad_token(token_info);
             }
@@ -496,6 +499,42 @@ impl<'source> Lexer<'source> {
             let kind = DiagnosticKind::InvalidNonRegularCharacterInName;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
+    }
+
+    /// Scans keywords and boolean/null literals beginning with ASCII letters.
+    ///
+    /// Scans all consecutive ASCII letters to form a complete keyword, then matches against
+    /// known keywords (`true`, `false`, `null`). Unrecognized keywords are scanned as
+    /// [`SyntaxKind::BadToken`].
+    ///
+    /// This approach is efficient—it scans the entire word once, then matches, avoiding
+    /// excessive character-by-character lookahead.
+    ///
+    /// See: ISO 32000-2:2020, §7.3.2 Boolean objects, §7.3.9 Null object.
+    fn scan_keyword(&mut self, token_info: &mut TokenInfo<'source>) {
+        self.advance(); // consume the first letter
+
+        // Scan all consecutive ASCII letters
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'a'..=b'z' | b'A'..=b'Z' => {
+                    self.advance();
+                }
+                _ => break,
+            }
+        }
+
+        let keyword_bytes = self.get_lexeme_bytes();
+
+        // Match against known keywords
+        token_info.kind = match keyword_bytes {
+            b"true" => SyntaxKind::TrueKeyword,
+            b"false" => SyntaxKind::FalseKeyword,
+            b"null" => SyntaxKind::NullKeyword,
+            _ => SyntaxKind::BadToken,
+        };
+
+        token_info.bytes = keyword_bytes;
     }
 
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
