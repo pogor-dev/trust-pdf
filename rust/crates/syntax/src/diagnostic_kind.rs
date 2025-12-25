@@ -4,6 +4,7 @@
 pub enum DiagnosticKind {
     Unknown = 0,
     UnbalancedStringLiteral = 1,
+    UnknownEscapeInStringLiteral = 2,
 }
 
 impl DiagnosticKind {
@@ -11,6 +12,7 @@ impl DiagnosticKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             DiagnosticKind::UnbalancedStringLiteral => "Unbalanced string literal",
+            DiagnosticKind::UnknownEscapeInStringLiteral => "Unknown escape sequence in string literal",
             DiagnosticKind::Unknown => "Unknown diagnostic",
         }
     }
@@ -22,6 +24,7 @@ impl From<u16> for DiagnosticKind {
     fn from(d: u16) -> DiagnosticKind {
         match d {
             1 => DiagnosticKind::UnbalancedStringLiteral,
+            2 => DiagnosticKind::UnknownEscapeInStringLiteral,
             _ => DiagnosticKind::Unknown, // Default to unknown diagnostic type
         }
     }
