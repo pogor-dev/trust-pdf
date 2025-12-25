@@ -556,6 +556,16 @@ impl<'source> Lexer<'source> {
             b"true" => SyntaxKind::TrueKeyword,
             b"false" => SyntaxKind::FalseKeyword,
             b"null" => SyntaxKind::NullKeyword,
+            b"obj" => SyntaxKind::IndirectObjectKeyword,
+            b"endobj" => SyntaxKind::IndirectEndObjectKeyword,
+            b"R" => SyntaxKind::IndirectReferenceKeyword,
+            b"stream" => SyntaxKind::StreamKeyword,
+            b"endstream" => SyntaxKind::EndStreamKeyword,
+            b"xref" => SyntaxKind::XRefKeyword,
+            b"f" => SyntaxKind::XRefFreeEntryKeyword,
+            b"n" => SyntaxKind::XRefInUseEntryKeyword,
+            b"trailer" => SyntaxKind::FileTrailerKeyword,
+            b"startxref" => SyntaxKind::StartXRefKeyword,
             _ => SyntaxKind::BadToken,
         };
 
