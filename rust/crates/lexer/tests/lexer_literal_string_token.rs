@@ -184,7 +184,7 @@ fn test_scan_literal_string_when_unknown_escape_sequence_expect_string_literal_t
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
-            @diagnostic(Warning, DiagnosticKind::UnknownEscapeInStringLiteral.into(), "Unknown escape sequence in string literal"),
+            @diagnostic(Warning, DiagnosticKind::InvalidEscapeInStringLiteral.into(), "Invalid escape sequence in string literal"),
             (SyntaxKind::StringLiteralToken.into(), input)
         }
     };
@@ -201,7 +201,7 @@ fn test_scan_literal_string_when_numeric_non_octal_escape_expect_unknown_escape_
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
-            @diagnostic(Warning, DiagnosticKind::UnknownEscapeInStringLiteral.into(), "Unknown escape sequence in string literal"),
+            @diagnostic(Warning, DiagnosticKind::InvalidEscapeInStringLiteral.into(), "Invalid escape sequence in string literal"),
             (SyntaxKind::StringLiteralToken.into(), input)
         }
     };

@@ -109,6 +109,9 @@ impl<'source> Lexer<'source> {
             b'(' => {
                 self.scan_literal_string(token_info);
             }
+            b'<' => {
+                self.scan_hex_string(token_info);
+            }
             _ => {
                 self.scan_bad_token(token_info);
             }
@@ -349,7 +352,7 @@ impl<'source> Lexer<'source> {
                 }
                 b'\\' if matches!(self.peek_by(1), Some(_)) => {
                     // Unknown escape: emit warning, consume backslash only; next char handled normally
-                    let kind = DiagnosticKind::UnknownEscapeInStringLiteral;
+                    let kind = DiagnosticKind::InvalidEscapeInStringLiteral;
                     token_info.diagnostics.push((DiagnosticSeverity::Warning, kind.into(), kind.as_str()));
                     self.advance();
                 }
@@ -380,6 +383,59 @@ impl<'source> Lexer<'source> {
         // If nesting is not zero, the string is unbalanced
         if nesting != 0 {
             let kind = DiagnosticKind::UnbalancedStringLiteral;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+    }
+
+    /// Scans a hexadecimal string token and populates token_info.
+    ///
+    /// A hexadecimal string in PDF is enclosed in angle brackets: `<...>`.
+    /// Contains hexadecimal digits (0-9, A-F, a-f) with optional whitespace (ignored).
+    /// Each pair of hex digits defines one byte. If odd number of digits, final digit assumes trailing 0.
+    ///
+    /// Updates token_info with:
+    /// - `kind`: [`SyntaxKind::HexStringLiteralToken`]
+    /// - `bytes`: the complete scanned byte sequence including angle brackets
+    ///
+    /// See: ISO 32000-2:2020, §7.3.4.3 Hexadecimal strings.
+    fn scan_hex_string(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::HexStringLiteralToken;
+        self.advance(); // consume the opening '<'
+        let mut has_invalid_character = false;
+        let mut closed = false;
+
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f' => {
+                    self.advance(); // consume hex digit
+                }
+                _ if is_whitespace(byte, true) => {
+                    // Whitespace is ignored in hex strings per §7.3.4.3
+                    self.advance();
+                }
+                b'>' => {
+                    self.advance(); // consume closing '>'
+                    closed = true;
+                    break;
+                }
+                _ => {
+                    // Invalid character in hex string: mark and consume
+                    has_invalid_character = true;
+                    self.advance();
+                }
+            }
+        }
+
+        token_info.bytes = self.get_lexeme_bytes();
+
+        // Emit diagnostics after scanning
+        if has_invalid_character {
+            let kind = DiagnosticKind::InvalidCharacterInHexString;
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+        }
+
+        if !closed {
+            let kind = DiagnosticKind::UnbalancedHexString;
             token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
         }
     }
