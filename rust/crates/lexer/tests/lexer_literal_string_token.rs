@@ -211,7 +211,7 @@ fn test_scan_literal_string_when_numeric_non_octal_escape_expect_unknown_escape_
 
 #[test]
 fn test_scan_literal_string_when_octal_escape_three_digits_followed_by_digit_expect_string_literal_token() {
-    // Example 5 from §7.3.4.2: (\0053) denotes two chars, then digit '3'
+    // Example 5 from §7.3.4.2: (\0053) denotes one octal escape character (\005 = Control-E) followed by literal digit '3'
     // Lexer should consume backslash + up to three octal digits, leaving the following digit intact.
     let input = b"(\\0053)";
     let mut lexer = Lexer::new(input);
@@ -277,7 +277,19 @@ fn test_scan_literal_string_when_line_continuation_expect_string_literal_token()
         }
     };
     assert_nodes_equal(&actual_node_lf, &expected_node_lf);
+
+    // Test CR-only variant
+    let input_cr = b"(These \\\rtwo strings \\\rare the same.)";
+    let mut lexer_cr = Lexer::new(input_cr);
+    let actual_node_cr = generate_node_from_lexer(&mut lexer_cr);
+    let expected_node_cr = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StringLiteralToken.into(), input_cr)
+        }
+    };
+    assert_nodes_equal(&actual_node_cr, &expected_node_cr);
 }
+
 #[test]
 fn test_scan_literal_string_when_escaped_parentheses_expect_string_literal_token() {
     // Escaped parentheses should not affect nesting count
