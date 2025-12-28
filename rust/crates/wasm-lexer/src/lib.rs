@@ -1,11 +1,9 @@
 //! WebAssembly bindings for the PDF lexer.
 //!
-//! This module exposes a minimal, JS-friendly API over the Rust lexer so it can
-//! be used from TypeScript/JavaScript via `wasm-bindgen`. The wrapper owns the
-//! input bytes and advances through the stream, returning token metadata per
-//! call. Error handling and recovery are delegated to the underlying Rust lexer.
+//! Exposes a JS-friendly API over the core `lexer` crate so it can be used
+//! from TypeScript/JavaScript via `wasm-bindgen`.
 
-use crate::Lexer as RustLexer;
+use lexer::Lexer as RustLexer;
 use syntax::SyntaxKind;
 use wasm_bindgen::prelude::*;
 

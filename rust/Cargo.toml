@@ -16,6 +16,7 @@ lexer = { path = "./crates/lexer", version = "0.1.0" }
 rowan = { path = "./crates/rowan", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 syntax = { path = "./crates/syntax", version = "0.1.0" }
+wasm-lexer = { path = "./crates/wasm-lexer", version = "0.1.0" }
 
 # Non-local crates
 bumpalo = "3.19.1"
@@ -29,7 +30,8 @@ iai-callgrind-macros = "0.6.1"
 pretty_assertions = "1.4.1"
 rustc-hash = "2.1.1"
 triomphe = "0.1.15"
-wasm-bindgen = "0.2"
+wasm-bindgen = "0.2.106"
+wasm-bindgen-test = "0.3.39"
 
 # Optimized profiles for faster builds
 [profile.dev]
