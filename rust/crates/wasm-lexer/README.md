@@ -1,4 +1,4 @@
-# lexer-wasm
+# wasm-lexer
 
 WebAssembly bindings for the trust-pdf lexer.
 
@@ -34,7 +34,7 @@ Build a web-targeted package (generates `pkg/`):
 
 ```bash
 # From repository root
-wasm-pack build crates/lexer-wasm --target web
+wasm-pack build crates/wasm-lexer --target web
 ```
 
 The output (`pkg/`) contains `.wasm`, JS glue, and `.d.ts` types for TypeScript.
@@ -45,7 +45,7 @@ Run tests using Node.js:
 
 ```bash
 # From repository root
-wasm-pack test --node crates/lexer-wasm
+wasm-pack test --node crates/wasm-lexer
 ```
 
 Run tests in headless Chrome (example):
