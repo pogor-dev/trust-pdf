@@ -4,3 +4,4 @@
 profile = "default"
 channel = "1.92.0"
 components = ["llvm-tools-preview"]
+targets = ["wasm32-unknown-unknown"]
