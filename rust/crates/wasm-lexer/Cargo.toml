@@ -17,6 +17,7 @@ lexer.workspace = true
 syntax.workspace = true
 
 # Non-local crates
+pretty_assertions.workspace = true
 wasm-bindgen.workspace = true
 
 [dev-dependencies]

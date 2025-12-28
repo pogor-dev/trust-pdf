@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use wasm_bindgen_test::*;
 use wasm_lexer::Lexer;
 

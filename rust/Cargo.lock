@@ -444,6 +444,7 @@ name = "wasm-lexer"
 version = "0.1.0"
 dependencies = [
  "lexer",
+ "pretty_assertions",
  "syntax",
  "wasm-bindgen",
  "wasm-bindgen-test",
