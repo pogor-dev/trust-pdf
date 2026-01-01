@@ -7,7 +7,7 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineConfig({
   integrations: [
     starlight({
-      title: "Docs with Tailwind",
+      title: "TRust PDF Documentation",
       social: [{ icon: "github", label: "GitHub", href: "https://github.com/withastro/starlight" }],
       sidebar: [
         {
