@@ -1,6 +1,6 @@
 {
   "name": "trust-pdf-docs",
-  "description": "Documentation site for the TRust PDF library",
+  "description": "Documentation site for the trust-pdf library",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
