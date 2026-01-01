@@ -5,6 +5,10 @@
             "path": "rust"
         },
         {
+            "name": "docs",
+            "path": "docs"
+        },
+        {
             "name": "root",
             "path": "."
         }
