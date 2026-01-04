@@ -13,6 +13,7 @@ pub struct Lexer<'source> {
     pub(super) position: usize,
     pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
     cache: GreenCache,
+    is_raw_stream: bool,
 }
 
 #[derive(Debug, Default)]
@@ -29,6 +30,7 @@ impl<'source> Lexer<'source> {
             position: 0,
             lexeme: None,
             cache: GreenCache::default(),
+            is_raw_stream: false,
         }
     }
 
@@ -102,6 +104,10 @@ impl<'source> Lexer<'source> {
         self.start_lexeme();
 
         match first_byte {
+            _ if self.is_raw_stream => {
+                // In raw stream mode, everything until 'endstream' is treated as a raw data token
+                self.scan_raw_stream_data(token_info);
+            }
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 self.scan_numeric_literal(token_info);
             }
@@ -560,8 +566,14 @@ impl<'source> Lexer<'source> {
             b"obj" => SyntaxKind::IndirectObjectKeyword,
             b"endobj" => SyntaxKind::IndirectEndObjectKeyword,
             b"R" => SyntaxKind::IndirectReferenceKeyword,
-            b"stream" => SyntaxKind::StreamKeyword,
-            b"endstream" => SyntaxKind::EndStreamKeyword,
+            b"stream" => {
+                self.is_raw_stream = true; // enter raw stream mode
+                SyntaxKind::StreamKeyword
+            }
+            b"endstream" => {
+                self.is_raw_stream = false; // exit raw stream mode
+                SyntaxKind::EndStreamKeyword
+            }
             b"xref" => SyntaxKind::XRefKeyword,
             b"f" => SyntaxKind::XRefFreeEntryKeyword,
             b"n" => SyntaxKind::XRefInUseEntryKeyword,
@@ -615,6 +627,42 @@ impl<'source> Lexer<'source> {
     fn scan_dict_close(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::CloseDictToken;
         self.advance_by(2); // consume '>>'
+        token_info.bytes = self.get_lexeme_bytes();
+    }
+
+    /// Scans raw stream data until the `endstream` keyword is encountered.
+    ///
+    /// Consumes all bytes as raw stream data until it finds the `endstream` keyword.
+    /// The `endstream` keyword itself is not consumed - it will be scanned as a separate token.
+    ///
+    /// Stream data can contain any bytes and is not interpreted as PDF objects during lexing.
+    /// The actual decoding and filtering of stream data is handled in semantic analysis.
+    ///
+    /// See: ISO 32000-2:2020, §7.10.2 Stream objects.
+    fn scan_raw_stream_data(&mut self, token_info: &mut TokenInfo<'source>) {
+        const STREAM_END_KEYWORD: &[u8] = b"endstream";
+        const KEYWORD_LEN: usize = STREAM_END_KEYWORD.len();
+        token_info.kind = SyntaxKind::RawStreamDataToken;
+
+        // Scan until we find "endstream" keyword
+        while self.position < self.source.len() {
+            // Check if we're at the start of "endstream"
+            let remaining = &self.source[self.position..];
+            if remaining.starts_with(STREAM_END_KEYWORD) {
+                // Verify it's a complete keyword (followed by delimiter/whitespace/EOF)
+                if let Some(&next_byte) = remaining.get(KEYWORD_LEN) {
+                    if is_whitespace(next_byte, true) || is_delimiter(next_byte, false) {
+                        break; // Stop before "endstream" - let next scan_token() handle it
+                    }
+                    // Not a valid keyword boundary, treat 'e' as data and continue
+                } else {
+                    break; // EOF after "endstream", stop here
+                }
+            }
+
+            self.advance(); // consume the byte
+        }
+
         token_info.bytes = self.get_lexeme_bytes();
     }
 
