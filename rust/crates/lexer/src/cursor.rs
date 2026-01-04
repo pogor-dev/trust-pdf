@@ -39,9 +39,17 @@ impl<'source> Lexer<'source> {
         Some(*byte)
     }
 
-    /// Advance the cursor until one of the specified sequences is found or EOF is reached.
+    /// Advance until any provided byte sequence is at the current position, or consume to EOF.
+    ///
+    /// Behavior on ties: if multiple sequences match at the same position, the first
+    /// element in `sequences` wins because iteration short-circuits on the first match.
+    /// If no sequence is found, the cursor advances to EOF and stops.
     pub(super) fn advance_until(&mut self, sequences: &[&[u8]]) {
         while let Some(remaining) = self.source.get(self.position..) {
+            if remaining.is_empty() {
+                break; // reached EOF without a match
+            }
+
             if sequences.iter().any(|seq| remaining.starts_with(seq)) {
                 break;
             }

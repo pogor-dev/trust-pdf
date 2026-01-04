@@ -502,6 +502,25 @@ fn test_scan_stream_when_endstream_not_on_separate_line_expect_raw_stream_token(
 }
 
 #[test]
+fn test_scan_stream_when_eof_before_endstream_expect_raw_stream_token_and_eof() {
+    // Missing endstream: lexer should consume remaining bytes as raw data and then emit EOF
+    let mut lexer = Lexer::new(b"stream\ntruncated stream data with no end stream");
+    let actual_node = generate_node_from_lexer(&mut lexer);
+
+    let expected_node = tree! {
+        SyntaxKind::LexerNode.into() => {
+            (SyntaxKind::StreamKeyword.into()) => {
+                text(b"stream"),
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+            },
+            (SyntaxKind::RawStreamDataToken.into(), b"truncated stream data with no end stream"),
+        }
+    };
+
+    assert_nodes_equal(&actual_node, &expected_node);
+}
+
+#[test]
 fn test_scan_stream_when_stream_data_contains_partial_endstream_expect_raw_stream_token() {
     // Stream content that contains "end" or "stream" as data should not be confused with keywords
     // The lexer must find the actual endstream keyword
