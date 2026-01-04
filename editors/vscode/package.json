@@ -27,7 +27,11 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
-    "lint": "eslint src",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
     "test": "vscode-test"
   },
   "devDependencies": {
@@ -37,7 +41,6 @@
     "@types/vscode": "^1.107.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "eslint": "^9.39.1",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
