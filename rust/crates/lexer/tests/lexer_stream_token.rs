@@ -300,20 +300,22 @@ fn test_scan_stream_when_stream_with_null_bytes_expect_stream_keyword_data_and_e
 
 #[test]
 fn test_scan_stream_when_stream_with_all_byte_values_expect_stream_keyword_data_and_endstream() {
-    // Test that stream can contain any byte value (0-255)
-    let mut data = vec![b's', b't', b'r', b'e', b'a', b'm', b'\n'];
+    const STREAM: &[u8] = b"stream\n";
+    const ENDSTREAM: &[u8] = b"endstream";
+
+    let mut data = STREAM.to_vec();
     // Add bytes 0-255
     for i in 0..=255 {
         data.push(i as u8);
     }
-    data.extend_from_slice(b"endstream");
+    data.extend_from_slice(ENDSTREAM);
 
     let data = Box::leak(data.into_boxed_slice());
     let mut lexer = Lexer::new(data);
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     // Extract the data part (everything between 'stream\n' and 'endstream')
-    let expected_data = &data[7..data.len() - 9];
+    let expected_data = &data[STREAM.len()..data.len() - ENDSTREAM.len()];
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
@@ -425,7 +427,6 @@ fn test_scan_stream_when_in_indirect_object_context_expect_stream_and_endobj() {
             },
             (SyntaxKind::RawStreamDataToken.into(), b"image data here"),
             (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
                 text(b"endstream"),
                 trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
             },
@@ -443,18 +444,21 @@ fn test_scan_stream_when_in_indirect_object_context_expect_stream_and_endobj() {
 #[test]
 fn test_scan_stream_when_large_stream_expect_raw_stream_token() {
     // Test with a larger stream (simulating image data, font data, etc.)
-    let mut stream_data = b"stream\n".to_vec();
+    const STREAM: &[u8] = b"stream\n";
+    const ENDSTREAM: &[u8] = b"endstream";
+
+    let mut stream_data = STREAM.to_vec();
     for _ in 0..1000 {
         stream_data.extend_from_slice(b"Image data line\n");
     }
-    stream_data.extend_from_slice(b"endstream");
+    stream_data.extend_from_slice(ENDSTREAM);
 
     let stream_data = Box::leak(stream_data.into_boxed_slice());
     let mut lexer = Lexer::new(stream_data);
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     // The data is everything between the EOL after stream and endstream
-    let expected_data = &stream_data[8..stream_data.len() - 9];
+    let expected_data = &stream_data[STREAM.len()..stream_data.len() - ENDSTREAM.len() - 1]; // -1 for the final newline
 
     let expected_node = tree! {
         SyntaxKind::LexerNode.into() => {
@@ -463,7 +467,10 @@ fn test_scan_stream_when_large_stream_expect_raw_stream_token() {
                 trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
             },
             (SyntaxKind::RawStreamDataToken.into(), expected_data),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::EndStreamKeyword.into()) => {
+                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                text(b"endstream"),
+            },
         }
     };
 

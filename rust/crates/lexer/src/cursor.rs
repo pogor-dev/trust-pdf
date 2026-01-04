@@ -39,6 +39,18 @@ impl<'source> Lexer<'source> {
         Some(*byte)
     }
 
+    /// Advance the cursor until one of the specified sequences is found or EOF is reached.
+    pub(super) fn advance_until(&mut self, sequences: Vec<&[u8]>) {
+        let position = self.position;
+        while let Some(remaining) = self.source.get(self.position..) {
+            if sequences.iter().any(|seq| remaining.starts_with(seq)) {
+                break;
+            }
+
+            self.advance_by(1);
+        }
+    }
+
     /// Peek at the first byte without advancing the cursor.
     pub(super) fn peek(&self) -> Option<u8> {
         self.peek_by(0)
@@ -48,5 +60,11 @@ impl<'source> Lexer<'source> {
     #[inline]
     pub(super) fn peek_by(&self, offset: usize) -> Option<u8> {
         self.source.get(self.position + offset).copied()
+    }
+
+    /// Check if the cursor has reached the end of the source.
+    #[inline]
+    pub(super) fn is_eof(&self) -> bool {
+        self.position >= self.source.len()
     }
 }

@@ -58,9 +58,9 @@ impl<'source> Lexer<'source> {
     /// ```
     pub fn next_token(&mut self) -> GreenToken {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
-        let leading_trivia = self.scan_trivia();
+        let leading_trivia = self.scan_trivia(&token_info);
         self.scan_token(&mut token_info);
-        let trailing_trivia = self.scan_trivia();
+        let trailing_trivia = self.scan_trivia(&token_info);
 
         // Build the token
         let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
@@ -158,7 +158,7 @@ impl<'source> Lexer<'source> {
     ///
     /// Trivia is scanned greedily until a non-trivia character is encountered.
     /// Returns a cached trivia list for efficient memory usage and deduplication.
-    fn scan_trivia(&mut self) -> GreenTriviaListInTree {
+    fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> GreenTriviaListInTree {
         let mut trivia = Vec::new();
         loop {
             let first_byte = match self.peek() {
@@ -167,6 +167,16 @@ impl<'source> Lexer<'source> {
             };
 
             match first_byte {
+                _ if token_info.kind == SyntaxKind::RawStreamDataToken => {
+                    break; // In raw stream mode, do not scan trivia within the raw data token
+                }
+                b'\r' | b'\n' if self.is_raw_stream => {
+                    trivia.push(self.scan_end_of_line());
+                    break; // In raw stream mode, stop trivia scanning at EOL
+                }
+                _ if self.is_raw_stream => {
+                    break; // In raw stream mode, do not scan trivia within the raw data token
+                }
                 b' ' | b'\0' | b'\t' | b'\x0C' => {
                     trivia.push(self.scan_whitespace());
                 }
@@ -220,12 +230,6 @@ impl<'source> Lexer<'source> {
         let pos = self.position;
 
         if let Some(byte) = self.peek() {
-            debug_assert!(
-                byte == b'\r' || byte == b'\n',
-                "Precondition violation: scan_end_of_line must be called when positioned at CR or LF, found byte: {:#x}",
-                byte
-            );
-
             match byte {
                 b'\r' if self.peek_by(1) == Some(b'\n') => {
                     self.advance_by(2); // consume CR LF
@@ -570,10 +574,7 @@ impl<'source> Lexer<'source> {
                 self.is_raw_stream = true; // enter raw stream mode
                 SyntaxKind::StreamKeyword
             }
-            b"endstream" => {
-                self.is_raw_stream = false; // exit raw stream mode
-                SyntaxKind::EndStreamKeyword
-            }
+            b"endstream" => SyntaxKind::EndStreamKeyword,
             b"xref" => SyntaxKind::XRefKeyword,
             b"f" => SyntaxKind::XRefFreeEntryKeyword,
             b"n" => SyntaxKind::XRefInUseEntryKeyword,
@@ -640,30 +641,13 @@ impl<'source> Lexer<'source> {
     ///
     /// See: ISO 32000-2:2020, §7.10.2 Stream objects.
     fn scan_raw_stream_data(&mut self, token_info: &mut TokenInfo<'source>) {
-        const STREAM_END_KEYWORD: &[u8] = b"endstream";
-        const KEYWORD_LEN: usize = STREAM_END_KEYWORD.len();
         token_info.kind = SyntaxKind::RawStreamDataToken;
-
-        // Scan until we find "endstream" keyword
-        while self.position < self.source.len() {
-            // Check if we're at the start of "endstream"
-            let remaining = &self.source[self.position..];
-            if remaining.starts_with(STREAM_END_KEYWORD) {
-                // Verify it's a complete keyword (followed by delimiter/whitespace/EOF)
-                if let Some(&next_byte) = remaining.get(KEYWORD_LEN) {
-                    if is_whitespace(next_byte, true) || is_delimiter(next_byte, false) {
-                        break; // Stop before "endstream" - let next scan_token() handle it
-                    }
-                    // Not a valid keyword boundary, treat 'e' as data and continue
-                } else {
-                    break; // EOF after "endstream", stop here
-                }
-            }
-
-            self.advance(); // consume the byte
-        }
-
+        // There should be an end-of-line marker after the data and before endstream
+        // This marker shall not be included in the stream length.
+        // See: https://github.com/pdf-association/pdf-issues/issues/572
+        self.advance_until(vec![b"\nendstream", b"\r\nendstream", b"endstream"]);
         token_info.bytes = self.get_lexeme_bytes();
+        self.is_raw_stream = false; // exit raw stream mode after scanning
     }
 
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
@@ -721,22 +705,6 @@ fn is_hexcode(byte: u8) -> bool {
 #[inline]
 fn is_regular_name_char(byte: u8) -> bool {
     matches!(byte, b'!'..=b'~') && byte != b'#' && !is_delimiter(byte, false)
-}
-
-///
-/// An EOL is defined as either:
-/// - A single LINE FEED (`\n`, 0x0A)
-/// - A single CARRIAGE RETURN (`\r`, 0x0D)
-/// - A CARRIAGE RETURN followed by a LINE FEED (`\r\n`, 0x0D 0x0A)
-///
-/// See: ISO 32000-2:2020, §7.2.3 Character set.
-fn is_eol(bytes: &[u8]) -> bool {
-    match bytes {
-        [b'\n'] => true,
-        [b'\r'] => true,
-        [b'\r', b'\n'] => true,
-        _ => false,
-    }
 }
 
 /// Check if a byte is a delimiter character.
