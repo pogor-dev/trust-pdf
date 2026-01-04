@@ -35,8 +35,7 @@ wasm-bindgen-test = "0.3.56"
 
 # Optimized profiles for faster builds
 [profile.dev]
-# Faster debug builds
-debug = 1
+debug = 2
 incremental = true
 codegen-units = 256
 
@@ -44,8 +43,7 @@ codegen-units = 256
 opt-level = 3
 
 [profile.test]
-# Optimized test builds
-debug = 1
+debug = 2
 incremental = true
 codegen-units = 256
 
