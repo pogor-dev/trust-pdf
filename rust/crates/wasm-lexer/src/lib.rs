@@ -58,6 +58,7 @@ impl TokenResult {
 #[wasm_bindgen]
 pub struct Lexer {
     // Own the buffer so we can extend its lifetime for the lexer while it lives.
+    #[allow(dead_code)]
     source: Box<[u8]>,
     lexer: RustLexer<'static>,
 }
@@ -66,8 +67,8 @@ pub struct Lexer {
 impl Lexer {
     /// Creates a new WASM lexer over the provided bytes.
     #[wasm_bindgen(constructor)]
-    pub fn new(source: Vec<u8>) -> Lexer {
-        let source = source.into_boxed_slice();
+    pub fn new(source: &[u8]) -> Lexer {
+        let source = source.to_vec().into_boxed_slice();
 
         // SAFETY: We retain ownership of `source` in the struct, and `lexer`
         // is dropped before `source` due to field order. Extending the slice
