@@ -20,5 +20,9 @@
   "[jsonc]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "biomejs.biome"
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "pogor-dev",
+    "projectKey": "pogor-dev_trust-pdf"
   }
 }
