@@ -9,6 +9,10 @@
             "path": "docs"
         },
         {
+            "name": "vscode_extension",
+            "path": "editors/vscode"
+        },
+        {
             "name": "root",
             "path": "."
         }
