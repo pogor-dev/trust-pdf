@@ -305,10 +305,8 @@ fn test_scan_keyword_when_multiple_structure_keywords_expect_separate_tokens() {
                 text(b"endobj"),
                 trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
             },
-            (SyntaxKind::StreamKeyword.into()) => {
-                text(b"stream"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
-            },
+            (SyntaxKind::StreamKeyword.into(), b"stream"),
+            (SyntaxKind::RawStreamDataToken.into(), b" "),
             (SyntaxKind::EndStreamKeyword.into(), b"endstream")
         }
     };

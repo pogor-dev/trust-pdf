@@ -33,6 +33,7 @@ pub enum SyntaxKind {
     IndirectReferenceKeyword,
     StreamKeyword,
     EndStreamKeyword,
+    RawStreamDataToken,
     XRefKeyword,
     XRefFreeEntryKeyword,
     XRefInUseEntryKeyword,
@@ -76,7 +77,6 @@ pub enum SyntaxKind {
     // stream expressions
     StreamExpression,
     StreamBodyExpression,
-    RawStreamBytesExpression,
     OperandOperatorExpression,
     OperatorExpression,
 

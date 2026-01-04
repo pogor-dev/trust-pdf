@@ -13,6 +13,7 @@ pub struct Lexer<'source> {
     pub(super) position: usize,
     pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
     cache: GreenCache,
+    is_raw_stream: bool,
 }
 
 #[derive(Debug, Default)]
@@ -29,6 +30,7 @@ impl<'source> Lexer<'source> {
             position: 0,
             lexeme: None,
             cache: GreenCache::default(),
+            is_raw_stream: false,
         }
     }
 
@@ -56,9 +58,9 @@ impl<'source> Lexer<'source> {
     /// ```
     pub fn next_token(&mut self) -> GreenToken {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
-        let leading_trivia = self.scan_trivia();
+        let leading_trivia = self.scan_trivia(&token_info);
         self.scan_token(&mut token_info);
-        let trailing_trivia = self.scan_trivia();
+        let trailing_trivia = self.scan_trivia(&token_info);
 
         // Build the token
         let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
@@ -102,6 +104,10 @@ impl<'source> Lexer<'source> {
         self.start_lexeme();
 
         match first_byte {
+            _ if self.is_raw_stream => {
+                // In raw stream mode, everything until 'endstream' is treated as a raw data token
+                self.scan_raw_stream_data(token_info);
+            }
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 self.scan_numeric_literal(token_info);
             }
@@ -152,7 +158,7 @@ impl<'source> Lexer<'source> {
     ///
     /// Trivia is scanned greedily until a non-trivia character is encountered.
     /// Returns a cached trivia list for efficient memory usage and deduplication.
-    fn scan_trivia(&mut self) -> GreenTriviaListInTree {
+    fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> GreenTriviaListInTree {
         let mut trivia = Vec::new();
         loop {
             let first_byte = match self.peek() {
@@ -161,6 +167,16 @@ impl<'source> Lexer<'source> {
             };
 
             match first_byte {
+                _ if token_info.kind == SyntaxKind::RawStreamDataToken => {
+                    break; // In raw stream mode, do not scan trivia within the raw data token
+                }
+                b'\r' | b'\n' if self.is_raw_stream => {
+                    trivia.push(self.scan_end_of_line());
+                    break; // In raw stream mode, stop trivia scanning at EOL
+                }
+                _ if self.is_raw_stream => {
+                    break; // In raw stream mode, do not scan trivia within the raw data token
+                }
                 b' ' | b'\0' | b'\t' | b'\x0C' => {
                     trivia.push(self.scan_whitespace());
                 }
@@ -214,12 +230,6 @@ impl<'source> Lexer<'source> {
         let pos = self.position;
 
         if let Some(byte) = self.peek() {
-            debug_assert!(
-                byte == b'\r' || byte == b'\n',
-                "Precondition violation: scan_end_of_line must be called when positioned at CR or LF, found byte: {:#x}",
-                byte
-            );
-
             match byte {
                 b'\r' if self.peek_by(1) == Some(b'\n') => {
                     self.advance_by(2); // consume CR LF
@@ -560,7 +570,10 @@ impl<'source> Lexer<'source> {
             b"obj" => SyntaxKind::IndirectObjectKeyword,
             b"endobj" => SyntaxKind::IndirectEndObjectKeyword,
             b"R" => SyntaxKind::IndirectReferenceKeyword,
-            b"stream" => SyntaxKind::StreamKeyword,
+            b"stream" => {
+                self.is_raw_stream = true; // enter raw stream mode
+                SyntaxKind::StreamKeyword
+            }
             b"endstream" => SyntaxKind::EndStreamKeyword,
             b"xref" => SyntaxKind::XRefKeyword,
             b"f" => SyntaxKind::XRefFreeEntryKeyword,
@@ -618,6 +631,25 @@ impl<'source> Lexer<'source> {
         token_info.bytes = self.get_lexeme_bytes();
     }
 
+    /// Scans raw stream data until the `endstream` keyword is encountered.
+    ///
+    /// Consumes all bytes as raw stream data until it finds the `endstream` keyword.
+    /// The `endstream` keyword itself is not consumed - it will be scanned as a separate token.
+    ///
+    /// Stream data can contain any bytes and is not interpreted as PDF objects during lexing.
+    /// The actual decoding and filtering of stream data is handled in semantic analysis.
+    ///
+    /// See: ISO 32000-2:2020, §7.3.8 Stream objects.
+    fn scan_raw_stream_data(&mut self, token_info: &mut TokenInfo<'source>) {
+        token_info.kind = SyntaxKind::RawStreamDataToken;
+        // There should be an end-of-line marker after the data and before endstream
+        // This marker shall not be included in the stream length.
+        // See: https://github.com/pdf-association/pdf-issues/issues/572
+        self.advance_until(&[b"\nendstream", b"\r\nendstream", b"endstream"]);
+        token_info.bytes = self.get_lexeme_bytes();
+        self.is_raw_stream = false; // exit raw stream mode after scanning
+    }
+
     /// Scans unknown/unsupported characters as a [`SyntaxKind::BadToken`].
     ///
     /// Consumes characters greedily until a delimiter, whitespace, or EOF is encountered.
@@ -673,22 +705,6 @@ fn is_hexcode(byte: u8) -> bool {
 #[inline]
 fn is_regular_name_char(byte: u8) -> bool {
     matches!(byte, b'!'..=b'~') && byte != b'#' && !is_delimiter(byte, false)
-}
-
-///
-/// An EOL is defined as either:
-/// - A single LINE FEED (`\n`, 0x0A)
-/// - A single CARRIAGE RETURN (`\r`, 0x0D)
-/// - A CARRIAGE RETURN followed by a LINE FEED (`\r\n`, 0x0D 0x0A)
-///
-/// See: ISO 32000-2:2020, §7.2.3 Character set.
-fn is_eol(bytes: &[u8]) -> bool {
-    match bytes {
-        [b'\n'] => true,
-        [b'\r'] => true,
-        [b'\r', b'\n'] => true,
-        _ => false,
-    }
 }
 
 /// Check if a byte is a delimiter character.

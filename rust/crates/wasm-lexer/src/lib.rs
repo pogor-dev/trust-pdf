@@ -57,8 +57,10 @@ impl TokenResult {
 /// to reduce per-call setup overhead.
 #[wasm_bindgen]
 pub struct Lexer {
-    source: Vec<u8>,
-    position: usize,
+    // Own the buffer so we can extend its lifetime for the lexer while it lives.
+    #[allow(dead_code)]
+    source: Box<[u8]>,
+    lexer: RustLexer<'static>,
 }
 
 #[wasm_bindgen]
@@ -66,10 +68,15 @@ impl Lexer {
     /// Creates a new WASM lexer over the provided bytes.
     #[wasm_bindgen(constructor)]
     pub fn new(source: &[u8]) -> Lexer {
-        Lexer {
-            source: source.to_vec(),
-            position: 0,
-        }
+        let source = source.to_vec().into_boxed_slice();
+
+        // SAFETY: We retain ownership of `source` in the struct, and `lexer`
+        // is dropped before `source` due to field order. Extending the slice
+        // lifetime to 'static is therefore sound for the lifetime of `Lexer`.
+        let leaked: &'static [u8] = unsafe { std::mem::transmute::<&[u8], &'static [u8]>(&*source) };
+
+        let lexer = RustLexer::new(leaked);
+        Lexer { source, lexer }
     }
 
     /// Produces the next token and advances the internal position.
@@ -77,26 +84,13 @@ impl Lexer {
     /// Returns an `EndOfFileToken` with zero width once all input is consumed.
     #[wasm_bindgen]
     pub fn next_token(&mut self) -> TokenResult {
-        if self.position >= self.source.len() {
-            return TokenResult {
-                kind: "EndOfFileToken".to_string(),
-                text: String::new(),
-                width: 0,
-            };
-        }
-
-        let mut lexer = RustLexer::new(&self.source[self.position..]);
-        let token = lexer.next_token();
+        let token = self.lexer.next_token();
 
         // Get token properties
         let syntax_kind: SyntaxKind = token.kind().into();
         let kind = format!("{:?}", syntax_kind);
         let text = String::from_utf8_lossy(&token.bytes()).to_string();
         let full_width = token.full_width() as usize;
-
-        // Advance position by token's full width (including trivia)
-        self.position += full_width;
-
         TokenResult { kind, text, width: full_width }
     }
 }
