@@ -639,13 +639,13 @@ impl<'source> Lexer<'source> {
     /// Stream data can contain any bytes and is not interpreted as PDF objects during lexing.
     /// The actual decoding and filtering of stream data is handled in semantic analysis.
     ///
-    /// See: ISO 32000-2:2020, §7.10.2 Stream objects.
+    /// See: ISO 32000-2:2020, §7.3.8 Stream objects.
     fn scan_raw_stream_data(&mut self, token_info: &mut TokenInfo<'source>) {
         token_info.kind = SyntaxKind::RawStreamDataToken;
         // There should be an end-of-line marker after the data and before endstream
         // This marker shall not be included in the stream length.
         // See: https://github.com/pdf-association/pdf-issues/issues/572
-        self.advance_until(vec![b"\nendstream", b"\r\nendstream", b"endstream"]);
+        self.advance_until(&[b"\nendstream", b"\r\nendstream", b"endstream"]);
         token_info.bytes = self.get_lexeme_bytes();
         self.is_raw_stream = false; // exit raw stream mode after scanning
     }
