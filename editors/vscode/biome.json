@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**", "astro.config.mjs"]
+    "includes": ["src/**"]
   },
   "linter": {
     "enabled": true,
@@ -55,18 +55,5 @@
     "formatter": {
       "trailingCommas": "none"
     }
-  },
-  "css": {
-    "parser": {
-      "tailwindDirectives": true
-    }
-  },
-  "overrides": [
-    {
-      "includes": ["*.mdx", "*.md"],
-      "formatter": {
-        "lineWidth": 120
-      }
-    }
-  ]
+  }
 }
