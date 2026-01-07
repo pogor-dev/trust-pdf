@@ -1,8 +1,6 @@
-use std::error::Error;
-use std::fs;
-
 use lsp_server::{Connection, ExtractError, Message, RequestId, Response};
 use lsp_types::{GotoDefinitionResponse, InitializeParams, Location, OneOf, ServerCapabilities, request::GotoDefinition};
+use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // Note that  we must have our logging only write out to stderr since the communication with the client
