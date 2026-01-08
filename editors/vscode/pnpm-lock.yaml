@@ -7,6 +7,16 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@vscode/wasm-wasi':
+        specifier: ^1.0.1
+        version: 1.0.1
+      '@vscode/wasm-wasi-lsp':
+        specifier: 0.1.0-pre.8
+        version: 0.1.0-pre.8(@vscode/wasm-wasi@1.0.1)(vscode-languageclient@10.0.0-next.12)
+      vscode-languageclient:
+        specifier: 10.0.0-next.12
+        version: 10.0.0-next.12
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.11
@@ -278,6 +288,18 @@ packages:
   '@vscode/test-electron@2.5.2':
     resolution: {integrity: sha512-8ukpxv4wYe0iWMRQU18jhzJOHkeGKbnw7xWRX3Zw1WJA4cEKbHcmmLPdPrPtL6rhDcrlCZN+xKRpv09n4gRHYg==}
     engines: {node: '>=16'}
+
+  '@vscode/wasm-wasi-lsp@0.1.0-pre.8':
+    resolution: {integrity: sha512-txfdrvjSc1GDxQm373+i1bQmPVAmHLiRLbv3dsGw/8H4X+KnoMlPmK2Oih1WTpmtefgPW/NrZldfcj3tV9XSUA==}
+    engines: {node: '>=18.18.2'}
+    peerDependencies:
+      '@vscode/wasm-wasi': ^1.0.1
+      vscode-languageclient: 10.0.0-next.12
+
+  '@vscode/wasm-wasi@1.0.1':
+    resolution: {integrity: sha512-sqzRASxeXNO9PGZxcRGMI6DeCaxX5qfTcYO0eorG2RLiJKOgNW2Ke2J1/vS1X693a27IF5jXWqqDdwN/qcF4pg==}
+    engines: {node: '>=20.9.0', vscode: ^1.88.0}
+    hasBin: true
 
   '@webassemblyjs/ast@1.14.1':
     resolution: {integrity: sha512-nuBEDgQfm1ccRp/8bCQrx1frohyufl4JlbMMZ4P1wpeOfDhF6FQkxZJ1b/e+PLwr6X1Nhw6OLme5usuBWYBvuQ==}
@@ -1301,6 +1323,20 @@ packages:
     resolution: {integrity: sha512-kiGUalWN+rgBJ/1OHZsBtU4rXZOfj/7rKQxULKlIzwzQSvMJUUNgPwJEEh7gU6xEVxC0ahoOBvN2YI8GH6FNgA==}
     engines: {node: '>=10.12.0'}
 
+  vscode-jsonrpc@9.0.0-next.5:
+    resolution: {integrity: sha512-Sl/8RAJtfF/2x/TPBVRuhzRAcqYR/QDjEjNqMcoKFfqsxfVUPzikupRDQYB77Gkbt1RrW43sSuZ5uLtNAcikQQ==}
+    engines: {node: '>=14.0.0'}
+
+  vscode-languageclient@10.0.0-next.12:
+    resolution: {integrity: sha512-q7cVYCcYiv+a+fJYCbjMMScOGBnX162IBeUMFg31mvnN7RHKx5/CwKaCz+r+RciJrRXMqS8y8qpEVGgeIPnbxg==}
+    engines: {vscode: ^1.91.0}
+
+  vscode-languageserver-protocol@3.17.6-next.10:
+    resolution: {integrity: sha512-KOrrWn4NVC5jnFC5N6y/fyNKtx8rVYr67lhL/Z0P4ZBAN27aBsCnLBWAMIkYyJ1K8EZaE5r7gqdxrS9JPB6LIg==}
+
+  vscode-languageserver-types@3.17.6-next.5:
+    resolution: {integrity: sha512-QFmf3Yl1tCgUQfA77N9Me/LXldJXkIVypQbty2rJ1DNHQkC+iwvm4Z2tXg9czSwlhvv0pD4pbF5mT7WhAglolw==}
+
   watchpack@2.5.0:
     resolution: {integrity: sha512-e6vZvY6xboSwLz2GD36c16+O/2Z6fKvIf4pOXptw2rY9MVwE/TXc6RGqxD3I3x0a28lwBY7DE+76uTPSsBrrCA==}
     engines: {node: '>=10.13.0'}
@@ -1649,6 +1685,16 @@ snapshots:
       semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
+
+  '@vscode/wasm-wasi-lsp@0.1.0-pre.8(@vscode/wasm-wasi@1.0.1)(vscode-languageclient@10.0.0-next.12)':
+    dependencies:
+      '@vscode/wasm-wasi': 1.0.1
+      vscode-languageclient: 10.0.0-next.12
+
+  '@vscode/wasm-wasi@1.0.1':
+    dependencies:
+      semver: 7.7.3
+      yargs: 17.7.2
 
   '@webassemblyjs/ast@1.14.1':
     dependencies:
@@ -2631,6 +2677,21 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.31
       '@types/istanbul-lib-coverage': 2.0.6
       convert-source-map: 2.0.0
+
+  vscode-jsonrpc@9.0.0-next.5: {}
+
+  vscode-languageclient@10.0.0-next.12:
+    dependencies:
+      minimatch: 9.0.5
+      semver: 7.7.3
+      vscode-languageserver-protocol: 3.17.6-next.10
+
+  vscode-languageserver-protocol@3.17.6-next.10:
+    dependencies:
+      vscode-jsonrpc: 9.0.0-next.5
+      vscode-languageserver-types: 3.17.6-next.5
+
+  vscode-languageserver-types@3.17.6-next.5: {}
 
   watchpack@2.5.0:
     dependencies:

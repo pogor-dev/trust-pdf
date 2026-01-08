@@ -1,0 +1,17 @@
+[package]
+name = "lsp-server"
+version = "0.1.0"
+description = "TRust PDF Language Server Protocol implementation"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+lsp-server.workspace = true
+lsp-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+lexer.workspace = true
+syntax.workspace = true

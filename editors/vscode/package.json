@@ -9,16 +9,31 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "PDF",
+    "Rust",
+    "WASM",
+    "Component Model",
+    "LSP",
+    "Language Server"
+  ],
+  "activationEvents": [
+    "onLanguage:pdf"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [
+    "languages": [
       {
-        "command": "trust-pdf.helloWorld",
-        "title": "Hello World"
+        "id": "pdf",
+        "aliases": ["PDF", "pdf"],
+        "extensions": [".pdf"],
+        "mimetypes": ["application/pdf"]
       }
     ]
   },
+  "extensionDependencies": [
+    "ms-vscode.wasm-wasi-core"
+  ],
   "scripts": {
     "vscode:prepublish": "pnpm run package",
     "compile": "webpack",
@@ -46,5 +61,10 @@
     "typescript-eslint": "^8.48.1",
     "webpack": "^5.103.0",
     "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "@vscode/wasm-wasi": "^1.0.1",
+    "@vscode/wasm-wasi-lsp": "0.1.0-pre.8",
+    "vscode-languageclient": "10.0.0-next.12"
   }
 }

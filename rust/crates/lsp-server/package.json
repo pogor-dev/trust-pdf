@@ -1,0 +1,23 @@
+{
+  "name": "trust-pdf-lsp-server",
+  "version": "0.1.0",
+  "description": "TRust PDF Language Server Protocol implementation",
+  "keywords": [
+    "lsp",
+    "pdf"
+  ],
+  "homepage": "https://github.com/pogor-dev/trust-pdf#readme",
+  "bugs": {
+    "url": "https://github.com/pogor-dev/trust-pdf/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pogor-dev/trust-pdf.git"
+  },
+  "license": "MIT OR Apache-2.0",
+  "author": "Victor Pogor",
+  "scripts": {
+    "build": "cargo rustc --release --target wasm32-wasip1-threads --target-dir ./target -- -Clink-arg=--initial-memory=10485760 -Clink-arg=--max-memory=10485760",
+    "test": "node ./bin/send.js | wasmtime --wasm threads=y --wasm shared-memory=y --wasi threads=y ./target/wasm32-wasip1-threads/release/lsp-server.wasm"
+  }
+}
