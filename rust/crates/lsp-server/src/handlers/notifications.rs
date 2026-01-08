@@ -3,7 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use lsp_types::{DidChangeTextDocumentParams, DidOpenTextDocumentParams};
 
 pub(crate) fn on_did_open(docs: &mut HashMap<String, Arc<String>>, params: DidOpenTextDocumentParams) {
-    docs.insert(params.text_document.uri.to_string(), Arc::new(params.text_document.text));
+    let uri = params.text_document.uri.to_string();
+    let text = params.text_document.text.clone();
+    eprintln!("didOpen: {} (length: {} bytes)", uri, text.len());
+    docs.insert(uri, Arc::new(text));
 }
 
 pub(crate) fn on_did_change(docs: &mut HashMap<String, Arc<String>>, params: DidChangeTextDocumentParams) {

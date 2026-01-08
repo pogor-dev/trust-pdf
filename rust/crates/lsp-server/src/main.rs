@@ -67,6 +67,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
                 // Track opened/changed documents using typed notification casting.
                 let not = match cast_notification::<DidOpenTextDocument>(not.clone()) {
                     Ok(params) => {
+                        eprintln!("Received DidOpen notification");
                         handlers::on_did_open(&mut docs, params);
                         continue;
                     }
@@ -76,6 +77,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
 
                 let _not = match cast_notification::<DidChangeTextDocument>(not) {
                     Ok(params) => {
+                        eprintln!("Received DidChange notification");
                         handlers::on_did_change(&mut docs, params);
                         continue;
                     }

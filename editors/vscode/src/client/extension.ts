@@ -30,7 +30,11 @@ function createServerOptions(
   return async () => {
     const filename = Uri.joinPath(
       context.extensionUri,
-      "server",
+      "..",
+      "..",
+      "rust",
+      "crates",
+      "lsp-server",
       "target",
       "wasm32-wasip1-threads",
       "release",
@@ -63,7 +67,7 @@ function createServerOptions(
 
 async function configureClientOptions(channel: OutputChannel, serverOptions: ServerOptions) {
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [{ language: "plaintext", pattern: "**/*.pdf" }],
+    documentSelector: [{ language: "pdf", scheme: "file" }, { pattern: "**/*.pdf" }],
     outputChannel: channel,
     uriConverters: createUriConverters(),
   }

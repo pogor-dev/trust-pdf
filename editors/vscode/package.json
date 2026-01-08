@@ -17,9 +17,23 @@
     "LSP",
     "Language Server"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:pdf"
+  ],
   "main": "./dist/extension.js",
-  "contributes": {},
+  "contributes": {
+    "languages": [
+      {
+        "id": "pdf",
+        "aliases": ["PDF", "pdf"],
+        "extensions": [".pdf"],
+        "mimetypes": ["application/pdf"]
+      }
+    ]
+  },
+  "extensionDependencies": [
+    "ms-vscode.wasm-wasi-core"
+  ],
   "scripts": {
     "vscode:prepublish": "pnpm run package",
     "compile": "webpack",
