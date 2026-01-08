@@ -1,0 +1,98 @@
+use crate::line_map::{compute_line_starts, offset_to_line_col};
+use lexer::Lexer;
+use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions};
+use syntax::SyntaxKind;
+
+#[repr(u32)]
+#[derive(Clone, Copy)]
+pub enum TokenType {
+    Keyword = 0,
+    String = 1,
+    Number = 2,
+    Property = 3,
+}
+
+pub fn build_legend() -> SemanticTokensLegend {
+    SemanticTokensLegend {
+        token_types: vec![
+            SemanticTokenType::KEYWORD,
+            SemanticTokenType::STRING,
+            SemanticTokenType::NUMBER,
+            SemanticTokenType::PROPERTY,
+        ],
+        token_modifiers: vec![],
+    }
+}
+
+pub fn build_semantic_tokens_options() -> SemanticTokensOptions {
+    SemanticTokensOptions {
+        legend: build_legend(),
+        full: Some(SemanticTokensFullOptions::Bool(true)),
+        range: Some(true),
+        work_done_progress_options: Default::default(),
+    }
+}
+
+pub fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
+    use SyntaxKind as K;
+    let t = match kind {
+        K::TrueKeyword
+        | K::FalseKeyword
+        | K::NullKeyword
+        | K::IndirectObjectKeyword
+        | K::IndirectEndObjectKeyword
+        | K::IndirectReferenceKeyword
+        | K::StreamKeyword
+        | K::EndStreamKeyword
+        | K::XRefKeyword
+        | K::XRefFreeEntryKeyword
+        | K::XRefInUseEntryKeyword
+        | K::FileTrailerKeyword
+        | K::StartXRefKeyword => TokenType::Keyword,
+        K::StringLiteralToken | K::HexStringLiteralToken => TokenType::String,
+        K::NumericLiteralToken => TokenType::Number,
+        K::NameLiteralToken => TokenType::Property,
+        _ => return None,
+    };
+    Some(t)
+}
+
+pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
+    let mut data: Vec<SemanticToken> = Vec::new();
+    let line_starts = compute_line_starts(text.as_bytes());
+
+    let mut lexer = Lexer::new(text.as_bytes());
+    let mut offset: usize = 0;
+    let mut prev_line: u32 = 0;
+    let mut prev_col: u32 = 0;
+
+    loop {
+        let tok = lexer.next_token();
+        let kind: SyntaxKind = tok.kind().into();
+        let width = tok.full_width() as usize;
+
+        if kind == SyntaxKind::EndOfFileToken {
+            break;
+        }
+
+        let (line, col) = offset_to_line_col(offset, &line_starts);
+        let length = tok.bytes().len() as u32;
+        if let Some(token_type) = map_kind(kind) {
+            let (dl, dc) = if line == prev_line { (0, col - prev_col) } else { (line - prev_line, col) };
+            prev_line = line;
+            prev_col = col;
+
+            data.push(SemanticToken {
+                delta_line: dl,
+                delta_start: dc,
+                length,
+                token_type: token_type as u32,
+                token_modifiers_bitset: 0,
+            });
+        }
+
+        offset += width;
+    }
+
+    data
+}

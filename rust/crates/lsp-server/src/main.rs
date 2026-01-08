@@ -1,7 +1,6 @@
-use lsp_server::{Connection, ExtractError, Message, RequestId, Response};
+use lsp_server::{Connection, ExtractError, Message, RequestId};
 use lsp_types::{
-    InitializeParams, OneOf, SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensServerCapabilities, ServerCapabilities,
+    InitializeParams,
     notification::{DidChangeTextDocument, DidOpenTextDocument},
     request::SemanticTokensFullRequest,
 };
@@ -9,28 +8,12 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 
-use lexer::Lexer;
-use syntax::SyntaxKind;
+mod capabilities;
+mod handlers;
+mod line_map;
+mod tokens;
 
-/// Semantic token types for PDF syntax highlighting
-#[repr(u32)]
-#[derive(Clone, Copy)]
-enum TokenType {
-    Keyword = 0,
-    String = 1,
-    Number = 2,
-    Property = 3,
-}
-
-// Semantic token types - single source of truth
-const TOKEN_TYPES_DEFS: &[SemanticTokenType] = &[
-    lsp_types::SemanticTokenType::KEYWORD,
-    lsp_types::SemanticTokenType::STRING,
-    lsp_types::SemanticTokenType::NUMBER,
-    lsp_types::SemanticTokenType::PROPERTY,
-];
-
-// TODO: combine TokenType and TOKEN_TYPES_DEFS into a single definition
+// NOTE: token legend and mapping moved to `tokens` module
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // Note that  we must have our logging only write out to stderr since the communication with the client
@@ -42,23 +25,8 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     let (connection, io_threads) = Connection::stdio();
 
     // Advertise capabilities including semantic tokens for highlighting.
-    let legend = SemanticTokensLegend {
-        token_types: TOKEN_TYPES_DEFS.to_vec(),
-        token_modifiers: vec![],
-    };
-
-    let semantic_tokens_options = SemanticTokensOptions {
-        legend,
-        full: Some(SemanticTokensFullOptions::Bool(true)),
-        range: Some(true),
-        work_done_progress_options: Default::default(),
-    };
-
-    let server_capabilities = serde_json::to_value(&ServerCapabilities {
-        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(semantic_tokens_options)),
-        ..Default::default()
-    })
-    .map_err(|e| -> Box<dyn Error + Send + Sync> { Box::new(e) })?;
+    let semantic_tokens_options = capabilities::build_semantic_tokens_options();
+    let server_capabilities = capabilities::build_server_capabilities(semantic_tokens_options).map_err(|e| -> Box<dyn Error + Send + Sync> { Box::new(e) })?;
 
     let initialization_params = connection.initialize(server_capabilities)?;
     main_loop(connection, initialization_params)?;
@@ -85,23 +53,9 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
                 // Semantic tokens full via typed cast
                 match cast::<SemanticTokensFullRequest>(req.clone()) {
                     Ok((id, params)) => {
-                        let uri = params.text_document.uri.to_string();
-                        let text = docs.get(&uri).cloned().unwrap_or_else(|| Arc::new(String::new()));
-                        let data = compute_semantic_tokens(&text);
-                        let result = SemanticTokens { result_id: None, data };
-                        let result = match serde_json::to_value(result) {
-                            Ok(v) => v,
-                            Err(e) => {
-                                eprintln!("Failed to serialize SemanticTokens: {e}");
-                                continue;
-                            }
-                        };
-                        let resp = Response {
-                            id,
-                            result: Some(result),
-                            error: None,
-                        };
-                        connection.sender.send(Message::Response(resp))?;
+                        if let Err(e) = handlers::handle_semantic_tokens_full(&connection, id, params, &docs) {
+                            eprintln!("Failed to handle semantic tokens request: {e}");
+                        }
                         continue;
                     }
                     Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
@@ -113,7 +67,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
                 // Track opened/changed documents using typed notification casting.
                 let not = match cast_notification::<DidOpenTextDocument>(not.clone()) {
                     Ok(params) => {
-                        docs.insert(params.text_document.uri.to_string(), Arc::new(params.text_document.text));
+                        handlers::on_did_open(&mut docs, params);
                         continue;
                     }
                     Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
@@ -122,10 +76,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
 
                 let _not = match cast_notification::<DidChangeTextDocument>(not) {
                     Ok(params) => {
-                        if let Some(change) = params.content_changes.into_iter().last() {
-                            let text = change.text;
-                            docs.insert(params.text_document.uri.to_string(), Arc::new(text));
-                        }
+                        handlers::on_did_change(&mut docs, params);
                         continue;
                     }
                     Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
@@ -152,116 +103,4 @@ where
     N::Params: serde::de::DeserializeOwned,
 {
     not.extract(N::METHOD)
-}
-
-fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
-    let mut data: Vec<SemanticToken> = Vec::new();
-
-    // Precompute line starts for offset->(line,col) mapping
-    let line_starts = compute_line_starts(text.as_bytes());
-
-    let mut lexer = Lexer::new(text.as_bytes());
-    let mut offset: usize = 0;
-    let mut prev_line: u32 = 0;
-    let mut prev_col: u32 = 0;
-
-    loop {
-        let tok = lexer.next_token();
-        let kind: SyntaxKind = tok.kind().into();
-        let width = tok.full_width() as usize;
-
-        if kind == SyntaxKind::EndOfFileToken {
-            break;
-        }
-
-        let (line, col) = offset_to_line_col(offset, &line_starts);
-        let length = tok.bytes().len() as u32;
-        if let Some(token_type) = map_kind(kind) {
-            // delta encode
-            let (dl, dc) = if line == prev_line { (0, col - prev_col) } else { (line - prev_line, col) };
-            prev_line = line;
-            prev_col = col;
-
-            data.push(SemanticToken {
-                delta_line: dl,
-                delta_start: dc,
-                length,
-                token_type: token_type as u32,
-                token_modifiers_bitset: 0,
-            });
-        }
-
-        offset += width;
-    }
-
-    data
-}
-
-fn compute_line_starts(bytes: &[u8]) -> Vec<usize> {
-    let mut starts = vec![0usize];
-    let mut i = 0usize;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'\n' => {
-                starts.push(i + 1);
-            }
-            b'\r' => {
-                // handle \r\n as single newline
-                if i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
-                    starts.push(i + 2);
-                    i += 1;
-                } else {
-                    starts.push(i + 1);
-                }
-            }
-            _ => {}
-        }
-        i += 1;
-    }
-    starts
-}
-
-fn offset_to_line_col(offset: usize, line_starts: &[usize]) -> (u32, u32) {
-    // binary search for the last line_start <= offset
-    let mut lo = 0usize;
-    let mut hi = line_starts.len();
-    while lo + 1 < hi {
-        let mid = (lo + hi) / 2;
-        if line_starts[mid] <= offset {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    let line = lo as u32;
-    let col = (offset - line_starts[lo]) as u32;
-    (line, col)
-}
-
-fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
-    use SyntaxKind as K;
-    let t = match kind {
-        // keywords & PDF grammar keywords
-        K::TrueKeyword
-        | K::FalseKeyword
-        | K::NullKeyword
-        | K::IndirectObjectKeyword
-        | K::IndirectEndObjectKeyword
-        | K::IndirectReferenceKeyword
-        | K::StreamKeyword
-        | K::EndStreamKeyword
-        | K::XRefKeyword
-        | K::XRefFreeEntryKeyword
-        | K::XRefInUseEntryKeyword
-        | K::FileTrailerKeyword
-        | K::StartXRefKeyword => TokenType::Keyword,
-        // literals
-        K::StringLiteralToken | K::HexStringLiteralToken => TokenType::String,
-        K::NumericLiteralToken => TokenType::Number,
-        // names often act like dictionary keys; classify as property
-        K::NameLiteralToken => TokenType::Property,
-        // punctuation and structural nodes are ignored for highlighting
-        _ => return None,
-    };
-    Some(t)
 }
