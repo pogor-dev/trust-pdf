@@ -1,25 +1,83 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from "vscode"
+import { type OutputChannel, Uri, window, workspace, type ExtensionContext } from "vscode"
+import { Wasm } from "@vscode/wasm-wasi/v1"
+import {
+  LanguageClient,
+  type LanguageClientOptions,
+  type ServerOptions,
+} from "vscode-languageclient/node"
+import { createStdioOptions, createUriConverters, startServer } from "@vscode/wasm-wasi-lsp"
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "trust-pdf" is now active!')
+const extensionName = "TRust PDF"
 
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  const disposable = vscode.commands.registerCommand("trust-pdf.helloWorld", () => {
-    // The code you place here will be executed every time your command is executed
-    // Display a message box to the user
-    vscode.window.showInformationMessage("Hello World from trust-pdf!")
-  })
+let client: LanguageClient
 
-  context.subscriptions.push(disposable)
+export async function activate(context: ExtensionContext) {
+  const wasm: Wasm = await Wasm.load()
+  const channel = window.createOutputChannel(`${extensionName} Server`)
+  const serverOptions: ServerOptions = createServerOptions(context, wasm, channel)
+  await configureClientOptions(channel, serverOptions)
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  return client.stop()
+}
+
+function createServerOptions(
+  context: ExtensionContext,
+  wasm: Wasm,
+  channel: OutputChannel,
+): ServerOptions {
+  return async () => {
+    const filename = Uri.joinPath(
+      context.extensionUri,
+      "server",
+      "target",
+      "wasm32-wasip1-threads",
+      "release",
+      "lsp-server.wasm",
+    )
+
+    const bits = (await workspace.fs.readFile(filename)) as Uint8Array<ArrayBuffer>
+    const module = await WebAssembly.compile(bits)
+
+    const process = await wasm.createProcess(
+      "trust-pdf-lsp-server",
+      module,
+      { initial: 160, maximum: 160, shared: true },
+      {
+        stdio: createStdioOptions(),
+        mountPoints: [{ kind: "workspaceFolder" }],
+      },
+    )
+
+    const decoder = new TextDecoder("utf-8")
+    if (process.stderr) {
+      process.stderr.onData(data => {
+        channel.append(decoder.decode(data))
+      })
+    }
+
+    return startServer(process)
+  }
+}
+
+async function configureClientOptions(channel: OutputChannel, serverOptions: ServerOptions) {
+  const clientOptions: LanguageClientOptions = {
+    documentSelector: [{ language: "plaintext", pattern: "**/*.pdf" }],
+    outputChannel: channel,
+    uriConverters: createUriConverters(),
+  }
+
+  client = new LanguageClient(
+    "trust-pdf-lsp-client",
+    `${extensionName} Client`,
+    serverOptions,
+    clientOptions,
+  )
+
+  try {
+    await client.start()
+  } catch (error) {
+    client.error(`${extensionName} start failed`, error, "force")
+  }
+}
