@@ -1,6 +1,16 @@
 use lsp_server::{Connection, ExtractError, Message, RequestId, Response};
-use lsp_types::{GotoDefinitionResponse, InitializeParams, Location, OneOf, ServerCapabilities, request::GotoDefinition};
+use lsp_types::{
+    InitializeParams, OneOf, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend,
+    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    notification::{DidChangeTextDocument, DidOpenTextDocument},
+    request::SemanticTokensFullRequest,
+};
+use std::collections::HashMap;
 use std::error::Error;
+use std::sync::Arc;
+
+use lexer::Lexer;
+use syntax::SyntaxKind;
 
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // Note that  we must have our logging only write out to stderr since the communication with the client
@@ -11,9 +21,27 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // also be implemented to use sockets or HTTP.
     let (connection, io_threads) = Connection::stdio();
 
-    // Run the server and wait for the two threads to end (typically by trigger LSP Exit event).
+    // Advertise capabilities including semantic tokens for highlighting.
+    let legend = SemanticTokensLegend {
+        token_types: vec![
+            SemanticTokenType::KEYWORD,
+            SemanticTokenType::STRING,
+            SemanticTokenType::NUMBER,
+            SemanticTokenType::OPERATOR,
+            SemanticTokenType::COMMENT,
+            SemanticTokenType::PROPERTY,
+        ],
+        token_modifiers: vec![SemanticTokenModifier::READONLY],
+    };
+
     let server_capabilities = serde_json::to_value(&ServerCapabilities {
         definition_provider: Some(OneOf::Left(true)),
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
+            legend,
+            full: Some(SemanticTokensFullOptions::Bool(true)),
+            range: Some(true),
+            work_done_progress_options: Default::default(),
+        })),
         ..Default::default()
     })
     .unwrap();
@@ -28,21 +56,22 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
 fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Box<dyn Error + Sync + Send>> {
     let _params: InitializeParams = serde_json::from_value(params).unwrap();
+    let mut docs: HashMap<String, Arc<String>> = HashMap::new();
+
     for msg in &connection.receiver {
         match msg {
             Message::Request(req) => {
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                match cast::<GotoDefinition>(req.clone()) {
+                // Semantic tokens full via typed cast
+                match cast::<SemanticTokensFullRequest>(req.clone()) {
                     Ok((id, params)) => {
-                        let uri = params.text_document_position_params.text_document.uri;
-                        eprintln!("Received gotoDefinition request #{} {}", id, uri.to_string());
-                        let loc = Location::new(uri, lsp_types::Range::new(lsp_types::Position::new(0, 0), lsp_types::Position::new(0, 0)));
-                        let mut vec = Vec::new();
-                        vec.push(loc);
-                        let result = Some(GotoDefinitionResponse::Array(vec));
-                        let result = serde_json::to_value(&result).unwrap();
+                        let uri = params.text_document.uri.to_string();
+                        let text = docs.get(&uri).cloned().unwrap_or_else(|| Arc::new(String::new()));
+                        let data = compute_semantic_tokens(&text);
+                        let result = SemanticTokens { result_id: None, data };
+                        let result = serde_json::to_value(result).unwrap();
                         let resp = Response {
                             id,
                             result: Some(result),
@@ -56,7 +85,30 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
                 };
             }
             Message::Response(_resp) => {}
-            Message::Notification(_not) => {}
+            Message::Notification(not) => {
+                // Track opened/changed documents using typed notification casting.
+                let not = match cast_notification::<DidOpenTextDocument>(not.clone()) {
+                    Ok(params) => {
+                        docs.insert(params.text_document.uri.to_string(), Arc::new(params.text_document.text));
+                        continue;
+                    }
+                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
+                    Err(ExtractError::MethodMismatch(not)) => not,
+                };
+
+                let _not = match cast_notification::<DidChangeTextDocument>(not) {
+                    Ok(params) => {
+                        if let Some(change) = params.content_changes.into_iter().last() {
+                            let text = change.text;
+                            docs.insert(params.text_document.uri.to_string(), Arc::new(text));
+                        }
+                        continue;
+                    }
+                    Err(err @ ExtractError::JsonError { .. }) => panic!("{err:?}"),
+                    Err(ExtractError::MethodMismatch(not)) => not,
+                };
+                // Ignore unrelated notifications thereafter
+            }
         }
     }
     Ok(())
@@ -68,4 +120,203 @@ where
     R::Params: serde::de::DeserializeOwned,
 {
     req.extract(R::METHOD)
+}
+
+fn cast_notification<N>(not: lsp_server::Notification) -> Result<N::Params, ExtractError<lsp_server::Notification>>
+where
+    N: lsp_types::notification::Notification,
+    N::Params: serde::de::DeserializeOwned,
+{
+    not.extract(N::METHOD)
+}
+
+fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
+    let mut data: Vec<SemanticToken> = Vec::new();
+
+    // Precompute line starts for offset->(line,col) mapping
+    let line_starts = compute_line_starts(text.as_bytes());
+
+    let mut lexer = Lexer::new(text.as_bytes());
+    let mut offset: usize = 0;
+    let mut prev_line: u32 = 0;
+    let mut prev_col: u32 = 0;
+
+    loop {
+        let tok = lexer.next_token();
+        let kind: SyntaxKind = tok.kind().into();
+        let width = tok.full_width() as usize;
+
+        if kind == SyntaxKind::EndOfFileToken {
+            break;
+        }
+
+        // Skip trivia
+        if matches!(kind, SyntaxKind::WhitespaceTrivia | SyntaxKind::EndOfLineTrivia | SyntaxKind::CommentTrivia) {
+            offset += width;
+            continue;
+        }
+
+        let (line, col) = offset_to_line_col(offset, &line_starts);
+        let length = tok.bytes().len() as u32;
+        if let Some((token_type, mods)) = map_kind(kind) {
+            // delta encode
+            let (dl, dc) = if line == prev_line { (0, col - prev_col) } else { (line - prev_line, col) };
+            prev_line = line;
+            prev_col = col;
+
+            data.push(SemanticToken {
+                delta_line: dl,
+                delta_start: dc,
+                length,
+                token_type,
+                token_modifiers_bitset: mods,
+            });
+        }
+
+        offset += width;
+    }
+
+    data
+}
+
+fn compute_line_starts(bytes: &[u8]) -> Vec<usize> {
+    let mut starts = vec![0usize];
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\n' => {
+                starts.push(i + 1);
+            }
+            b'\r' => {
+                // handle \r\n as single newline
+                if i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
+                    starts.push(i + 2);
+                    i += 1;
+                } else {
+                    starts.push(i + 1);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    starts
+}
+
+fn offset_to_line_col(offset: usize, line_starts: &[usize]) -> (u32, u32) {
+    // binary search for the last line_start <= offset
+    let mut lo = 0usize;
+    let mut hi = line_starts.len();
+    while lo + 1 < hi {
+        let mid = (lo + hi) / 2;
+        if line_starts[mid] <= offset {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let line = lo as u32;
+    let col = (offset - line_starts[lo]) as u32;
+    (line, col)
+}
+
+fn map_kind(kind: SyntaxKind) -> Option<(u32, u32)> {
+    // Legend indices: 0=keyword,1=string,2=number,3=operator,4=comment,5=property
+    use SyntaxKind as K;
+    let t = match kind {
+        // keywords & PDF grammar keywords
+        K::TrueKeyword
+        | K::FalseKeyword
+        | K::NullKeyword
+        | K::IndirectObjectKeyword
+        | K::IndirectEndObjectKeyword
+        | K::IndirectReferenceKeyword
+        | K::StreamKeyword
+        | K::EndStreamKeyword
+        | K::XRefKeyword
+        | K::XRefFreeEntryKeyword
+        | K::XRefInUseEntryKeyword
+        | K::FileTrailerKeyword
+        | K::StartXRefKeyword => 0,
+        // literals
+        K::StringLiteralToken | K::HexStringLiteralToken => 1,
+        K::NumericLiteralToken => 2,
+        // operators (content stream operators)
+        K::CloseFillStrokePathOperator
+        | K::FillStrokePathOperator
+        | K::CloseFillStrokePathEvenOddOperator
+        | K::FillStrokePathEvenOddOperator
+        | K::BeginMarkedContentPropertyOperator
+        | K::BeginInlineImageOperator
+        | K::BeginMarkedContentOperator
+        | K::BeginTextOperator
+        | K::BeginCompatibilityOperator
+        | K::CurveToOperator
+        | K::ConcatMatrixOperator
+        | K::SetStrokeColorSpaceOperator
+        | K::SetNonStrokeColorSpaceOperator
+        | K::SetDashPatternOperator
+        | K::SetCharWidthOperator
+        | K::SetCacheDeviceOperator
+        | K::InvokeXObjectOperator
+        | K::DefineMarkedContentPropertyOperator
+        | K::EndInlineImageOperator
+        | K::EndMarkedContentOperator
+        | K::EndTextOperator
+        | K::EndCompatibilityOperator
+        | K::FillPathOperator
+        | K::FillPathDeprecatedOperator
+        | K::FillPathEvenOddOperator
+        | K::SetStrokeGrayOperator
+        | K::SetNonStrokeGrayOperator
+        | K::SetGraphicsStateParametersOperator
+        | K::CloseSubpathOperator
+        | K::SetFlatnessToleranceOperator
+        | K::BeginInlineImageDataOperator
+        | K::SetLineJoinOperator
+        | K::SetLineCapOperator
+        | K::SetStrokeCMYKColorOperator
+        | K::SetNonStrokeCMYKColorOperator
+        | K::LineToOperator
+        | K::MoveToOperator
+        | K::SetMiterLimitOperator
+        | K::DefineMarkedContentPointOperator
+        | K::EndPathOperator
+        | K::SaveGraphicsStateOperator
+        | K::RestoreGraphicsStateOperator
+        | K::RectangleOperator
+        | K::SetStrokeRGBColorOperator
+        | K::SetNonStrokeRGBColorOperator
+        | K::SetRenderingIntentOperator
+        | K::CloseStrokePathOperator
+        | K::StrokePathOperator
+        | K::SetStrokeColorOperator
+        | K::SetNonStrokeColorOperator
+        | K::SetStrokeColorICCSpecialOperator
+        | K::SetNonStrokeColorICCSpecialOperator
+        | K::ShadeFillOperator
+        | K::TextNextLineOperator
+        | K::SetCharSpacingOperator
+        | K::MoveTextPositionOperator
+        | K::MoveTextSetLeadingOperator
+        | K::SetTextFontOperator
+        | K::ShowTextOperator
+        | K::ShowTextAdjustedOperator
+        | K::SetTextLeadingOperator
+        | K::SetTextMatrixOperator
+        | K::SetTextRenderingModeOperator
+        | K::SetTextRiseOperator
+        | K::SetWordSpacingOperator
+        | K::SetHorizontalScalingOperator
+        | K::CurveToInitialReplicatedOperator
+        | K::SetLineWidthOperator
+        | K::ClipOperator
+        | K::EvenOddClipOperator
+        | K::CurveToFinalReplicatedOperator => 3,
+        // names often act like dictionary keys; classify as property
+        K::NameLiteralToken => 5,
+        // punctuation and structural nodes are ignored for highlighting
+        _ => return None,
+    };
+    Some((t, 0))
 }

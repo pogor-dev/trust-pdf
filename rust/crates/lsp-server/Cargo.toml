@@ -13,3 +13,5 @@ lsp-server.workspace = true
 lsp-types.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+lexer.workspace = true
+syntax.workspace = true
