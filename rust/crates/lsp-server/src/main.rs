@@ -1,7 +1,7 @@
 use lsp_server::{Connection, ExtractError, Message, RequestId, Response};
 use lsp_types::{
-    InitializeParams, OneOf, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend,
-    SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    InitializeParams, OneOf, SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensServerCapabilities, ServerCapabilities,
     notification::{DidChangeTextDocument, DidOpenTextDocument},
     request::SemanticTokensFullRequest,
 };
@@ -12,10 +12,30 @@ use std::sync::Arc;
 use lexer::Lexer;
 use syntax::SyntaxKind;
 
+/// Semantic token types for PDF syntax highlighting
+#[repr(u32)]
+#[derive(Clone, Copy)]
+enum TokenType {
+    Keyword = 0,
+    String = 1,
+    Number = 2,
+    Property = 3,
+}
+
+// Semantic token types - single source of truth
+const TOKEN_TYPES_DEFS: &[SemanticTokenType] = &[
+    lsp_types::SemanticTokenType::KEYWORD,
+    lsp_types::SemanticTokenType::STRING,
+    lsp_types::SemanticTokenType::NUMBER,
+    lsp_types::SemanticTokenType::PROPERTY,
+];
+
+// TODO: combine TokenType and TOKEN_TYPES_DEFS into a single definition
+
 fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
     // Note that  we must have our logging only write out to stderr since the communication with the client
     // is done via stdin/stdout. If we write to stdout, we will corrupt the communication.
-    eprintln!("Starting WASM based LSP server");
+    eprintln!("Starting TRust PDF LSP server");
 
     // Create the transport. Includes the stdio (stdin and stdout) versions but this could
     // also be implemented to use sockets or HTTP.
@@ -23,28 +43,23 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 
     // Advertise capabilities including semantic tokens for highlighting.
     let legend = SemanticTokensLegend {
-        token_types: vec![
-            SemanticTokenType::KEYWORD,
-            SemanticTokenType::STRING,
-            SemanticTokenType::NUMBER,
-            SemanticTokenType::OPERATOR,
-            SemanticTokenType::COMMENT,
-            SemanticTokenType::PROPERTY,
-        ],
-        token_modifiers: vec![SemanticTokenModifier::READONLY],
+        token_types: TOKEN_TYPES_DEFS.to_vec(),
+        token_modifiers: vec![],
+    };
+
+    let semantic_tokens_options = SemanticTokensOptions {
+        legend,
+        full: Some(SemanticTokensFullOptions::Bool(true)),
+        range: Some(true),
+        work_done_progress_options: Default::default(),
     };
 
     let server_capabilities = serde_json::to_value(&ServerCapabilities {
-        definition_provider: Some(OneOf::Left(true)),
-        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(SemanticTokensOptions {
-            legend,
-            full: Some(SemanticTokensFullOptions::Bool(true)),
-            range: Some(true),
-            work_done_progress_options: Default::default(),
-        })),
+        semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(semantic_tokens_options)),
         ..Default::default()
     })
-    .unwrap();
+    .map_err(|e| -> Box<dyn Error + Send + Sync> { Box::new(e) })?;
+
     let initialization_params = connection.initialize(server_capabilities)?;
     main_loop(connection, initialization_params)?;
     io_threads.join()?;
@@ -55,7 +70,10 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
 }
 
 fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let _params: InitializeParams = serde_json::from_value(params).unwrap();
+    // We don't currently use initialize params; avoid unwrap by ignoring or logging.
+    if let Err(e) = serde_json::from_value::<InitializeParams>(params) {
+        eprintln!("Failed to parse InitializeParams: {e}");
+    }
     let mut docs: HashMap<String, Arc<String>> = HashMap::new();
 
     for msg in &connection.receiver {
@@ -71,7 +89,13 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> Result<(), Bo
                         let text = docs.get(&uri).cloned().unwrap_or_else(|| Arc::new(String::new()));
                         let data = compute_semantic_tokens(&text);
                         let result = SemanticTokens { result_id: None, data };
-                        let result = serde_json::to_value(result).unwrap();
+                        let result = match serde_json::to_value(result) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("Failed to serialize SemanticTokens: {e}");
+                                continue;
+                            }
+                        };
                         let resp = Response {
                             id,
                             result: Some(result),
@@ -150,15 +174,9 @@ fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
             break;
         }
 
-        // Skip trivia
-        if matches!(kind, SyntaxKind::WhitespaceTrivia | SyntaxKind::EndOfLineTrivia | SyntaxKind::CommentTrivia) {
-            offset += width;
-            continue;
-        }
-
         let (line, col) = offset_to_line_col(offset, &line_starts);
         let length = tok.bytes().len() as u32;
-        if let Some((token_type, mods)) = map_kind(kind) {
+        if let Some(token_type) = map_kind(kind) {
             // delta encode
             let (dl, dc) = if line == prev_line { (0, col - prev_col) } else { (line - prev_line, col) };
             prev_line = line;
@@ -168,8 +186,8 @@ fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
                 delta_line: dl,
                 delta_start: dc,
                 length,
-                token_type,
-                token_modifiers_bitset: mods,
+                token_type: token_type as u32,
+                token_modifiers_bitset: 0,
             });
         }
 
@@ -220,8 +238,7 @@ fn offset_to_line_col(offset: usize, line_starts: &[usize]) -> (u32, u32) {
     (line, col)
 }
 
-fn map_kind(kind: SyntaxKind) -> Option<(u32, u32)> {
-    // Legend indices: 0=keyword,1=string,2=number,3=operator,4=comment,5=property
+fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
     use SyntaxKind as K;
     let t = match kind {
         // keywords & PDF grammar keywords
@@ -237,86 +254,14 @@ fn map_kind(kind: SyntaxKind) -> Option<(u32, u32)> {
         | K::XRefFreeEntryKeyword
         | K::XRefInUseEntryKeyword
         | K::FileTrailerKeyword
-        | K::StartXRefKeyword => 0,
+        | K::StartXRefKeyword => TokenType::Keyword,
         // literals
-        K::StringLiteralToken | K::HexStringLiteralToken => 1,
-        K::NumericLiteralToken => 2,
-        // operators (content stream operators)
-        K::CloseFillStrokePathOperator
-        | K::FillStrokePathOperator
-        | K::CloseFillStrokePathEvenOddOperator
-        | K::FillStrokePathEvenOddOperator
-        | K::BeginMarkedContentPropertyOperator
-        | K::BeginInlineImageOperator
-        | K::BeginMarkedContentOperator
-        | K::BeginTextOperator
-        | K::BeginCompatibilityOperator
-        | K::CurveToOperator
-        | K::ConcatMatrixOperator
-        | K::SetStrokeColorSpaceOperator
-        | K::SetNonStrokeColorSpaceOperator
-        | K::SetDashPatternOperator
-        | K::SetCharWidthOperator
-        | K::SetCacheDeviceOperator
-        | K::InvokeXObjectOperator
-        | K::DefineMarkedContentPropertyOperator
-        | K::EndInlineImageOperator
-        | K::EndMarkedContentOperator
-        | K::EndTextOperator
-        | K::EndCompatibilityOperator
-        | K::FillPathOperator
-        | K::FillPathDeprecatedOperator
-        | K::FillPathEvenOddOperator
-        | K::SetStrokeGrayOperator
-        | K::SetNonStrokeGrayOperator
-        | K::SetGraphicsStateParametersOperator
-        | K::CloseSubpathOperator
-        | K::SetFlatnessToleranceOperator
-        | K::BeginInlineImageDataOperator
-        | K::SetLineJoinOperator
-        | K::SetLineCapOperator
-        | K::SetStrokeCMYKColorOperator
-        | K::SetNonStrokeCMYKColorOperator
-        | K::LineToOperator
-        | K::MoveToOperator
-        | K::SetMiterLimitOperator
-        | K::DefineMarkedContentPointOperator
-        | K::EndPathOperator
-        | K::SaveGraphicsStateOperator
-        | K::RestoreGraphicsStateOperator
-        | K::RectangleOperator
-        | K::SetStrokeRGBColorOperator
-        | K::SetNonStrokeRGBColorOperator
-        | K::SetRenderingIntentOperator
-        | K::CloseStrokePathOperator
-        | K::StrokePathOperator
-        | K::SetStrokeColorOperator
-        | K::SetNonStrokeColorOperator
-        | K::SetStrokeColorICCSpecialOperator
-        | K::SetNonStrokeColorICCSpecialOperator
-        | K::ShadeFillOperator
-        | K::TextNextLineOperator
-        | K::SetCharSpacingOperator
-        | K::MoveTextPositionOperator
-        | K::MoveTextSetLeadingOperator
-        | K::SetTextFontOperator
-        | K::ShowTextOperator
-        | K::ShowTextAdjustedOperator
-        | K::SetTextLeadingOperator
-        | K::SetTextMatrixOperator
-        | K::SetTextRenderingModeOperator
-        | K::SetTextRiseOperator
-        | K::SetWordSpacingOperator
-        | K::SetHorizontalScalingOperator
-        | K::CurveToInitialReplicatedOperator
-        | K::SetLineWidthOperator
-        | K::ClipOperator
-        | K::EvenOddClipOperator
-        | K::CurveToFinalReplicatedOperator => 3,
+        K::StringLiteralToken | K::HexStringLiteralToken => TokenType::String,
+        K::NumericLiteralToken => TokenType::Number,
         // names often act like dictionary keys; classify as property
-        K::NameLiteralToken => 5,
+        K::NameLiteralToken => TokenType::Property,
         // punctuation and structural nodes are ignored for highlighting
         _ => return None,
     };
-    Some((t, 0))
+    Some(t)
 }
