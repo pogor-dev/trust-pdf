@@ -1,6 +1,6 @@
 use crate::line_map::{compute_line_starts, offset_to_line_col};
 use lexer::Lexer;
-use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions};
+use lsp_types::SemanticToken;
 use syntax::SyntaxKind;
 
 #[repr(u32)]
@@ -11,28 +11,6 @@ pub enum TokenType {
     Number = 2,
     Property = 3,
     Comment = 4,
-}
-
-pub fn build_legend() -> SemanticTokensLegend {
-    SemanticTokensLegend {
-        token_types: vec![
-            SemanticTokenType::KEYWORD,
-            SemanticTokenType::STRING,
-            SemanticTokenType::NUMBER,
-            SemanticTokenType::PROPERTY,
-            SemanticTokenType::COMMENT,
-        ],
-        token_modifiers: vec![],
-    }
-}
-
-pub fn build_semantic_tokens_options() -> SemanticTokensOptions {
-    SemanticTokensOptions {
-        legend: build_legend(),
-        full: Some(SemanticTokensFullOptions::Bool(true)),
-        range: Some(true),
-        work_done_progress_options: Default::default(),
-    }
 }
 
 pub fn map_kind(kind: SyntaxKind) -> Option<TokenType> {

@@ -16,9 +16,11 @@ lexer = { path = "./crates/lexer", version = "0.1.0" }
 rowan = { path = "./crates/rowan", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 syntax = { path = "./crates/syntax", version = "0.1.0" }
+trust-pdf-analyzer = { path = "./crates/lsp-server", version = "0.1.0" }
 wasm-lexer = { path = "./crates/wasm-lexer", version = "0.1.0" }
 
 # Non-local crates
+anyhow = "1.0.100"
 bumpalo = "3.19.1"
 cargo-deny = "0.18.3"
 cargo-llvm-cov = "0.6.14"
@@ -33,6 +35,7 @@ pretty_assertions = "1.4.1"
 rustc-hash = "2.1.1"
 serde = "1.0.228"
 serde_json = "1.0.149"
+tracing = "0.1.44"
 triomphe = "0.1.15"
 wasm-bindgen = "0.2.106"
 wasm-bindgen-test = "0.3.56"
