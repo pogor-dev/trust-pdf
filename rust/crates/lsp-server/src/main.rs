@@ -34,7 +34,7 @@ fn run_server() -> anyhow::Result<()> {
     let initialize_result = lsp_types::InitializeResult {
         capabilities: server_capabilities,
         server_info: Some(lsp_types::ServerInfo {
-            name: String::from("rust-analyzer"),
+            name: String::from("trust-pdf-analyzer"),
             version: Some(version::version().to_string()),
         }),
     };
