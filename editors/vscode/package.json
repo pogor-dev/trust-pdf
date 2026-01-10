@@ -7,6 +7,9 @@
     "vscode": "^1.107.0"
   },
   "categories": [
+    "Linters",
+    "Formatters",
+    "Programming Languages",
     "Other"
   ],
   "keywords": [

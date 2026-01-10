@@ -34,11 +34,11 @@ function createServerOptions(
       "..",
       "rust",
       "crates",
-      "lsp-server",
+      "lsp",
       "target",
       "wasm32-wasip1-threads",
       "release",
-      "lsp-server.wasm",
+      "trust-pdf-analyzer.wasm",
     )
 
     const bits = (await workspace.fs.readFile(filename)) as Uint8Array<ArrayBuffer>
