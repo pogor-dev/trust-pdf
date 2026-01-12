@@ -1,5 +1,6 @@
 mod diagnostics;
 mod green;
+mod red;
 mod utility_types;
 
 pub use crate::{
@@ -8,5 +9,6 @@ pub use crate::{
         GreenCache, GreenNode, GreenNodeBuilder, GreenToken, GreenTokenInTree, GreenTrivia, GreenTriviaInTree, GreenTriviaList, GreenTriviaListInTree,
         SyntaxKind,
     },
+    red::{SyntaxNode, SyntaxToken, SyntaxTrivia},
     utility_types::NodeOrToken,
 };
