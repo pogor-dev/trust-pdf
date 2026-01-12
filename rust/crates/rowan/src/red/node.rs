@@ -6,9 +6,9 @@ use crate::{GreenNode, SyntaxKind};
 ///
 /// Provides access to the underlying green node and its position in the source file.
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyntaxNode<'a> {
-    underlying_node: GreenNode,         // 16 bytes
+    underlying_node: Option<GreenNode>, // 16 bytes
     parent: Option<&'a SyntaxNode<'a>>, // 8 bytes
     position: u64,                      // 8 bytes
     index: u16,                         // 2 bytes
@@ -17,7 +17,7 @@ pub struct SyntaxNode<'a> {
 impl<'a> SyntaxNode<'a> {
     /// Creates a new `SyntaxNode` with the given properties.
     #[inline]
-    pub fn new(parent: Option<&'a SyntaxNode<'a>>, underlying_node: GreenNode, position: u64, index: u16) -> Self {
+    pub fn new(parent: Option<&'a SyntaxNode<'a>>, underlying_node: Option<GreenNode>, position: u64, index: u16) -> Self {
         Self {
             parent,
             underlying_node,
@@ -28,8 +28,8 @@ impl<'a> SyntaxNode<'a> {
 
     /// Returns the kind of this node.
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
-        self.underlying_node.kind()
+    pub fn kind(&self) -> Option<SyntaxKind> {
+        self.underlying_node.as_ref().map(|n| n.kind())
     }
 
     /// Returns a reference to the parent node if it exists.
@@ -53,13 +53,13 @@ impl<'a> SyntaxNode<'a> {
     /// Returns the full width of this node (including trivia).
     #[inline]
     fn full_width(&self) -> u32 {
-        self.underlying_node.full_width()
+        self.underlying_node.as_ref().map_or(0, |n| n.full_width())
     }
 
     /// Returns the width of this node (excluding trivia).
     #[inline]
     fn width(&self) -> u32 {
-        self.underlying_node.width()
+        self.underlying_node.as_ref().map_or(0, |n| n.width())
     }
 
     /// Returns the span of this node in the source (including trivia).
@@ -73,7 +73,12 @@ impl<'a> SyntaxNode<'a> {
     /// Returns the span of this node without trivia.
     #[inline]
     pub fn span(&self) -> ops::Range<u64> {
-        let start = self.position + self.underlying_node.leading_trivia().map(|t| t.full_width() as u64).unwrap_or(0);
+        let leading_width = self
+            .underlying_node
+            .as_ref()
+            .and_then(|n| n.leading_trivia())
+            .map_or(0, |t| t.full_width() as u64);
+        let start = self.position + leading_width;
         let end = start + self.width() as u64;
         start..end
     }
@@ -81,7 +86,7 @@ impl<'a> SyntaxNode<'a> {
     /// Returns the number of children this node has.
     #[inline]
     pub fn children_len(&self) -> u16 {
-        self.underlying_node.children_len()
+        self.underlying_node.as_ref().map_or(0, |n| n.children_len())
     }
 }
 
@@ -108,7 +113,10 @@ impl<'a> fmt::Debug for SyntaxNode<'a> {
 impl<'a> fmt::Display for SyntaxNode<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))
+        match self.underlying_node.as_ref() {
+            Some(node) => write!(f, "{}", String::from_utf8_lossy(&node.full_bytes())),
+            None => Ok(()),
+        }
     }
 }
 

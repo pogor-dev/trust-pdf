@@ -6,18 +6,18 @@ use crate::{GreenTrivia, SyntaxKind, SyntaxToken};
 ///
 /// Provides access to the underlying green trivia and its position in the source file.
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyntaxTrivia<'a> {
-    underlying_node: GreenTrivia,       // 16 bytes
-    token: Option<&'a SyntaxToken<'a>>, // 8 bytes
-    position: u64,                      // 8 bytes
-    index: u16,                         // 2 bytes
+    underlying_node: Option<GreenTrivia>, // 16 bytes
+    token: Option<&'a SyntaxToken<'a>>,   // 8 bytes
+    position: u64,                        // 8 bytes
+    index: u16,                           // 2 bytes
 }
 
 impl<'a> SyntaxTrivia<'a> {
     /// Creates a new `SyntaxTrivia` with the given properties.
     #[inline]
-    pub fn new(token: Option<&'a SyntaxToken>, underlying_node: GreenTrivia, position: u64, index: u16) -> Self {
+    pub fn new(token: Option<&'a SyntaxToken>, underlying_node: Option<GreenTrivia>, position: u64, index: u16) -> Self {
         Self {
             token,
             underlying_node,
@@ -28,8 +28,8 @@ impl<'a> SyntaxTrivia<'a> {
 
     /// Returns the kind of this trivia.
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
-        self.underlying_node.kind()
+    pub fn kind(&self) -> Option<SyntaxKind> {
+        self.underlying_node.as_ref().map(|t| t.kind())
     }
 
     /// Returns a reference to the associated token.
@@ -53,7 +53,7 @@ impl<'a> SyntaxTrivia<'a> {
     /// Returns the full width of this trivia.
     #[inline]
     fn full_width(&self) -> u16 {
-        self.underlying_node.full_width()
+        self.underlying_node.as_ref().map_or(0, |t| t.full_width())
     }
 
     /// Returns the span of this trivia in the source.
@@ -79,7 +79,7 @@ impl<'a> fmt::Debug for SyntaxTrivia<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyntaxTrivia")
             .field("kind", &self.kind())
-            .field("bytes", &self.underlying_node.full_bytes())
+            .field("bytes", &self.underlying_node.as_ref().map(|t| t.full_bytes()).unwrap_or_default())
             .field("position", &self.position)
             .field("index", &self.index)
             .finish()
@@ -89,7 +89,10 @@ impl<'a> fmt::Debug for SyntaxTrivia<'a> {
 impl<'a> fmt::Display for SyntaxTrivia<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.underlying_node)
+        match self.underlying_node.as_ref() {
+            Some(trivia) => write!(f, "{}", trivia),
+            None => Ok(()),
+        }
     }
 }
 

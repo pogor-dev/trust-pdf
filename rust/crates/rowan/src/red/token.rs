@@ -6,18 +6,18 @@ use crate::{GreenToken, SyntaxKind, SyntaxNode};
 ///
 /// Provides access to the underlying green token and its position in the source file.
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyntaxToken<'a> {
-    underlying_node: GreenToken,        // 16 bytes
-    parent: Option<&'a SyntaxNode<'a>>, // 8 bytes
-    position: u64,                      // 8 bytes
-    index: u16,                         // 2 bytes
+    underlying_node: Option<GreenToken>, // 16 bytes
+    parent: Option<&'a SyntaxNode<'a>>,  // 8 bytes
+    position: u64,                       // 8 bytes
+    index: u16,                          // 2 bytes
 }
 
 impl<'a> SyntaxToken<'a> {
     /// Creates a new `SyntaxToken` with the given properties.
     #[inline]
-    pub fn new(parent: Option<&'a SyntaxNode>, underlying_node: GreenToken, position: u64, index: u16) -> Self {
+    pub fn new(parent: Option<&'a SyntaxNode>, underlying_node: Option<GreenToken>, position: u64, index: u16) -> Self {
         Self {
             parent,
             underlying_node,
@@ -28,8 +28,8 @@ impl<'a> SyntaxToken<'a> {
 
     /// Returns the kind of this token.
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
-        self.underlying_node.kind()
+    pub fn kind(&self) -> Option<SyntaxKind> {
+        self.underlying_node.as_ref().map(|t| t.kind())
     }
 
     /// Returns a reference to the parent node.
@@ -53,13 +53,13 @@ impl<'a> SyntaxToken<'a> {
     /// Returns the full width of this token (including trivia).
     #[inline]
     fn full_width(&self) -> u32 {
-        self.underlying_node.full_width()
+        self.underlying_node.as_ref().map_or(0, |t| t.full_width())
     }
 
     /// Returns the width of this token (excluding trivia).
     #[inline]
     fn width(&self) -> u32 {
-        self.underlying_node.width()
+        self.underlying_node.as_ref().map_or(0, |t| t.width())
     }
 
     /// Returns the span of this token in the source (including trivia).
@@ -73,7 +73,8 @@ impl<'a> SyntaxToken<'a> {
     /// Returns the span of this token without trivia.
     #[inline]
     pub fn span(&self) -> ops::Range<u64> {
-        let start = self.position + self.underlying_node.leading_trivia().full_width() as u64;
+        let leading_width = self.underlying_node.as_ref().map_or(0, |t| t.leading_trivia().full_width() as u64);
+        let start = self.position + leading_width;
         let end = start + self.width() as u64;
         start..end
     }
@@ -102,7 +103,10 @@ impl<'a> fmt::Debug for SyntaxToken<'a> {
 impl<'a> fmt::Display for SyntaxToken<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))
+        match self.underlying_node.as_ref() {
+            Some(token) => write!(f, "{}", String::from_utf8_lossy(&token.full_bytes())),
+            None => Ok(()),
+        }
     }
 }
 
