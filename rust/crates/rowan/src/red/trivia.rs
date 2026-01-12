@@ -6,17 +6,17 @@ use crate::{GreenTrivia, SyntaxKind, SyntaxToken};
 ///
 /// Provides access to the underlying green trivia and its position in the source file.
 #[derive(Clone)]
-pub struct SyntaxTrivia {
-    token: SyntaxToken,
+pub struct SyntaxTrivia<'a> {
+    token: &'a SyntaxToken<'a>,
     underlying_node: GreenTrivia,
     position: u64,
     index: u16,
 }
 
-impl SyntaxTrivia {
+impl<'a> SyntaxTrivia<'a> {
     /// Creates a new `SyntaxTrivia` with the given properties.
     #[inline]
-    pub fn new(token: SyntaxToken, underlying_node: GreenTrivia, position: u64, index: u16) -> Self {
+    pub fn new(token: &'a SyntaxToken, underlying_node: GreenTrivia, position: u64, index: u16) -> Self {
         Self {
             token,
             underlying_node,
@@ -33,7 +33,7 @@ impl SyntaxTrivia {
 
     /// Returns a reference to the associated token.
     #[inline]
-    pub fn token(&self) -> &SyntaxToken {
+    pub fn token(&self) -> &SyntaxToken<'a> {
         &self.token
     }
 
@@ -64,16 +64,16 @@ impl SyntaxTrivia {
     }
 }
 
-impl PartialEq for SyntaxTrivia {
+impl<'a> PartialEq for SyntaxTrivia<'a> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.token == other.token && self.underlying_node == other.underlying_node && self.position == other.position && self.index == other.index
     }
 }
 
-impl Eq for SyntaxTrivia {}
+impl<'a> Eq for SyntaxTrivia<'a> {}
 
-impl fmt::Debug for SyntaxTrivia {
+impl<'a> fmt::Debug for SyntaxTrivia<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyntaxTrivia")
@@ -85,7 +85,7 @@ impl fmt::Debug for SyntaxTrivia {
     }
 }
 
-impl fmt::Display for SyntaxTrivia {
+impl<'a> fmt::Display for SyntaxTrivia<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.underlying_node)

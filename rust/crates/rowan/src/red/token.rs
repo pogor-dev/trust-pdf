@@ -6,17 +6,17 @@ use crate::{GreenToken, SyntaxKind, SyntaxNode};
 ///
 /// Provides access to the underlying green token and its position in the source file.
 #[derive(Clone)]
-pub struct SyntaxToken {
-    parent: SyntaxNode,
+pub struct SyntaxToken<'a> {
+    parent: &'a SyntaxNode<'a>,
     underlying_node: GreenToken,
     position: u64,
     index: u16,
 }
 
-impl SyntaxToken {
+impl<'a> SyntaxToken<'a> {
     /// Creates a new `SyntaxToken` with the given properties.
     #[inline]
-    pub fn new(parent: SyntaxNode, underlying_node: GreenToken, position: u64, index: u16) -> Self {
+    pub fn new(parent: &'a SyntaxNode, underlying_node: GreenToken, position: u64, index: u16) -> Self {
         Self {
             parent,
             underlying_node,
@@ -33,7 +33,7 @@ impl SyntaxToken {
 
     /// Returns a reference to the parent node.
     #[inline]
-    pub fn parent_node(&self) -> &SyntaxNode {
+    pub fn parent(&self) -> &SyntaxNode<'a> {
         &self.parent
     }
 
@@ -78,16 +78,16 @@ impl SyntaxToken {
     }
 }
 
-impl PartialEq for SyntaxToken {
+impl<'a> PartialEq for SyntaxToken<'a> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.parent == other.parent && self.underlying_node == other.underlying_node && self.position == other.position && self.index == other.index
     }
 }
 
-impl Eq for SyntaxToken {}
+impl<'a> Eq for SyntaxToken<'a> {}
 
-impl fmt::Debug for SyntaxToken {
+impl<'a> fmt::Debug for SyntaxToken<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyntaxToken")
@@ -98,7 +98,7 @@ impl fmt::Debug for SyntaxToken {
     }
 }
 
-impl fmt::Display for SyntaxToken {
+impl<'a> fmt::Display for SyntaxToken<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))

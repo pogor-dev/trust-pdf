@@ -6,17 +6,17 @@ use crate::{GreenNode, SyntaxKind};
 ///
 /// Provides access to the underlying green node and its position in the source file.
 #[derive(Clone)]
-pub struct SyntaxNode {
-    parent: Option<Box<SyntaxNode>>,
+pub struct SyntaxNode<'a> {
+    parent: Option<&'a SyntaxNode<'a>>,
     underlying_node: GreenNode,
     position: u64,
     index: u16,
 }
 
-impl SyntaxNode {
+impl<'a> SyntaxNode<'a> {
     /// Creates a new `SyntaxNode` with the given properties.
     #[inline]
-    pub fn new(parent: Option<Box<SyntaxNode>>, underlying_node: GreenNode, position: u64, index: u16) -> Self {
+    pub fn new(parent: Option<&'a SyntaxNode<'a>>, underlying_node: GreenNode, position: u64, index: u16) -> Self {
         Self {
             parent,
             underlying_node,
@@ -33,8 +33,8 @@ impl SyntaxNode {
 
     /// Returns a reference to the parent node if it exists.
     #[inline]
-    pub fn parent(&self) -> Option<&SyntaxNode> {
-        self.parent.as_ref().map(|p| p.as_ref())
+    pub fn parent(&self) -> Option<&SyntaxNode<'a>> {
+        self.parent
     }
 
     /// Returns the position of this node in the source.
@@ -84,16 +84,16 @@ impl SyntaxNode {
     }
 }
 
-impl PartialEq for SyntaxNode {
+impl<'a> PartialEq for SyntaxNode<'a> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.parent == other.parent && self.underlying_node == other.underlying_node && self.position == other.position && self.index == other.index
     }
 }
 
-impl Eq for SyntaxNode {}
+impl<'a> Eq for SyntaxNode<'a> {}
 
-impl fmt::Debug for SyntaxNode {
+impl<'a> fmt::Debug for SyntaxNode<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SyntaxNode")
@@ -104,7 +104,7 @@ impl fmt::Debug for SyntaxNode {
     }
 }
 
-impl fmt::Display for SyntaxNode {
+impl<'a> fmt::Display for SyntaxNode<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))
