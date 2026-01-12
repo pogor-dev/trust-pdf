@@ -8,16 +8,16 @@ use crate::{GreenToken, SyntaxKind, SyntaxNode};
 #[repr(C)]
 #[derive(Clone)]
 pub struct SyntaxToken<'a> {
-    underlying_node: GreenToken, // 16 bytes
-    parent: &'a SyntaxNode<'a>,  // 8 bytes
-    position: u64,               // 8 bytes
-    index: u16,                  // 2 bytes
+    underlying_node: GreenToken,        // 16 bytes
+    parent: Option<&'a SyntaxNode<'a>>, // 8 bytes
+    position: u64,                      // 8 bytes
+    index: u16,                         // 2 bytes
 }
 
 impl<'a> SyntaxToken<'a> {
     /// Creates a new `SyntaxToken` with the given properties.
     #[inline]
-    pub fn new(parent: &'a SyntaxNode, underlying_node: GreenToken, position: u64, index: u16) -> Self {
+    pub fn new(parent: Option<&'a SyntaxNode>, underlying_node: GreenToken, position: u64, index: u16) -> Self {
         Self {
             parent,
             underlying_node,
@@ -34,8 +34,8 @@ impl<'a> SyntaxToken<'a> {
 
     /// Returns a reference to the parent node.
     #[inline]
-    pub fn parent(&self) -> &SyntaxNode<'a> {
-        &self.parent
+    pub fn parent(&self) -> Option<&SyntaxNode<'a>> {
+        self.parent
     }
 
     /// Returns the position of this token in the source.

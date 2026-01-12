@@ -8,16 +8,16 @@ use crate::{GreenTrivia, SyntaxKind, SyntaxToken};
 #[repr(C)]
 #[derive(Clone)]
 pub struct SyntaxTrivia<'a> {
-    underlying_node: GreenTrivia, // 16 bytes
-    token: &'a SyntaxToken<'a>,   // 8 bytes
-    position: u64,                // 8 bytes
-    index: u16,                   // 2 bytes
+    underlying_node: GreenTrivia,       // 16 bytes
+    token: Option<&'a SyntaxToken<'a>>, // 8 bytes
+    position: u64,                      // 8 bytes
+    index: u16,                         // 2 bytes
 }
 
 impl<'a> SyntaxTrivia<'a> {
     /// Creates a new `SyntaxTrivia` with the given properties.
     #[inline]
-    pub fn new(token: &'a SyntaxToken, underlying_node: GreenTrivia, position: u64, index: u16) -> Self {
+    pub fn new(token: Option<&'a SyntaxToken>, underlying_node: GreenTrivia, position: u64, index: u16) -> Self {
         Self {
             token,
             underlying_node,
@@ -34,8 +34,8 @@ impl<'a> SyntaxTrivia<'a> {
 
     /// Returns a reference to the associated token.
     #[inline]
-    pub fn token(&self) -> &SyntaxToken<'a> {
-        &self.token
+    pub fn token(&self) -> Option<&SyntaxToken<'a>> {
+        self.token
     }
 
     /// Returns the position of this trivia in the source.
