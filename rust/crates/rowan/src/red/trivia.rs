@@ -5,6 +5,7 @@ use crate::{GreenTrivia, SyntaxKind, SyntaxToken};
 /// A semantic trivia in the red tree, wrapping a green trivia with position information.
 ///
 /// Provides access to the underlying green trivia and its position in the source file.
+#[derive(Clone)]
 pub struct SyntaxTrivia {
     token: SyntaxToken,
     underlying_node: GreenTrivia,

@@ -5,6 +5,7 @@ use crate::{GreenNode, SyntaxKind};
 /// A semantic node in the red tree, wrapping a green node with position information.
 ///
 /// Provides access to the underlying green node and its position in the source file.
+#[derive(Clone)]
 pub struct SyntaxNode {
     parent: Option<Box<SyntaxNode>>,
     underlying_node: GreenNode,

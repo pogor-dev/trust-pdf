@@ -5,6 +5,7 @@ use crate::{GreenToken, SyntaxKind, SyntaxNode};
 /// A semantic token in the red tree, wrapping a green token with position information.
 ///
 /// Provides access to the underlying green token and its position in the source file.
+#[derive(Clone)]
 pub struct SyntaxToken {
     parent: SyntaxNode,
     underlying_node: GreenToken,
