@@ -162,14 +162,14 @@ impl fmt::Debug for GreenTokenInTree {
             .leading_trivia()
             .pieces()
             .iter()
-            .map(|t| (t.kind(), String::from_utf8_lossy(t.bytes()).into_owned()))
+            .map(|t| (t.kind(), String::from_utf8_lossy(t.full_bytes()).into_owned()))
             .collect();
 
         let trailing_trivia: Vec<_> = self
             .trailing_trivia()
             .pieces()
             .iter()
-            .map(|t| (t.kind(), String::from_utf8_lossy(t.bytes()).into_owned()))
+            .map(|t| (t.kind(), String::from_utf8_lossy(t.full_bytes()).into_owned()))
             .collect();
 
         f.debug_struct("GreenToken")
@@ -489,7 +489,7 @@ mod token_tests {
             let trivia_pieces = token.leading_trivia().pieces();
             if !leading.is_empty() {
                 assert_eq!(trivia_pieces.len(), 1);
-                assert_eq!(trivia_pieces[0].bytes(), leading.as_slice());
+                assert_eq!(trivia_pieces[0].full_bytes(), leading.as_slice());
             } else {
                 assert_eq!(trivia_pieces.len(), 0);
             }
@@ -525,7 +525,7 @@ mod token_tests {
             let trivia_pieces = token.trailing_trivia().pieces();
             if !trailing.is_empty() {
                 assert_eq!(trivia_pieces.len(), 1);
-                assert_eq!(trivia_pieces[0].bytes(), trailing.as_slice());
+                assert_eq!(trivia_pieces[0].full_bytes(), trailing.as_slice());
             } else {
                 assert_eq!(trivia_pieces.len(), 0);
             }

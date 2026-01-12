@@ -78,7 +78,7 @@ pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
             let plen = piece.full_width() as usize;
             if pkind == SyntaxKind::CommentTrivia {
                 let abs = offset + leading_consumed;
-                emit(abs, piece.bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                emit(abs, piece.full_bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
             }
             leading_consumed += plen;
         }
@@ -98,7 +98,7 @@ pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
             let plen = piece.full_width() as usize;
             if pkind == SyntaxKind::CommentTrivia {
                 let abs = trailing_base + trailing_consumed;
-                emit(abs, piece.bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                emit(abs, piece.full_bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
             }
             trailing_consumed += plen;
         }

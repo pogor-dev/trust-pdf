@@ -55,7 +55,7 @@ impl GreenTriviaListInTree {
     pub fn full_bytes(&self) -> Vec<u8> {
         let mut output = Vec::with_capacity(self.full_width() as usize);
         for piece in self.pieces() {
-            output.extend_from_slice(piece.bytes());
+            output.extend_from_slice(piece.full_bytes());
         }
         output
     }
@@ -224,7 +224,7 @@ pub struct GreenTriviaInTree {
 
 impl GreenTriviaInTree {
     #[inline]
-    pub fn bytes(&self) -> &[u8] {
+    pub fn full_bytes(&self) -> &[u8] {
         // SAFETY: `data`'s invariant.
         unsafe { slice::from_raw_parts(self.bytes_ptr_mut(), self.header().full_width.into()) }
     }
@@ -266,7 +266,7 @@ impl GreenTriviaInTree {
 
 impl PartialEq for GreenTriviaInTree {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.bytes() == other.bytes()
+        self.kind() == other.kind() && self.full_bytes() == other.full_bytes()
     }
 }
 
@@ -275,14 +275,14 @@ impl Eq for GreenTriviaInTree {}
 impl fmt::Debug for GreenTriviaInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // SAFETY: `text` is guaranteed to be valid UTF-8 by the node invariant.
-        let text = unsafe { std::str::from_utf8_unchecked(self.bytes()) };
+        let text = unsafe { std::str::from_utf8_unchecked(self.full_bytes()) };
         f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &text).finish()
     }
 }
 
 impl fmt::Display for GreenTriviaInTree {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.bytes()) })
+        write!(f, "{}", unsafe { std::str::from_utf8_unchecked(self.full_bytes()) })
     }
 }
 
@@ -304,10 +304,10 @@ impl GreenTrivia {
         self.trivia.kind()
     }
 
-    /// The bytes of this Trivia.
+    /// The full bytes of this Trivia.
     #[inline]
-    pub fn bytes(&self) -> &[u8] {
-        self.trivia.bytes()
+    pub fn full_bytes(&self) -> &[u8] {
+        self.trivia.full_bytes()
     }
 
     /// The full width of this Trivia.
@@ -396,7 +396,7 @@ mod trivia_tests {
     fn test_bytes() {
         let mut arena = GreenTree::new();
         let trivia = arena.alloc_trivia(WHITESPACE_KIND, b"   ").to_green_trivia(arena.shareable());
-        assert_eq!(trivia.bytes(), b"   ");
+        assert_eq!(trivia.full_bytes(), b"   ");
     }
 
     #[test]
@@ -413,7 +413,7 @@ mod trivia_tests {
         let (trivia_in_tree, arc) = trivia.clone().into_raw_parts();
 
         assert_eq!(trivia_in_tree.kind(), WHITESPACE_KIND);
-        assert_eq!(trivia_in_tree.bytes(), b" ");
+        assert_eq!(trivia_in_tree.full_bytes(), b" ");
         assert_eq!(trivia_in_tree, trivia.trivia);
         assert_eq!(Arc::as_ptr(&arc), Arc::as_ptr(&trivia._arena));
     }
