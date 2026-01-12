@@ -5,12 +5,13 @@ use crate::{GreenToken, SyntaxKind, SyntaxNode};
 /// A semantic token in the red tree, wrapping a green token with position information.
 ///
 /// Provides access to the underlying green token and its position in the source file.
+#[repr(C)]
 #[derive(Clone)]
 pub struct SyntaxToken<'a> {
-    parent: &'a SyntaxNode<'a>,
-    underlying_node: GreenToken,
-    position: u64,
-    index: u16,
+    underlying_node: GreenToken, // 16 bytes
+    parent: &'a SyntaxNode<'a>,  // 8 bytes
+    position: u64,               // 8 bytes
+    index: u16,                  // 2 bytes
 }
 
 impl<'a> SyntaxToken<'a> {
@@ -102,5 +103,19 @@ impl<'a> fmt::Display for SyntaxToken<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))
+    }
+}
+
+#[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_memory_layout() {
+        // 16 (GreenToken) + 8 (parent) + 8 (position) + 2 (index) = 34 bytes
+        // + 6 bytes padding for 8-byte alignment = 40 bytes total
+        assert_eq!(std::mem::size_of::<SyntaxToken>(), 40);
+        assert_eq!(std::mem::align_of::<SyntaxToken>(), 8);
     }
 }

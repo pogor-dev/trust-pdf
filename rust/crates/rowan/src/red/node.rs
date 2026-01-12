@@ -5,12 +5,13 @@ use crate::{GreenNode, SyntaxKind};
 /// A semantic node in the red tree, wrapping a green node with position information.
 ///
 /// Provides access to the underlying green node and its position in the source file.
+#[repr(C)]
 #[derive(Clone)]
 pub struct SyntaxNode<'a> {
-    parent: Option<&'a SyntaxNode<'a>>,
-    underlying_node: GreenNode,
-    position: u64,
-    index: u16,
+    underlying_node: GreenNode,         // 16 bytes
+    parent: Option<&'a SyntaxNode<'a>>, // 8 bytes
+    position: u64,                      // 8 bytes
+    index: u16,                         // 2 bytes
 }
 
 impl<'a> SyntaxNode<'a> {
@@ -108,5 +109,19 @@ impl<'a> fmt::Display for SyntaxNode<'a> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", String::from_utf8_lossy(&self.underlying_node.full_bytes()))
+    }
+}
+
+#[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_memory_layout() {
+        // 16 (GreenNode) + 8 (parent) + 8 (position) + 2 (index) = 34 bytes
+        // + 6 bytes padding for 8-byte alignment = 40 bytes total
+        assert_eq!(std::mem::size_of::<SyntaxNode>(), 40);
+        assert_eq!(std::mem::align_of::<SyntaxNode>(), 8);
     }
 }
