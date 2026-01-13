@@ -1,6 +1,6 @@
 use std::{fmt, ops};
 
-use crate::{GreenToken, SyntaxKind, SyntaxNode};
+use crate::{GreenToken, SyntaxKind, SyntaxNode, SyntaxTriviaList};
 
 /// A semantic token in the red tree, wrapping a green token with position information.
 ///
@@ -77,6 +77,44 @@ impl<'a> SyntaxToken<'a> {
         let start = self.position + leading_width;
         let end = start + self.width() as u64;
         start..end
+    }
+
+    /// Returns the leading trivia attached to this token.
+    #[inline]
+    pub fn leading_trivia(&'a self) -> SyntaxTriviaList<'a> {
+        let green_trivia = self.underlying_node.as_ref().map(|t| {
+            let (token_in_tree, arena) = t.clone().into_raw_parts();
+            token_in_tree.leading_trivia().to_green_trivia_list(arena.clone())
+        });
+
+        SyntaxTriviaList::new(Some(self), green_trivia, self.position, 0)
+    }
+
+    /// Returns the trailing trivia attached to this token.
+    #[inline]
+    pub fn trailing_trivia(&'a self) -> SyntaxTriviaList<'a> {
+        let node = match self.underlying_node.as_ref() {
+            Some(t) => t,
+            None => return SyntaxTriviaList::default(),
+        };
+
+        let (token_in_tree, arena) = node.clone().into_raw_parts();
+        let leading = token_in_tree.leading_trivia();
+        let mut index = 0u16;
+
+        if !leading.pieces().is_empty() {
+            index = leading.pieces().len() as u16;
+        }
+
+        let trailing = token_in_tree.trailing_trivia();
+        let mut trailing_position = self.position + self.full_width() as u64;
+
+        if trailing.full_width() > 0 {
+            trailing_position -= trailing.full_width() as u64;
+        }
+
+        let green_list = trailing.to_green_trivia_list(arena.clone());
+        SyntaxTriviaList::new(Some(self), Some(green_list), trailing_position, index)
     }
 }
 

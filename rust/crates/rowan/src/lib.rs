@@ -9,6 +9,6 @@ pub use crate::{
         GreenCache, GreenNode, GreenNodeBuilder, GreenToken, GreenTokenInTree, GreenTrivia, GreenTriviaInTree, GreenTriviaList, GreenTriviaListInTree,
         SyntaxKind,
     },
-    red::{SyntaxNode, SyntaxToken, SyntaxTrivia},
+    red::{SyntaxNode, SyntaxToken, SyntaxTrivia, SyntaxTriviaList},
     utility_types::NodeOrToken,
 };
