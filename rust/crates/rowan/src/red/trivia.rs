@@ -2,7 +2,7 @@ use std::{fmt, ops};
 
 use crate::{GreenTrivia, SyntaxKind, SyntaxToken};
 
-/// A semantic trivia in the red tree, wrapping a green trivia with position information.
+/// A positioned trivia element in the red tree, wrapping a green trivia with position information.
 ///
 /// Provides access to the underlying green trivia and its position in the source file.
 #[repr(C)]

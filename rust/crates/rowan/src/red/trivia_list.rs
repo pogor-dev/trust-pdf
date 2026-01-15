@@ -2,9 +2,9 @@ use std::fmt;
 
 use crate::{GreenTriviaList, SyntaxToken, SyntaxTrivia};
 
-/// A list of trivia (leading or trailing) attached to a token.
+/// A positioned trivia list in the red tree, wrapping green trivia with position information.
 ///
-/// Represents a sequence of trivia elements with position information.
+/// Provides access to the underlying trivia and its position in the source file.
 #[repr(C)]
 #[derive(Clone, Default)]
 pub struct SyntaxTriviaList<'a> {

@@ -2,7 +2,7 @@ use std::{fmt, ops};
 
 use crate::{GreenNode, SyntaxKind};
 
-/// A semantic node in the red tree, wrapping a green node with position information.
+/// A positioned node in the red tree, wrapping a green node with position information.
 ///
 /// Provides access to the underlying green node and its position in the source file.
 #[repr(C)]

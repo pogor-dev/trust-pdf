@@ -2,7 +2,7 @@ use std::{fmt, ops};
 
 use crate::{GreenToken, SyntaxKind, SyntaxNode, SyntaxTriviaList};
 
-/// A semantic token in the red tree, wrapping a green token with position information.
+/// A positioned token in the red tree, wrapping a green token with position information.
 ///
 /// Provides access to the underlying green token and its position in the source file.
 #[repr(C)]
