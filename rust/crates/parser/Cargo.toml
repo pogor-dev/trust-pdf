@@ -9,5 +9,7 @@ repository.workspace = true
 
 [dependencies]
 # Local crates
+lexer.workspace = true
+syntax.workspace = true
 
 # Non-local crates

@@ -1,9 +1,17 @@
+use lexer::Lexer;
+use syntax::PdfDocumentSyntax;
+
 pub struct Parser<'source> {
-    source: &'source [u8],
+    lexer: Lexer<'source>,
 }
 
 impl<'source> Parser<'source> {
-    pub fn new(source: &'source [u8]) -> Self {
-        Self { source }
+    pub fn new(lexer: Lexer<'source>) -> Self {
+        Self { lexer }
+    }
+
+    pub fn parse_pdf_document(&mut self) -> PdfDocumentSyntax {
+        // Parsing logic goes here
+        unreachable!()
     }
 }
