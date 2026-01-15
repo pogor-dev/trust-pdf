@@ -2,6 +2,7 @@
 #[repr(u16)]
 pub enum SyntaxKind {
     None,
+    List,
     BadToken,
 
     #[doc(hidden)]
@@ -90,7 +91,7 @@ pub enum SyntaxKind {
     FileTrailerExpression,
 
     // other expressions
-    PdfDocumentExpression,
+    PdfDocument,
 
     // PDF content stream operators as defined by ISO 32000-2, Annex A.2, Table A.1
     /// Close, fill, and stroke path using non-zero winding number rule (`b`).
