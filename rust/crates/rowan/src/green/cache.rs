@@ -48,13 +48,13 @@ impl GreenCache {
         let entry = self
             .trivias
             .raw_entry_mut()
-            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.bytes() == bytes);
+            .from_hash(hash, |trivia| trivia.0.kind() == kind && trivia.0.full_bytes() == bytes);
 
         let trivia = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0,
             RawEntryMut::Vacant(entry) => {
                 let trivia = self.arena.alloc_trivia(kind, bytes);
-                entry.insert_with_hasher(hash, NoHash(trivia), (), |t| trivia_hash(t.0.kind(), t.0.bytes()));
+                entry.insert_with_hasher(hash, NoHash(trivia), (), |t| trivia_hash(t.0.kind(), t.0.full_bytes()));
                 trivia
             }
         };
@@ -65,7 +65,13 @@ impl GreenCache {
     pub fn trivia_list(&mut self, pieces: &[GreenTriviaInTree]) -> (u64, GreenTriviaListInTree) {
         let hash = trivia_list_hash(pieces);
         let entry = self.trivia_lists.raw_entry_mut().from_hash(hash, |list| {
-            list.0.pieces().len() == pieces.len() && list.0.pieces().iter().zip(pieces).all(|(a, b)| a.kind() == b.kind() && a.bytes() == b.bytes())
+            list.0.pieces().len() == pieces.len()
+                && list
+                    .0
+                    .pieces()
+                    .iter()
+                    .zip(pieces)
+                    .all(|(a, b)| a.kind() == b.kind() && a.full_bytes() == b.full_bytes())
         });
 
         let trivia_list = match entry {
@@ -201,7 +207,7 @@ fn trivia_list_hash(pieces: &[GreenTriviaInTree]) -> u64 {
     let mut h = FxHasher::default();
     pieces.len().hash(&mut h);
     for piece in pieces {
-        trivia_hash(piece.kind(), piece.bytes()).hash(&mut h);
+        trivia_hash(piece.kind(), piece.full_bytes()).hash(&mut h);
     }
     h.finish()
 }
@@ -214,7 +220,7 @@ fn token_hash(kind: SyntaxKind, bytes: &[u8], leading_trivia: GreenTriviaListInT
         .pieces()
         .iter()
         .chain(trailing_trivia.pieces().iter())
-        .for_each(|piece| trivia_hash(piece.kind(), piece.bytes()).hash(&mut h));
+        .for_each(|piece| trivia_hash(piece.kind(), piece.full_bytes()).hash(&mut h));
     h.finish()
 }
 
