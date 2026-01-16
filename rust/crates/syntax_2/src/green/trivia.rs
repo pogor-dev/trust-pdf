@@ -24,63 +24,6 @@ pub struct GreenTriviaData {
     data: ReprThin,
 }
 
-impl PartialEq for GreenTriviaData {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text()
-    }
-}
-
-/// Leaf node in the immutable tree.
-#[derive(PartialEq, Eq, Hash, Clone)]
-#[repr(transparent)]
-pub struct GreenTrivia {
-    ptr: ThinArc<GreenTriviaHead, u8>,
-}
-
-impl ToOwned for GreenTriviaData {
-    type Owned = GreenTrivia;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTrivia {
-        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTrivia::clone(&green)
-    }
-}
-
-impl Borrow<GreenTriviaData> for GreenTrivia {
-    #[inline]
-    fn borrow(&self) -> &GreenTriviaData {
-        self
-    }
-}
-
-impl fmt::Debug for GreenTriviaData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &self.text()).finish()
-    }
-}
-
-impl fmt::Debug for GreenTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTriviaData = self;
-        fmt::Debug::fmt(data, f)
-    }
-}
-
-impl fmt::Display for GreenTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTriviaData = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl fmt::Display for GreenTriviaData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.text())
-    }
-}
-
 impl GreenTriviaData {
     /// Kind of this trivia.
     #[inline]
@@ -98,6 +41,63 @@ impl GreenTriviaData {
     #[inline]
     pub fn text_len(&self) -> u32 {
         self.text().len() as u32
+    }
+}
+
+impl PartialEq for GreenTriviaData {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind() && self.text() == other.text()
+    }
+}
+
+impl ToOwned for GreenTriviaData {
+    type Owned = GreenTrivia;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTrivia {
+        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTrivia::clone(&green)
+    }
+}
+
+impl fmt::Display for GreenTriviaData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.text())
+    }
+}
+
+impl fmt::Debug for GreenTriviaData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &self.text()).finish()
+    }
+}
+
+/// Leaf node in the immutable tree.
+#[derive(PartialEq, Eq, Hash, Clone)]
+#[repr(transparent)]
+pub struct GreenTrivia {
+    ptr: ThinArc<GreenTriviaHead, u8>,
+}
+
+impl Borrow<GreenTriviaData> for GreenTrivia {
+    #[inline]
+    fn borrow(&self) -> &GreenTriviaData {
+        self
+    }
+}
+
+impl fmt::Display for GreenTrivia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTriviaData = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl fmt::Debug for GreenTrivia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTriviaData = self;
+        fmt::Debug::fmt(data, f)
     }
 }
 
