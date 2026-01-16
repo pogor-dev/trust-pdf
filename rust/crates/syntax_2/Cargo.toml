@@ -12,3 +12,4 @@ repository.workspace = true
 
 # Non-local crates
 countme.workspace = true
+pretty_assertions.workspace = true

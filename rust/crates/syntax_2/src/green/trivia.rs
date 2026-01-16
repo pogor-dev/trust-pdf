@@ -39,7 +39,7 @@ impl GreenTriviaData {
 
     /// Returns the length of the text covered by this trivia.
     #[inline]
-    pub fn text_len(&self) -> u32 {
+    pub fn width(&self) -> u32 {
         self.text().len() as u32
     }
 }
@@ -104,9 +104,9 @@ impl fmt::Debug for GreenTrivia {
 impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &str) -> GreenTrivia {
+    pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
         let head = GreenTriviaHead { kind, _c: Count::new() };
-        let ptr = ThinArc::from_header_and_iter(head, text.bytes());
+        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTrivia { ptr }
     }
     #[inline]
@@ -141,9 +141,185 @@ impl ops::Deref for GreenTrivia {
     #[inline]
     fn deref(&self) -> &GreenTriviaData {
         unsafe {
-            let repr: &Repr = &self.ptr;
+            let repr: &Repr = &*self.ptr;
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
             mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
         }
+    }
+}
+
+#[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_green_trivia_head_memory_layout() {
+        // GreenTriviaHead: kind (2 bytes) + _c (0 bytes)
+        assert_eq!(std::mem::size_of::<GreenTriviaHead>(), 2);
+        assert_eq!(std::mem::align_of::<GreenTriviaHead>(), 2);
+    }
+
+    #[test]
+    fn test_green_trivia_data_memory_layout() {
+        // GreenTriviaData is transparent wrapper around ReprThin
+        // Size depends on HeaderSlice layout
+        assert!(std::mem::size_of::<GreenTriviaData>() >= std::mem::size_of::<GreenTriviaHead>());
+    }
+
+    #[test]
+    fn test_green_trivia_memory_layout() {
+        // GreenTrivia wraps ThinArc pointer (8 bytes on 64-bit)
+        assert_eq!(std::mem::size_of::<GreenTrivia>(), std::mem::size_of::<usize>());
+        assert_eq!(std::mem::align_of::<GreenTrivia>(), std::mem::align_of::<usize>());
+    }
+}
+
+#[cfg(test)]
+mod trivia_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_new_trivia() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq!(trivia.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia.text(), b" ");
+    }
+
+    #[test]
+    fn test_kind() {
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, b"% comment");
+        assert_eq!(trivia.kind(), SyntaxKind::CommentTrivia);
+    }
+
+    #[test]
+    fn test_text() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"   ");
+        assert_eq!(trivia.text(), b"   ");
+    }
+
+    #[test]
+    fn test_width() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n\t");
+        assert_eq!(trivia.width(), 2);
+    }
+
+    #[test]
+    fn test_eq_when_same_kind_and_text_expect_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_eq_when_different_text_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+        assert_ne!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_eq_when_different_kind_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
+        assert_ne!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_clone() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        let trivia2 = trivia1.clone();
+        assert_eq!(trivia1, trivia2);
+        assert_eq!(trivia2.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia2.text(), b" \n\t");
+    }
+
+    #[test]
+    fn test_display() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        assert_eq!(trivia.to_string(), format!("{:?}", b" \n\t"));
+    }
+
+    #[test]
+    fn test_debug() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        let debug_str = format!("{:?}", trivia);
+        assert!(debug_str.contains("GreenTrivia"));
+        assert!(debug_str.contains("kind"));
+    }
+
+    #[test]
+    fn test_empty_text() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"");
+        assert_eq!(trivia.text(), b"");
+        assert_eq!(trivia.width(), 0);
+    }
+
+    #[test]
+    fn test_multiline_text() {
+        let text = b"line1\nline2\nline3";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u32);
+    }
+
+    #[test]
+    fn test_unicode_text() {
+        let text = b"% \xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96\xE7\x95\x8C";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u32);
+    }
+
+    #[test]
+    fn test_into_raw_and_from_raw() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let ptr = GreenTrivia::into_raw(trivia.clone());
+        let reconstructed = unsafe { GreenTrivia::from_raw(ptr) };
+        assert_eq!(trivia, reconstructed);
+    }
+
+    #[test]
+    fn test_borrow() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let borrowed: &GreenTriviaData = trivia.borrow();
+        assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(borrowed.text(), b" ");
+    }
+
+    #[test]
+    fn test_to_owned() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let data: &GreenTriviaData = &*trivia;
+        let owned = data.to_owned();
+        assert_eq!(trivia, owned);
+    }
+
+    #[test]
+    fn test_green_trivia_data_eq_when_same_kind_and_text_expect_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_eq!(data1, data2);
+    }
+
+    #[test]
+    fn test_green_trivia_data_eq_when_different_text_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_ne!(data1, data2);
+    }
+
+    #[test]
+    fn test_green_trivia_data_eq_when_different_kind_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_ne!(data1, data2);
     }
 }
