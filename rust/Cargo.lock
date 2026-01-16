@@ -412,7 +412,7 @@ dependencies = [
 name = "syntax_2"
 version = "0.1.0"
 dependencies = [
- "triomphe",
+ "countme",
 ]
 
 [[package]]
