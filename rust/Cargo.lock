@@ -409,6 +409,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntax_2"
+version = "0.1.0"
+
+[[package]]
 name = "tracing"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"

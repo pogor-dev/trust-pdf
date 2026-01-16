@@ -16,6 +16,7 @@ lexer = { path = "./crates/lexer", version = "0.1.0" }
 rowan = { path = "./crates/rowan", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 syntax = { path = "./crates/syntax", version = "0.1.0" }
+syntax_2 = { path = "./crates/syntax_2", version = "0.1.0" }
 trust-pdf-analyzer = { path = "./crates/lsp", version = "0.1.0" }
 wasm-lexer = { path = "./crates/wasm-lexer", version = "0.1.0" }
 
