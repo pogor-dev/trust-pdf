@@ -942,7 +942,6 @@ mod green_node_tests {
 #[cfg(test)]
 mod green_node_data_tests {
     use super::*;
-    use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
     fn empty_trivia_list() -> GreenNode {
