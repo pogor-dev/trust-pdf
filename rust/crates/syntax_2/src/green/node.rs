@@ -222,13 +222,20 @@ impl ToOwned for GreenNodeData {
 
 impl fmt::Display for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.text())
+        for &byte in &self.text() {
+            write!(f, "{}", byte as char)?;
+        }
+        Ok(())
     }
 }
 
 impl fmt::Debug for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenNode").field("kind", &self.kind()).field("text", &self.text()).finish()
+        f.debug_struct("GreenNode")
+            .field("kind", &self.kind())
+            .field("full_width", &self.full_width())
+            .field("slot_count", &self.slot_count())
+            .finish()
     }
 }
 
@@ -439,3 +446,199 @@ impl<'a> DoubleEndedIterator for Slots<'a> {
 }
 
 impl iter::FusedIterator for Slots<'_> {}
+
+#[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+
+    #[test]
+    fn test_green_node_head_memory_layout() {
+        // GreenNodeHead: kind (2 bytes) + full_width (4 bytes) + _c (0 bytes)
+        assert!(std::mem::size_of::<GreenNodeHead>() >= 6);
+    }
+
+    #[test]
+    fn test_green_node_data_memory_layout() {
+        // GreenNodeData is transparent wrapper around ReprThin
+        assert!(std::mem::size_of::<GreenNodeData>() >= std::mem::size_of::<GreenNodeHead>());
+    }
+
+    #[test]
+    fn test_green_node_memory_layout() {
+        // GreenNode wraps ThinArc pointer (8 bytes on 64-bit)
+        assert_eq!(std::mem::size_of::<GreenNode>(), std::mem::size_of::<usize>());
+        assert_eq!(std::mem::align_of::<GreenNode>(), std::mem::align_of::<usize>());
+    }
+}
+
+#[cfg(test)]
+mod node_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn empty_trivia_list() -> GreenNode {
+        GreenNode::new(SyntaxKind::List, vec![])
+    }
+
+    #[test]
+    fn test_new_node_empty() {
+        let node = GreenNode::new(SyntaxKind::List, vec![]);
+        assert_eq!(node.kind(), SyntaxKind::List);
+        assert_eq!(node.slot_count(), 0);
+    }
+
+    #[test]
+    fn test_new_node_with_tokens() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.kind(), SyntaxKind::ArrayExpression);
+        assert_eq!(node.slot_count(), 2);
+    }
+
+    #[test]
+    fn test_kind() {
+        let node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![]);
+        assert_eq!(node.kind(), SyntaxKind::DictionaryExpression);
+    }
+
+    #[test]
+    fn test_slot_count() {
+        let token1 = GreenToken::new(SyntaxKind::NameLiteralToken, b"Name", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::DictionaryExpression, slots);
+        assert_eq!(node.slot_count(), 2);
+    }
+
+    #[test]
+    fn test_slot_access() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token.clone())];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let slot0 = node.slot(0);
+        assert!(slot0.is_some());
+
+        let slot1 = node.slot(1);
+        assert!(slot1.is_none());
+    }
+
+    #[test]
+    fn test_full_width() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"999", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.full_width(), 5); // 2 + 3
+    }
+
+    #[test]
+    fn test_text() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.text(), b"4299");
+    }
+
+    #[test]
+    fn test_full_text() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.full_text(), b"12");
+    }
+
+    #[test]
+    fn test_clone() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        let node2 = node1.clone();
+
+        assert_eq!(node1.kind(), node2.kind());
+        assert_eq!(node1.slot_count(), node2.slot_count());
+        assert_eq!(node1.full_width(), node2.full_width());
+    }
+
+    #[test]
+    fn test_display() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        let display_str = node.to_string();
+        assert_eq!(display_str, "42");
+    }
+
+    #[test]
+    fn test_debug() {
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
+        let debug_str = format!("{:?}", node);
+        assert_eq!(debug_str, "GreenNode { kind: ArrayExpression, full_width: 0, slot_count: 0 }");
+    }
+
+    #[test]
+    fn test_into_raw_and_from_raw() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        let ptr = GreenNode::into_raw(node.clone());
+        let reconstructed = unsafe { GreenNode::from_raw(ptr) };
+
+        assert_eq!(node.kind(), reconstructed.kind());
+        assert_eq!(node.slot_count(), reconstructed.slot_count());
+    }
+
+    #[test]
+    fn test_borrow() {
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
+        let borrowed: &GreenNodeData = node.borrow();
+        assert_eq!(borrowed.kind(), SyntaxKind::ArrayExpression);
+    }
+
+    #[test]
+    fn test_to_owned() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        let data: &GreenNodeData = &*node;
+        let owned = data.to_owned();
+
+        assert_eq!(node.kind(), owned.kind());
+        assert_eq!(node.slot_count(), owned.slot_count());
+    }
+
+    #[test]
+    fn test_nested_nodes() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+
+        let inner_slots = vec![GreenElement::Token(token1)];
+        let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, inner_slots);
+
+        let outer_slots = vec![GreenElement::Node(inner_node), GreenElement::Token(token2)];
+        let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, outer_slots);
+
+        assert_eq!(outer_node.kind(), SyntaxKind::DictionaryExpression);
+        assert_eq!(outer_node.slot_count(), 2);
+        assert_eq!(outer_node.text(), b"12");
+    }
+}

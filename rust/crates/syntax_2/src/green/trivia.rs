@@ -63,13 +63,17 @@ impl ToOwned for GreenTriviaData {
 
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.text())
+        for &byte in self.text() {
+            write!(f, "{}", byte as char)?;
+        }
+        Ok(())
     }
 }
 
 impl fmt::Debug for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &self.text()).finish()
+        let text_str = String::from_utf8_lossy(self.text());
+        f.debug_struct("GreenTrivia").field("kind", &self.kind()).field("text", &text_str).finish()
     }
 }
 
@@ -239,15 +243,14 @@ mod trivia_tests {
     #[test]
     fn test_display() {
         let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
-        assert_eq!(trivia.to_string(), format!("{:?}", b" \n\t"));
+        assert_eq!(trivia.to_string(), " \n\t");
     }
 
     #[test]
     fn test_debug() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let debug_str = format!("{:?}", trivia);
-        assert!(debug_str.contains("GreenTrivia"));
-        assert!(debug_str.contains("kind"));
+        assert_eq!(debug_str, "GreenTrivia { kind: WhitespaceTrivia, text: \" \" }");
     }
 
     #[test]
