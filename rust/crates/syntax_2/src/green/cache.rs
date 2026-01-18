@@ -185,3 +185,129 @@ impl NodeCache {
         (hash, trivia)
     }
 }
+
+#[cfg(test)]
+mod node_cache_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_token_deduplication_when_same_kind_and_text_expect_same_instance() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, token1) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let (hash2, token2) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+
+        assert_eq!(hash1, hash2, "hashes should be equal");
+        // Check that we get the same Arc instance by comparing pointer addresses
+        let ptr1 = GreenToken::into_raw(token1.clone());
+        let ptr2 = GreenToken::into_raw(token2.clone());
+        assert_eq!(ptr1.as_ptr(), ptr2.as_ptr(), "tokens should point to the same memory location (deduplicated)");
+    }
+
+    #[test]
+    fn test_token_cache_size_when_adding_duplicates_expect_single_entry() {
+        let mut cache = NodeCache::default();
+
+        // Add the same token multiple times
+        for _ in 0..5 {
+            let _ = cache.token(SyntaxKind::StringLiteralToken, b"hello", None, None);
+        }
+
+        // The cache should only have 1 entry for this token
+        assert_eq!(cache.tokens.len(), 1, "cache should only store one unique token");
+    }
+
+    #[test]
+    fn test_token_cache_with_different_tokens_expect_multiple_entries() {
+        let mut cache = NodeCache::default();
+
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None);
+        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None);
+
+        assert_eq!(cache.tokens.len(), 3, "cache should store 3 different tokens");
+    }
+
+    #[test]
+    fn test_trivia_deduplication_when_same_kind_and_text_expect_same_instance() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, trivia1) = cache.trivia(SyntaxKind::WhitespaceTrivia, b"  ");
+        let (hash2, trivia2) = cache.trivia(SyntaxKind::WhitespaceTrivia, b"  ");
+
+        assert_eq!(hash1, hash2, "hashes should be equal");
+        // Check that we get the same Arc instance by comparing pointer addresses
+        let ptr1 = GreenTrivia::into_raw(trivia1.clone());
+        let ptr2 = GreenTrivia::into_raw(trivia2.clone());
+        assert_eq!(ptr1.as_ptr(), ptr2.as_ptr(), "trivia should point to the same memory location (deduplicated)");
+    }
+
+    #[test]
+    fn test_trivia_cache_size_when_adding_duplicates_expect_single_entry() {
+        let mut cache = NodeCache::default();
+
+        // Add the same trivia multiple times
+        for _ in 0..5 {
+            let _ = cache.trivia(SyntaxKind::CommentTrivia, b"% comment");
+        }
+
+        // The cache should only have 1 entry for this trivia
+        assert_eq!(cache.trivia.len(), 1, "cache should only store one unique trivia");
+    }
+
+    #[test]
+    fn test_trivia_cache_with_different_trivia_expect_multiple_entries() {
+        let mut cache = NodeCache::default();
+
+        let _ = cache.trivia(SyntaxKind::WhitespaceTrivia, b"  ");
+        let _ = cache.trivia(SyntaxKind::WhitespaceTrivia, b"    ");
+        let _ = cache.trivia(SyntaxKind::CommentTrivia, b"% test");
+
+        assert_eq!(cache.trivia.len(), 3, "cache should store 3 different trivia items");
+    }
+
+    #[test]
+    fn test_token_hash_consistency_when_same_token_expect_same_hash() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+
+        assert_eq!(hash1, hash2, "same token should produce the same hash");
+    }
+
+    #[test]
+    fn test_token_hash_different_when_different_tokens() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None);
+
+        assert_ne!(hash1, hash2, "different tokens should produce different hashes");
+    }
+
+    #[test]
+    fn test_cache_with_mixed_elements() {
+        let mut cache = NodeCache::default();
+
+        // Add various elements
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let _ = cache.trivia(SyntaxKind::WhitespaceTrivia, b"  ");
+        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None);
+        let _ = cache.trivia(SyntaxKind::CommentTrivia, b"% comment");
+
+        assert_eq!(cache.tokens.len(), 2, "cache should have 2 tokens");
+        assert_eq!(cache.trivia.len(), 2, "cache should have 2 trivia items");
+    }
+
+    #[test]
+    fn test_token_with_trivia_deduplication() {
+        let mut cache = NodeCache::default();
+
+        let (trivia_hash1, _) = cache.trivia(SyntaxKind::WhitespaceTrivia, b" ");
+        let (trivia_hash2, _) = cache.trivia(SyntaxKind::WhitespaceTrivia, b" ");
+
+        assert_eq!(trivia_hash1, trivia_hash2, "trivia should be deduplicated");
+    }
+}
