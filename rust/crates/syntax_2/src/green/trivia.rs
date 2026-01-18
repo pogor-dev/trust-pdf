@@ -181,7 +181,7 @@ mod memory_layout_tests {
 }
 
 #[cfg(test)]
-mod trivia_tests {
+mod green_trivia_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -291,6 +291,12 @@ mod trivia_tests {
         assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
         assert_eq!(borrowed.text(), b" ");
     }
+}
+
+#[cfg(test)]
+mod green_trivia_data_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_to_owned() {
@@ -301,7 +307,7 @@ mod trivia_tests {
     }
 
     #[test]
-    fn test_green_trivia_data_eq_when_same_kind_and_text_expect_equal() {
+    fn test_eq_when_same_kind_and_text_expect_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let data1: &GreenTriviaData = &*trivia1;
@@ -310,7 +316,7 @@ mod trivia_tests {
     }
 
     #[test]
-    fn test_green_trivia_data_eq_when_different_text_expect_not_equal() {
+    fn test_eq_when_different_text_expect_not_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
         let data1: &GreenTriviaData = &*trivia1;
@@ -319,7 +325,7 @@ mod trivia_tests {
     }
 
     #[test]
-    fn test_green_trivia_data_eq_when_different_kind_expect_not_equal() {
+    fn test_eq_when_different_kind_expect_not_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
         let data1: &GreenTriviaData = &*trivia1;

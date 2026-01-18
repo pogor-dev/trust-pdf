@@ -249,7 +249,7 @@ mod memory_layout_tests {
 }
 
 #[cfg(test)]
-mod token_tests {
+mod green_token_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -360,6 +360,16 @@ mod token_tests {
         assert_eq!(borrowed.kind(), SyntaxKind::NameLiteralToken);
         assert_eq!(borrowed.text(), b"abc");
     }
+}
+
+#[cfg(test)]
+mod green_token_data_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn empty_trivia_list() -> GreenNode {
+        GreenNode::new(SyntaxKind::List, vec![])
+    }
 
     #[test]
     fn test_to_owned() {
@@ -370,7 +380,7 @@ mod token_tests {
     }
 
     #[test]
-    fn test_green_token_data_eq_when_same_kind_and_text_expect_equal() {
+    fn test_eq_when_same_kind_and_text_expect_equal() {
         let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
         let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
         let data1: &GreenTokenData = &*token1;
@@ -379,7 +389,7 @@ mod token_tests {
     }
 
     #[test]
-    fn test_green_token_data_eq_when_different_text_expect_not_equal() {
+    fn test_eq_when_different_text_expect_not_equal() {
         let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"11", empty_trivia_list(), empty_trivia_list());
         let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"22", empty_trivia_list(), empty_trivia_list());
         let data1: &GreenTokenData = &*token1;
@@ -388,7 +398,7 @@ mod token_tests {
     }
 
     #[test]
-    fn test_green_token_data_eq_when_different_kind_expect_not_equal() {
+    fn test_eq_when_different_kind_expect_not_equal() {
         let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
         let token2 = GreenToken::new(SyntaxKind::NameLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
         let data1: &GreenTokenData = &*token1;

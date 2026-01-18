@@ -6,9 +6,9 @@ use std::{
 };
 
 use crate::{
-    GreenToken,
+    GreenToken, GreenTrivia,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{GreenElement, token::GreenTokenData},
+    green::{GreenElement, token::GreenTokenData, trivia::GreenTriviaData},
 };
 use countme::Count;
 
@@ -89,6 +89,7 @@ impl GreenNodeData {
         self.slots().nth(index).map(|slot| match slot {
             Slot::Node { node, .. } => GreenElement::Node(node.clone()),
             Slot::Token { token, .. } => GreenElement::Token(token.clone()),
+            Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia.clone()),
         })
     }
 
@@ -117,6 +118,7 @@ impl GreenNodeData {
         enum Target<'a> {
             Node(&'a GreenNodeData),
             Token(&'a GreenTokenData),
+            Trivia(&'a GreenTriviaData),
         }
 
         fn process_stack(output: &mut Vec<u8>, stack: &mut Vec<(Target<'_>, bool, bool)>) {
@@ -124,6 +126,9 @@ impl GreenNodeData {
                 match item {
                     Target::Token(token_data) => {
                         output.extend_from_slice(&token_data.write_to(current_leading, current_trailing));
+                    }
+                    Target::Trivia(trivia_data) => {
+                        output.extend_from_slice(&trivia_data.text());
                     }
                     Target::Node(node_data) => {
                         let slots = node_data.data.slice();
@@ -150,6 +155,10 @@ impl GreenNodeData {
                                 Slot::Token { token, .. } => {
                                     let token_data: &GreenTokenData = token;
                                     stack.push((Target::Token(token_data), include_leading, include_trailing));
+                                }
+                                Slot::Trivia { trivia, .. } => {
+                                    let trivia_data: &GreenTriviaData = trivia;
+                                    stack.push((Target::Trivia(trivia_data), include_leading, include_trailing));
                                 }
                             }
                         }
@@ -181,6 +190,7 @@ impl GreenNodeData {
                         return Some(token);
                     }
                 }
+                Slot::Trivia { .. } => continue,
             }
         }
         None
@@ -197,6 +207,7 @@ impl GreenNodeData {
                         return Some(token);
                     }
                 }
+                Slot::Trivia { .. } => continue,
             }
         }
         None
@@ -284,7 +295,7 @@ impl GreenNode {
             match el {
                 GreenElement::Node(node) => Slot::Node { rel_offset, node },
                 GreenElement::Token(token) => Slot::Token { rel_offset, token },
-                GreenElement::Trivia(_) => unreachable!("trivia should not be a direct child of node"),
+                GreenElement::Trivia(trivia) => Slot::Trivia { rel_offset, trivia },
             }
         });
 
@@ -348,9 +359,10 @@ impl ops::Deref for GreenNode {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum Slot {
+pub enum Slot {
     Node { rel_offset: u32, node: GreenNode },
     Token { rel_offset: u32, token: GreenToken },
+    Trivia { rel_offset: u32, trivia: GreenTrivia },
 }
 
 impl std::fmt::Display for Slot {
@@ -358,12 +370,13 @@ impl std::fmt::Display for Slot {
         match self {
             Slot::Node { node, .. } => std::fmt::Display::fmt(node, f),
             Slot::Token { token, .. } => std::fmt::Display::fmt(token, f),
+            Slot::Trivia { trivia, .. } => std::fmt::Display::fmt(trivia, f),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Slots<'a> {
+pub struct Slots<'a> {
     pub(crate) raw: slice::Iter<'a, Slot>,
 }
 
@@ -472,8 +485,9 @@ mod memory_layout_tests {
 }
 
 #[cfg(test)]
-mod node_tests {
+mod green_node_tests {
     use super::*;
+    use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
     fn empty_trivia_list() -> GreenNode {
@@ -528,6 +542,33 @@ mod node_tests {
 
         let slot1 = node.slot(1);
         assert!(slot1.is_none());
+    }
+
+    #[test]
+    fn test_slot_access_with_node() {
+        let inner_token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(inner_token)]);
+        let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Node(inner_node.clone())]);
+
+        let slot0 = outer_node.slot(0);
+        assert!(slot0.is_some());
+        match slot0.unwrap() {
+            GreenElement::Node(n) => assert_eq!(n.kind(), SyntaxKind::ArrayExpression),
+            _ => panic!("Expected Node element"),
+        }
+    }
+
+    #[test]
+    fn test_slot_access_with_trivia() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trivia.clone())]);
+
+        let slot0 = node.slot(0);
+        assert!(slot0.is_some());
+        match slot0.unwrap() {
+            GreenElement::Trivia(t) => assert_eq!(t.kind(), SyntaxKind::WhitespaceTrivia),
+            _ => panic!("Expected Trivia element"),
+        }
     }
 
     #[test]
@@ -640,5 +681,510 @@ mod node_tests {
         assert_eq!(outer_node.kind(), SyntaxKind::DictionaryExpression);
         assert_eq!(outer_node.slot_count(), 2);
         assert_eq!(outer_node.text(), b"12");
+    }
+
+    #[test]
+    fn test_width() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.width(), 2);
+    }
+
+    #[test]
+    fn test_width_with_trivia() {
+        let leading_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
+        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", leading, trailing);
+        let slots = vec![GreenElement::Token(token)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        assert_eq!(node.width(), 2); // Only token text, not trivia
+        assert_eq!(node.full_width(), 5); // Token + leading + trailing
+    }
+
+    #[test]
+    fn test_leading_trivia() {
+        let leading_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", leading.clone(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let trivia = node.leading_trivia();
+        assert!(trivia.is_some());
+        assert_eq!(trivia.unwrap().full_width(), 1);
+    }
+
+    #[test]
+    fn test_trailing_trivia() {
+        let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), trailing.clone());
+        let slots = vec![GreenElement::Token(token)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let trivia = node.trailing_trivia();
+        assert!(trivia.is_some());
+        assert_eq!(trivia.unwrap().full_width(), 2);
+    }
+
+    #[test]
+    fn test_slot_offset() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"999", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        assert_eq!(node.slot_offset(0), Some(0));
+        assert_eq!(node.slot_offset(1), Some(2)); // After "42"
+        assert_eq!(node.slot_offset(2), None); // Out of bounds
+    }
+
+    #[test]
+    fn test_slots_iterator() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let slot_vec: Vec<_> = node.slots().collect();
+        assert_eq!(slot_vec.len(), 2);
+    }
+
+    #[test]
+    fn test_slots_double_ended_iterator() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let token3 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"3", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2), GreenElement::Token(token3)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let mut iter = node.slots();
+        assert!(iter.next_back().is_some()); // Gets last
+        assert!(iter.next().is_some()); // Gets first
+        assert!(iter.next_back().is_some()); // Gets middle
+        assert!(iter.next().is_none()); // Exhausted
+    }
+
+    #[test]
+    fn test_slot_display() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token.clone())];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        if let Some(slot) = node.slots().next() {
+            let display_str = format!("{}", slot);
+            assert_eq!(display_str, "42");
+        }
+    }
+
+    #[test]
+    fn test_write_to_with_deeply_nested_nodes() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let token3 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"3", empty_trivia_list(), empty_trivia_list());
+
+        let inner1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
+        let inner2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+        let middle = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Node(inner1), GreenElement::Node(inner2)]);
+        let outer = GreenNode::new(SyntaxKind::List, vec![GreenElement::Node(middle), GreenElement::Token(token3)]);
+
+        assert_eq!(outer.text(), b"123");
+        assert_eq!(outer.full_text(), b"123");
+    }
+
+    #[test]
+    fn test_eq_different_nodes() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+
+        assert_ne!(node1, node2);
+    }
+
+    #[test]
+    fn test_eq_same_content() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+
+        assert_eq!(node1, node2);
+    }
+
+    #[test]
+    fn test_green_node_data_eq() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+
+        let data1: &GreenNodeData = &*node1;
+        let data2: &GreenNodeData = &*node2;
+        assert_eq!(data1, data2);
+    }
+
+    #[test]
+    fn test_first_token_with_nested_nodes() {
+        let inner_token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(inner_token.clone())]);
+        let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Node(inner_node)]);
+
+        let first = outer_node.first_token();
+        assert!(first.is_some());
+        assert_eq!(first.unwrap().text(), b"42");
+    }
+
+    #[test]
+    fn test_last_token_with_nested_nodes() {
+        let inner_token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+        let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(inner_token.clone())]);
+        let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Node(inner_node)]);
+
+        let last = outer_node.last_token();
+        assert!(last.is_some());
+        assert_eq!(last.unwrap().text(), b"99");
+    }
+
+    #[test]
+    fn test_first_token_with_trivia_only() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trivia)]);
+
+        let first = node.first_token();
+        assert!(first.is_none());
+    }
+
+    #[test]
+    fn test_last_token_with_trivia_only() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trivia)]);
+
+        let last = node.last_token();
+        assert!(last.is_none());
+    }
+
+    #[test]
+    fn test_first_token_empty_node() {
+        let node = GreenNode::new(SyntaxKind::List, vec![]);
+
+        let first = node.first_token();
+        assert!(first.is_none());
+    }
+
+    #[test]
+    fn test_last_token_empty_node() {
+        let node = GreenNode::new(SyntaxKind::List, vec![]);
+
+        let last = node.last_token();
+        assert!(last.is_none());
+    }
+
+    #[test]
+    fn test_first_token_with_trivia_before_token() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trivia), GreenElement::Token(token.clone())]);
+
+        let first = node.first_token();
+        assert!(first.is_some());
+        assert_eq!(first.unwrap().text(), b"42");
+    }
+
+    #[test]
+    fn test_last_token_with_trivia_after_token() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Token(token.clone()), GreenElement::Trivia(trivia)]);
+
+        let last = node.last_token();
+        assert!(last.is_some());
+        assert_eq!(last.unwrap().text(), b"99");
+    }
+
+    #[test]
+    fn test_text_with_trivia_list() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b"% comment");
+        let trivia3 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+
+        let node = GreenNode::new(
+            SyntaxKind::List,
+            vec![GreenElement::Trivia(trivia1), GreenElement::Trivia(trivia2), GreenElement::Trivia(trivia3)],
+        );
+
+        assert_eq!(node.text(), b"  % comment\n");
+        assert_eq!(node.full_text(), b"  % comment\n");
+    }
+
+    #[test]
+    fn test_text_with_mixed_trivia_and_tokens() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+
+        let node = GreenNode::new(
+            SyntaxKind::List,
+            vec![GreenElement::Trivia(trivia1), GreenElement::Token(token), GreenElement::Trivia(trivia2)],
+        );
+
+        assert_eq!(node.text(), b"  42 ");
+        assert_eq!(node.full_text(), b"  42 ");
+    }
+}
+
+#[cfg(test)]
+mod green_node_data_tests {
+    use super::*;
+    use crate::GreenTrivia;
+    use pretty_assertions::assert_eq;
+
+    fn empty_trivia_list() -> GreenNode {
+        GreenNode::new(SyntaxKind::List, vec![])
+    }
+
+    #[test]
+    fn test_to_owned() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+        let data: &GreenNodeData = &*node;
+        let owned = data.to_owned();
+
+        assert_eq!(node.kind(), owned.kind());
+        assert_eq!(node.slot_count(), owned.slot_count());
+    }
+
+    #[test]
+    fn test_eq() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+
+        let data1: &GreenNodeData = &*node1;
+        let data2: &GreenNodeData = &*node2;
+        assert_eq!(data1, data2);
+    }
+}
+
+#[cfg(test)]
+mod slot_tests {
+    use super::*;
+    use crate::GreenTrivia;
+    use pretty_assertions::assert_eq;
+
+    fn empty_trivia_list() -> GreenNode {
+        GreenNode::new(SyntaxKind::List, vec![])
+    }
+
+    #[test]
+    fn test_slot_count() {
+        let token1 = GreenToken::new(SyntaxKind::NameLiteralToken, b"Name", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+
+        let node = GreenNode::new(SyntaxKind::DictionaryExpression, slots);
+        assert_eq!(node.slot_count(), 2);
+    }
+
+    #[test]
+    fn test_slot_access() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token.clone())];
+
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let slot0 = node.slot(0);
+        assert!(slot0.is_some());
+
+        let slot1 = node.slot(1);
+        assert!(slot1.is_none());
+    }
+
+    #[test]
+    fn test_slot_access_with_node() {
+        let inner_token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(inner_token)]);
+        let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Node(inner_node.clone())]);
+
+        let slot0 = outer_node.slot(0);
+        assert!(slot0.is_some());
+        match slot0.unwrap() {
+            GreenElement::Node(n) => assert_eq!(n.kind(), SyntaxKind::ArrayExpression),
+            _ => panic!("Expected Node element"),
+        }
+    }
+
+    #[test]
+    fn test_slot_access_with_trivia() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trivia.clone())]);
+
+        let slot0 = node.slot(0);
+        assert!(slot0.is_some());
+        match slot0.unwrap() {
+            GreenElement::Trivia(t) => assert_eq!(t.kind(), SyntaxKind::WhitespaceTrivia),
+            _ => panic!("Expected Trivia element"),
+        }
+    }
+
+    #[test]
+    fn test_slot_offset() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"999", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        assert_eq!(node.slot_offset(0), Some(0));
+        assert_eq!(node.slot_offset(1), Some(2)); // After "42"
+        assert_eq!(node.slot_offset(2), None); // Out of bounds
+    }
+
+    #[test]
+    fn test_slot_display() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token.clone())];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        if let Some(slot) = node.slots().next() {
+            let display_str = format!("{}", slot);
+            assert_eq!(display_str, "42");
+        }
+    }
+}
+
+#[cfg(test)]
+mod slots_iterator_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    fn empty_trivia_list() -> GreenNode {
+        GreenNode::new(SyntaxKind::List, vec![])
+    }
+
+    #[test]
+    fn test_slots_iterator() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let slot_vec: Vec<_> = node.slots().collect();
+        assert_eq!(slot_vec.len(), 2);
+    }
+
+    #[test]
+    fn test_slots_len() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        assert_eq!(node.slots().len(), 2);
+    }
+
+    #[test]
+    fn test_slots_size_hint() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let (lower, upper) = node.slots().size_hint();
+        assert_eq!(lower, 1);
+        assert_eq!(upper, Some(1));
+    }
+
+    #[test]
+    fn test_slots_count() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        assert_eq!(node.slots().count(), 2);
+    }
+
+    #[test]
+    fn test_slots_last() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let last = node.slots().last();
+        assert!(last.is_some());
+    }
+
+    #[test]
+    fn test_slots_nth() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let token3 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"3", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2), GreenElement::Token(token3)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let mut iter = node.slots();
+        let nth = iter.nth(1);
+        assert!(nth.is_some());
+    }
+
+    #[test]
+    fn test_slots_fold() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let count = node.slots().fold(0, |acc, _| acc + 1);
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_slots_double_ended_iterator() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let token3 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"3", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2), GreenElement::Token(token3)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let mut iter = node.slots();
+        assert!(iter.next_back().is_some()); // Gets last
+        assert!(iter.next().is_some()); // Gets first
+        assert!(iter.next_back().is_some()); // Gets middle
+        assert!(iter.next().is_none()); // Exhausted
+    }
+
+    #[test]
+    fn test_slots_nth_back() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let token3 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"3", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2), GreenElement::Token(token3)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let mut iter = node.slots();
+        let nth_back = iter.nth_back(1);
+        assert!(nth_back.is_some());
+    }
+
+    #[test]
+    fn test_slots_rfold() {
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
+        let slots = vec![GreenElement::Token(token1), GreenElement::Token(token2)];
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
+
+        let count = node.slots().rfold(0, |acc, _| acc + 1);
+        assert_eq!(count, 2);
     }
 }
