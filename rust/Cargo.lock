@@ -413,7 +413,9 @@ name = "syntax_2"
 version = "0.1.0"
 dependencies = [
  "countme",
+ "hashbrown",
  "pretty_assertions",
+ "rustc-hash",
 ]
 
 [[package]]

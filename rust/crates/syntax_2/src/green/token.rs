@@ -17,8 +17,8 @@ use crate::SyntaxKind;
 struct GreenTokenHead {
     kind: SyntaxKind,
     full_width: u32,
-    leading_trivia: GreenNode,
-    trailing_trivia: GreenNode,
+    leading_trivia: Option<GreenNode>,
+    trailing_trivia: Option<GreenNode>,
     _c: Count<GreenToken>,
 }
 
@@ -52,7 +52,7 @@ impl GreenTokenData {
     /// Returns the length of the text covered by this token.
     #[inline]
     pub fn width(&self) -> u32 {
-        self.data.header.full_width - self.leading_trivia().full_width() - self.trailing_trivia().full_width()
+        self.data.header.full_width - self.leading_trivia().map_or(0, |t| t.full_width()) - self.trailing_trivia().map_or(0, |t| t.full_width())
     }
 
     /// Returns the full width of this token.
@@ -63,13 +63,13 @@ impl GreenTokenData {
 
     /// The leading trivia of this token.
     #[inline]
-    pub fn leading_trivia(&self) -> GreenNode {
+    pub fn leading_trivia(&self) -> Option<GreenNode> {
         self.data.header.leading_trivia.clone()
     }
 
     /// The trailing trivia of this token.
     #[inline]
-    pub fn trailing_trivia(&self) -> GreenNode {
+    pub fn trailing_trivia(&self) -> Option<GreenNode> {
         self.data.header.trailing_trivia.clone()
     }
 
@@ -81,15 +81,15 @@ impl GreenTokenData {
     pub(super) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
         let mut output = Vec::new();
 
-        if leading {
-            output.extend_from_slice(&self.leading_trivia().full_text());
+        if leading && let Some(trivia) = self.leading_trivia() {
+            output.extend_from_slice(&trivia.full_text());
         }
 
         let text = self.text();
         output.extend_from_slice(text);
 
-        if trailing {
-            output.extend_from_slice(&self.trailing_trivia().full_text());
+        if trailing && let Some(trivia) = self.trailing_trivia() {
+            output.extend_from_slice(&trivia.full_text());
         }
 
         output
@@ -172,9 +172,9 @@ impl fmt::Debug for GreenToken {
 impl GreenToken {
     /// Creates new token.
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &[u8], leading_trivia: GreenNode, trailing_trivia: GreenNode) -> GreenToken {
+    pub fn new(kind: SyntaxKind, text: &[u8], leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenToken {
         assert!(text.len() <= u32::MAX as usize, "token text length exceeds u32::MAX");
-        let full_width = text.len() as u32 + leading_trivia.full_width() + trailing_trivia.full_width();
+        let full_width = text.len() as u32 + leading_trivia.as_ref().map_or(0, |t| t.full_width()) + trailing_trivia.as_ref().map_or(0, |t| t.full_width());
         let head = GreenTokenHead {
             kind,
             full_width,
@@ -253,8 +253,8 @@ mod green_token_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]
@@ -334,7 +334,7 @@ mod green_token_tests {
     fn test_debug() {
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
         let debug_str = format!("{:?}", token);
-        let expected = "GreenToken { kind: NumericLiteralToken, text: \"42\", width: 2, full_text: \"42\", full_width: 2, leading_trivia: GreenNode { kind: List, full_width: 0, slot_count: 0 }, trailing_trivia: GreenNode { kind: List, full_width: 0, slot_count: 0 } }";
+        let expected = "GreenToken { kind: NumericLiteralToken, text: \"42\", width: 2, full_text: \"42\", full_width: 2, leading_trivia: Some(GreenNode { kind: List, full_width: 0, slot_count: 0 }), trailing_trivia: Some(GreenNode { kind: List, full_width: 0, slot_count: 0 }) }";
         assert_eq!(debug_str, expected);
     }
 
@@ -367,8 +367,8 @@ mod green_token_data_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]

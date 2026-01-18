@@ -1,6 +1,16 @@
+mod cache;
 mod element;
 mod node;
 mod token;
 mod trivia;
 
-pub use self::{element::GreenElement, node::GreenNode, token::GreenToken, trivia::GreenTrivia};
+use self::element::GreenElement;
+
+pub(crate) use self::element::GreenElementRef;
+
+pub use self::{
+    cache::NodeCache,
+    node::{GreenNode, GreenNodeData},
+    token::{GreenToken, GreenTokenData},
+    trivia::{GreenTrivia, GreenTriviaData},
+};

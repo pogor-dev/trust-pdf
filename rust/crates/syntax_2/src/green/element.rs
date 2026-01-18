@@ -1,11 +1,7 @@
-use crate::{GreenNode, GreenToken, GreenTrivia, SyntaxKind};
+use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, NodeOrTokenOrTrivia, SyntaxKind};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum GreenElement {
-    Node(GreenNode),
-    Token(GreenToken),
-    Trivia(GreenTrivia),
-}
+pub(super) type GreenElement = NodeOrTokenOrTrivia<GreenNode, GreenToken, GreenTrivia>;
+pub(crate) type GreenElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenData, &'a GreenTriviaData>;
 
 impl GreenElement {
     #[inline]
@@ -53,8 +49,8 @@ mod green_element_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]
@@ -106,7 +102,7 @@ mod green_element_tests {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", leading, trailing);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", Some(leading), Some(trailing));
         let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)]);
         let element = GreenElement::Node(node);
         assert_eq!(element.full_width(), 5); // 2 (leading) + 2 (token) + 1 (trailing)
@@ -118,7 +114,7 @@ mod green_element_tests {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
         let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", leading, trailing);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", Some(leading), Some(trailing));
         let element = GreenElement::Token(token);
         assert_eq!(element.full_width(), 5); // 1 (leading) + 2 (token) + 2 (trailing)
     }

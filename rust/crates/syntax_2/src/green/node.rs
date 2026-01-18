@@ -8,7 +8,7 @@ use std::{
 use crate::{
     GreenToken, GreenTrivia,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{GreenElement, token::GreenTokenData, trivia::GreenTriviaData},
+    green::{GreenElement, GreenElementRef, token::GreenTokenData, trivia::GreenTriviaData},
 };
 use countme::Count;
 
@@ -51,8 +51,8 @@ impl GreenNodeData {
     /// Returns the length of the text covered by this node.
     #[inline]
     pub fn width(&self) -> u32 {
-        let first_leading_width = self.first_token().map_or(0, |t| t.leading_trivia().full_width());
-        let last_trailing_width = self.last_token().map_or(0, |t| t.trailing_trivia().full_width());
+        let first_leading_width = self.first_token().and_then(|t| t.leading_trivia()).map_or(0, |t| t.full_width());
+        let last_trailing_width = self.last_token().and_then(|t| t.trailing_trivia()).map_or(0, |t| t.full_width());
         self.full_width() - first_leading_width - last_trailing_width
     }
 
@@ -65,13 +65,13 @@ impl GreenNodeData {
     /// The leading trivia of this Node.
     #[inline]
     pub fn leading_trivia(&self) -> Option<GreenNode> {
-        self.first_token().map(|t| t.leading_trivia())
+        self.first_token().and_then(|t| t.leading_trivia())
     }
 
     /// The trailing trivia of this Node.
     #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
-        self.last_token().map(|t| t.trailing_trivia())
+        self.last_token().and_then(|t| t.trailing_trivia())
     }
 
     #[inline]
@@ -101,7 +101,11 @@ impl GreenNodeData {
         }
         let mut off = 0u32;
         for i in 0..index {
-            off += self.slot(i).unwrap().width();
+            if let Some(slot) = self.slot(i) {
+                off += slot.width();
+            } else {
+                return None;
+            }
         }
         Some(off)
     }
@@ -115,22 +119,16 @@ impl GreenNodeData {
     /// * `leading` - If true, include the first token's leading trivia
     /// * `trailing` - If true, include the last token's trailing trivia
     fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
-        enum Target<'a> {
-            Node(&'a GreenNodeData),
-            Token(&'a GreenTokenData),
-            Trivia(&'a GreenTriviaData),
-        }
-
-        fn process_stack(output: &mut Vec<u8>, stack: &mut Vec<(Target<'_>, bool, bool)>) {
+        fn process_stack(output: &mut Vec<u8>, stack: &mut Vec<(GreenElementRef<'_>, bool, bool)>) {
             while let Some((item, current_leading, current_trailing)) = stack.pop() {
                 match item {
-                    Target::Token(token_data) => {
+                    GreenElementRef::Token(token_data) => {
                         output.extend_from_slice(&token_data.write_to(current_leading, current_trailing));
                     }
-                    Target::Trivia(trivia_data) => {
+                    GreenElementRef::Trivia(trivia_data) => {
                         output.extend_from_slice(&trivia_data.text());
                     }
-                    Target::Node(node_data) => {
+                    GreenElementRef::Node(node_data) => {
                         let slots = node_data.data.slice();
                         if slots.is_empty() {
                             continue;
@@ -150,15 +148,15 @@ impl GreenNodeData {
                             match child {
                                 Slot::Node { node, .. } => {
                                     let node_data: &GreenNodeData = node;
-                                    stack.push((Target::Node(node_data), include_leading, include_trailing));
+                                    stack.push((GreenElementRef::Node(node_data), include_leading, include_trailing));
                                 }
                                 Slot::Token { token, .. } => {
                                     let token_data: &GreenTokenData = token;
-                                    stack.push((Target::Token(token_data), include_leading, include_trailing));
+                                    stack.push((GreenElementRef::Token(token_data), include_leading, include_trailing));
                                 }
                                 Slot::Trivia { trivia, .. } => {
                                     let trivia_data: &GreenTriviaData = trivia;
-                                    stack.push((Target::Trivia(trivia_data), include_leading, include_trailing));
+                                    stack.push((GreenElementRef::Trivia(trivia_data), include_leading, include_trailing));
                                 }
                             }
                         }
@@ -170,10 +168,10 @@ impl GreenNodeData {
         let mut output = Vec::new();
 
         // Explicit stack to avoid recursion on deeply nested trees.
-        let mut stack: Vec<(Target<'_>, bool, bool)> = Vec::with_capacity(64);
+        let mut stack: Vec<(GreenElementRef<'_>, bool, bool)> = Vec::with_capacity(64);
 
         // Seed with this node itself; processing will drill into its slots.
-        stack.push((Target::Node(self), leading, trailing));
+        stack.push((GreenElementRef::Node(self), leading, trailing));
 
         process_stack(&mut output, &mut stack);
         output
@@ -312,7 +310,10 @@ impl GreenNode {
         // `slots` twice.
         let data = {
             let mut data = Arc::from_thin(data);
-            Arc::get_mut(&mut data).unwrap().header.full_width = full_width;
+            Arc::get_mut(&mut data)
+                .expect("Arc should have unique ownership after construction")
+                .header
+                .full_width = full_width;
             Arc::into_thin(data)
         };
 
@@ -490,8 +491,8 @@ mod green_node_tests {
     use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]
@@ -552,7 +553,7 @@ mod green_node_tests {
 
         let slot0 = outer_node.slot(0);
         assert!(slot0.is_some());
-        match slot0.unwrap() {
+        match slot0.expect("slot should exist") {
             GreenElement::Node(n) => assert_eq!(n.kind(), SyntaxKind::ArrayExpression),
             _ => panic!("Expected Node element"),
         }
@@ -565,7 +566,7 @@ mod green_node_tests {
 
         let slot0 = node.slot(0);
         assert!(slot0.is_some());
-        match slot0.unwrap() {
+        match slot0.expect("slot should exist") {
             GreenElement::Trivia(t) => assert_eq!(t.kind(), SyntaxKind::WhitespaceTrivia),
             _ => panic!("Expected Trivia element"),
         }
@@ -697,7 +698,7 @@ mod green_node_tests {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", leading, trailing);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", Some(leading), Some(trailing));
         let slots = vec![GreenElement::Token(token)];
         let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
         assert_eq!(node.width(), 2); // Only token text, not trivia
@@ -708,26 +709,26 @@ mod green_node_tests {
     fn test_leading_trivia() {
         let leading_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", leading.clone(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", Some(leading.clone()), empty_trivia_list());
         let slots = vec![GreenElement::Token(token)];
         let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
 
         let trivia = node.leading_trivia();
         assert!(trivia.is_some());
-        assert_eq!(trivia.unwrap().full_width(), 1);
+        assert_eq!(trivia.expect("leading trivia should exist").full_width(), 1);
     }
 
     #[test]
     fn test_trailing_trivia() {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), trailing.clone());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), Some(trailing.clone()));
         let slots = vec![GreenElement::Token(token)];
         let node = GreenNode::new(SyntaxKind::ArrayExpression, slots);
 
         let trivia = node.trailing_trivia();
         assert!(trivia.is_some());
-        assert_eq!(trivia.unwrap().full_width(), 2);
+        assert_eq!(trivia.expect("trailing trivia should exist").full_width(), 2);
     }
 
     #[test]
@@ -838,7 +839,7 @@ mod green_node_tests {
 
         let first = outer_node.first_token();
         assert!(first.is_some());
-        assert_eq!(first.unwrap().text(), b"42");
+        assert_eq!(first.expect("first token should exist").text(), b"42");
     }
 
     #[test]
@@ -849,7 +850,7 @@ mod green_node_tests {
 
         let last = outer_node.last_token();
         assert!(last.is_some());
-        assert_eq!(last.unwrap().text(), b"99");
+        assert_eq!(last.expect("last token should exist").text(), b"99");
     }
 
     #[test]
@@ -894,7 +895,7 @@ mod green_node_tests {
 
         let first = node.first_token();
         assert!(first.is_some());
-        assert_eq!(first.unwrap().text(), b"42");
+        assert_eq!(first.expect("first token should exist").text(), b"42");
     }
 
     #[test]
@@ -905,7 +906,7 @@ mod green_node_tests {
 
         let last = node.last_token();
         assert!(last.is_some());
-        assert_eq!(last.unwrap().text(), b"99");
+        assert_eq!(last.expect("last token should exist").text(), b"99");
     }
 
     #[test]
@@ -944,8 +945,8 @@ mod green_node_data_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]
@@ -981,8 +982,8 @@ mod slot_tests {
     use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]
@@ -1018,7 +1019,7 @@ mod slot_tests {
 
         let slot0 = outer_node.slot(0);
         assert!(slot0.is_some());
-        match slot0.unwrap() {
+        match slot0.expect("slot should exist") {
             GreenElement::Node(n) => assert_eq!(n.kind(), SyntaxKind::ArrayExpression),
             _ => panic!("Expected Node element"),
         }
@@ -1031,7 +1032,7 @@ mod slot_tests {
 
         let slot0 = node.slot(0);
         assert!(slot0.is_some());
-        match slot0.unwrap() {
+        match slot0.expect("slot should exist") {
             GreenElement::Trivia(t) => assert_eq!(t.kind(), SyntaxKind::WhitespaceTrivia),
             _ => panic!("Expected Trivia element"),
         }
@@ -1067,8 +1068,8 @@ mod slots_iterator_tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn empty_trivia_list() -> GreenNode {
-        GreenNode::new(SyntaxKind::List, vec![])
+    fn empty_trivia_list() -> Option<GreenNode> {
+        Some(GreenNode::new(SyntaxKind::List, vec![]))
     }
 
     #[test]

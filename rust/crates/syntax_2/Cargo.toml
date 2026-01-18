@@ -12,4 +12,6 @@ repository.workspace = true
 
 # Non-local crates
 countme.workspace = true
+hashbrown.workspace = true
 pretty_assertions.workspace = true
+rustc-hash.workspace = true
