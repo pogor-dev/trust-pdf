@@ -105,6 +105,7 @@ impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
+        assert!(text.len() <= u32::MAX as usize, "trivia text length exceeds u32::MAX");
         let head = GreenTriviaHead { kind, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTrivia { ptr }
