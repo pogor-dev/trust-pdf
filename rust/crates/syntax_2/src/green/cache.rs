@@ -3,6 +3,7 @@ use rustc_hash::FxHasher;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use super::diagnostics::GreenDiagnostics;
+use super::diagnostic::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnosticData};
 use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, SyntaxKind, green::node::Slot};
 
 use super::element::GreenElement;
@@ -36,6 +37,7 @@ pub struct NodeCache {
     nodes: HashMap<NoHash<GreenNode>, ()>,
     tokens: HashMap<NoHash<GreenToken>, ()>,
     trivia: HashMap<NoHash<GreenTrivia>, ()>,
+    diagnostics: HashMap<NoHash<GreenDiagnostic>, ()>,
 }
 
 fn token_hash(token: &GreenTokenData) -> u64 {
@@ -49,6 +51,14 @@ fn trivia_hash(trivia: &GreenTriviaData) -> u64 {
     let mut h = FxHasher::default();
     trivia.kind().hash(&mut h);
     trivia.text().hash(&mut h);
+    h.finish()
+}
+
+fn diagnostic_hash(diagnostic: &GreenDiagnosticData) -> u64 {
+    let mut h = FxHasher::default();
+    diagnostic.code().hash(&mut h);
+    diagnostic.severity().hash(&mut h);
+    diagnostic.message().hash(&mut h);
     h.finish()
 }
 
@@ -191,6 +201,31 @@ impl NodeCache {
 
         (hash, trivia)
     }
+
+    pub fn diagnostic(&mut self, code: u16, severity: DiagnosticSeverity, message: &str) -> (u64, GreenDiagnostic) {
+        let hash = {
+            let mut h = FxHasher::default();
+            code.hash(&mut h);
+            severity.hash(&mut h);
+            message.hash(&mut h);
+            h.finish()
+        };
+
+        let entry = self.diagnostics.raw_entry_mut().from_hash(hash, |diag| {
+            diag.0.code() == code && diag.0.severity() == severity && diag.0.message() == message
+        });
+
+        let diagnostic = match entry {
+            RawEntryMut::Occupied(entry) => entry.key().0.clone(),
+            RawEntryMut::Vacant(entry) => {
+                let diagnostic = GreenDiagnostic::new(code, severity, message);
+                entry.insert_with_hasher(hash, NoHash(diagnostic.clone()), (), |d| diagnostic_hash(&d.0));
+                diagnostic
+            }
+        };
+
+        (hash, diagnostic)
+    }
 }
 
 #[cfg(test)]
@@ -316,5 +351,80 @@ mod node_cache_tests {
         let (trivia_hash2, _) = cache.trivia(SyntaxKind::WhitespaceTrivia, b" ");
 
         assert_eq!(trivia_hash1, trivia_hash2, "trivia should be deduplicated");
+    }
+
+    #[test]
+    fn test_diagnostic_deduplication_when_same_fields_expect_same_instance() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, diag1) = cache.diagnostic(42, DiagnosticSeverity::Error, "Test error");
+        let (hash2, diag2) = cache.diagnostic(42, DiagnosticSeverity::Error, "Test error");
+
+        assert_eq!(hash1, hash2, "hashes should be equal");
+        let ptr1 = GreenDiagnostic::into_raw(diag1.clone());
+        let ptr2 = GreenDiagnostic::into_raw(diag2.clone());
+        assert_eq!(ptr1.as_ptr(), ptr2.as_ptr(), "diagnostics should point to the same memory location (deduplicated)");
+    }
+
+    #[test]
+    fn test_diagnostic_cache_size_when_adding_duplicates_expect_single_entry() {
+        let mut cache = NodeCache::default();
+
+        for _ in 0..5 {
+            let _ = cache.diagnostic(100, DiagnosticSeverity::Warning, "Duplicate warning");
+        }
+
+        assert_eq!(cache.diagnostics.len(), 1, "cache should only store one unique diagnostic");
+    }
+
+    #[test]
+    fn test_diagnostic_cache_with_different_diagnostics_expect_multiple_entries() {
+        let mut cache = NodeCache::default();
+
+        let _ = cache.diagnostic(1, DiagnosticSeverity::Error, "Error 1");
+        let _ = cache.diagnostic(2, DiagnosticSeverity::Warning, "Warning 1");
+        let _ = cache.diagnostic(1, DiagnosticSeverity::Info, "Info 1");
+
+        assert_eq!(cache.diagnostics.len(), 3, "cache should store 3 different diagnostics");
+    }
+
+    #[test]
+    fn test_diagnostic_hash_consistency_when_same_diagnostic_expect_same_hash() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.diagnostic(5, DiagnosticSeverity::Error, "Consistent");
+        let (hash2, _) = cache.diagnostic(5, DiagnosticSeverity::Error, "Consistent");
+
+        assert_eq!(hash1, hash2, "same diagnostic should produce the same hash");
+    }
+
+    #[test]
+    fn test_diagnostic_hash_different_when_different_code() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.diagnostic(1, DiagnosticSeverity::Error, "Message");
+        let (hash2, _) = cache.diagnostic(2, DiagnosticSeverity::Error, "Message");
+
+        assert_ne!(hash1, hash2, "different codes should produce different hashes");
+    }
+
+    #[test]
+    fn test_diagnostic_hash_different_when_different_severity() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.diagnostic(1, DiagnosticSeverity::Error, "Message");
+        let (hash2, _) = cache.diagnostic(1, DiagnosticSeverity::Warning, "Message");
+
+        assert_ne!(hash1, hash2, "different severities should produce different hashes");
+    }
+
+    #[test]
+    fn test_diagnostic_hash_different_when_different_message() {
+        let mut cache = NodeCache::default();
+
+        let (hash1, _) = cache.diagnostic(1, DiagnosticSeverity::Error, "Message 1");
+        let (hash2, _) = cache.diagnostic(1, DiagnosticSeverity::Error, "Message 2");
+
+        assert_ne!(hash1, hash2, "different messages should produce different hashes");
     }
 }
