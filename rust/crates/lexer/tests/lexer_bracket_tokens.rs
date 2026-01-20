@@ -2,8 +2,8 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::SyntaxKind;
-use syntax::tree;
+use syntax_2::SyntaxKind;
+use syntax_2::tree;
 
 #[test]
 fn test_scan_array_open_bracket_expect_open_bracket_token() {
@@ -11,8 +11,8 @@ fn test_scan_array_open_bracket_expect_open_bracket_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenBracketToken.into(), b"[")
+        SyntaxKind::None => {
+            (SyntaxKind::OpenBracketToken, b"[")
         }
     };
 
@@ -25,8 +25,8 @@ fn test_scan_array_close_bracket_expect_close_bracket_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::CloseBracketToken.into(), b"]")
+        SyntaxKind::None => {
+            (SyntaxKind::CloseBracketToken, b"]")
         }
     };
 
@@ -39,8 +39,8 @@ fn test_scan_dict_open_expect_open_dict_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenDictToken.into(), b"<<")
+        SyntaxKind::None => {
+            (SyntaxKind::OpenDictToken, b"<<")
         }
     };
 
@@ -53,8 +53,8 @@ fn test_scan_dict_close_expect_close_dict_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::CloseDictToken.into(), b">>")
+        SyntaxKind::None => {
+            (SyntaxKind::CloseDictToken, b">>")
         }
     };
 
@@ -68,8 +68,8 @@ fn test_scan_single_less_than_expect_hex_string() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<48656C6C6F>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<48656C6C6F>")
         }
     };
 
@@ -83,8 +83,8 @@ fn test_scan_single_greater_than_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b">")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b">")
         }
     };
 
@@ -98,18 +98,18 @@ fn test_scan_array_with_elements_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"549"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"3.14"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::FalseKeyword.into(), b"false"),
-            (SyntaxKind::CloseBracketToken.into(), b"]")
+            (SyntaxKind::FalseKeyword, b"false"),
+            (SyntaxKind::CloseBracketToken, b"]")
         }
     };
 
@@ -123,14 +123,14 @@ fn test_scan_dictionary_example_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenDictToken.into(), b"<<"),
-            (SyntaxKind::NameLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::OpenDictToken, b"<<"),
+            (SyntaxKind::NameLiteralToken) => {
                 text(b"/Type"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NameLiteralToken.into(), b"/Example"),
-            (SyntaxKind::CloseDictToken.into(), b">>")
+            (SyntaxKind::NameLiteralToken, b"/Example"),
+            (SyntaxKind::CloseDictToken, b">>")
         }
     };
 
@@ -144,23 +144,23 @@ fn test_scan_nested_arrays_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"1"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"2"),
-            (SyntaxKind::CloseBracketToken.into(), b"]"),
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken, b"2"),
+            (SyntaxKind::CloseBracketToken, b"]"),
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"3"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"4"),
-            (SyntaxKind::CloseBracketToken.into(), b"]"),
-            (SyntaxKind::CloseBracketToken.into(), b"]")
+            (SyntaxKind::NumericLiteralToken, b"4"),
+            (SyntaxKind::CloseBracketToken, b"]"),
+            (SyntaxKind::CloseBracketToken, b"]")
         }
     };
 
@@ -174,21 +174,21 @@ fn test_scan_array_in_dictionary_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenDictToken.into(), b"<<"),
-            (SyntaxKind::NameLiteralToken.into(), b"/Items"),
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::OpenDictToken, b"<<"),
+            (SyntaxKind::NameLiteralToken, b"/Items"),
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"1"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"2"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"3"),
-            (SyntaxKind::CloseBracketToken.into(), b"]"),
-            (SyntaxKind::CloseDictToken.into(), b">>")
+            (SyntaxKind::NumericLiteralToken, b"3"),
+            (SyntaxKind::CloseBracketToken, b"]"),
+            (SyntaxKind::CloseDictToken, b">>")
         }
     };
 
@@ -201,9 +201,9 @@ fn test_scan_empty_array_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenBracketToken.into(), b"["),
-            (SyntaxKind::CloseBracketToken.into(), b"]")
+        SyntaxKind::None => {
+            (SyntaxKind::OpenBracketToken, b"["),
+            (SyntaxKind::CloseBracketToken, b"]")
         }
     };
 
@@ -216,9 +216,9 @@ fn test_scan_empty_dictionary_expect_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::OpenDictToken.into(), b"<<"),
-            (SyntaxKind::CloseDictToken.into(), b">>")
+        SyntaxKind::None => {
+            (SyntaxKind::OpenDictToken, b"<<"),
+            (SyntaxKind::CloseDictToken, b">>")
         }
     };
 

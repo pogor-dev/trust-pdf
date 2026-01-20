@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{SyntaxKind, tree};
+use syntax_2::{SyntaxKind, tree};
 
 #[test]
 fn test_scan_trivia_when_single_space_expect_whitespace_trivia() {
@@ -10,12 +10,12 @@ fn test_scan_trivia_when_single_space_expect_whitespace_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -28,12 +28,12 @@ fn test_scan_trivia_when_multiple_spaces_expect_whitespace_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b"       "),
+                trivia(SyntaxKind::WhitespaceTrivia, b"       ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -46,18 +46,18 @@ fn test_scan_trivia_when_mixed_whitespace_types_expect_appropriate_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0"),
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r"),
+                trivia(SyntaxKind::WhitespaceTrivia, b"\0"),
                 text(b"009"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" \t \x0C"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                trivia(SyntaxKind::WhitespaceTrivia, b" \t \x0C"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"345"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b"\0\t\x0C "),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                trivia(SyntaxKind::WhitespaceTrivia, b"\0\t\x0C "),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             }
         }
     };
@@ -71,16 +71,16 @@ fn test_scan_trivia_when_comments_present_expect_comment_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
-                trivia(SyntaxKind::CommentTrivia.into(), b"% This is a comment"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
+                trivia(SyntaxKind::CommentTrivia, b"% This is a comment"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
                 text(b"009"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" "),
-                trivia(SyntaxKind::CommentTrivia.into(), b"% Another comment"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                trivia(SyntaxKind::WhitespaceTrivia, b" "),
+                trivia(SyntaxKind::CommentTrivia, b"% Another comment"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345"),
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -93,13 +93,13 @@ fn test_scan_trivia_when_consecutive_lf_expect_separate_eol_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -112,13 +112,13 @@ fn test_scan_trivia_when_consecutive_cr_expect_separate_eol_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -131,13 +131,13 @@ fn test_scan_trivia_when_consecutive_crlf_expect_separate_eol_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 
@@ -150,14 +150,14 @@ fn test_scan_trivia_when_mixed_eol_sequences_expect_separate_eol_trivia() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"009"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r"),
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"345")
+            (SyntaxKind::NumericLiteralToken, b"345")
         }
     };
 

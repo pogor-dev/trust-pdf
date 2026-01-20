@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use syntax_2::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 /// Tests for SafeDocs PDF Compacted Syntax Matrix whitespace rules.
 ///
@@ -23,10 +23,10 @@ fn test_scan_keyword_when_true_immediately_followed_by_zero_expect_error_diagnos
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::TrueKeyword.into(), b"true"),
-            (SyntaxKind::NumericLiteralToken.into(), b"0")
+            (SyntaxKind::TrueKeyword, b"true"),
+            (SyntaxKind::NumericLiteralToken, b"0")
         }
     };
 
@@ -40,10 +40,10 @@ fn test_scan_keyword_when_false_immediately_followed_by_digit_expect_error_diagn
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::FalseKeyword.into(), b"false"),
-            (SyntaxKind::NumericLiteralToken.into(), b"9")
+            (SyntaxKind::FalseKeyword, b"false"),
+            (SyntaxKind::NumericLiteralToken, b"9")
         }
     };
 
@@ -57,10 +57,10 @@ fn test_scan_keyword_when_null_immediately_followed_by_digit_expect_error_diagno
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NullKeyword.into(), b"null"),
-            (SyntaxKind::NumericLiteralToken.into(), b"1")
+            (SyntaxKind::NullKeyword, b"null"),
+            (SyntaxKind::NumericLiteralToken, b"1")
         }
     };
 
@@ -74,10 +74,10 @@ fn test_scan_keyword_when_false_immediately_followed_by_decimal_expect_error_dia
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::FalseKeyword.into(), b"false"),
-            (SyntaxKind::NumericLiteralToken.into(), b"3.14")
+            (SyntaxKind::FalseKeyword, b"false"),
+            (SyntaxKind::NumericLiteralToken, b"3.14")
         }
     };
 
@@ -91,10 +91,10 @@ fn test_scan_keyword_when_null_immediately_followed_by_negative_number_expect_er
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NullKeyword.into(), b"null"),
-            (SyntaxKind::NumericLiteralToken.into(), b"-5")
+            (SyntaxKind::NullKeyword, b"null"),
+            (SyntaxKind::NumericLiteralToken, b"-5")
         }
     };
 
@@ -108,10 +108,10 @@ fn test_scan_keyword_when_true_followed_by_decimal_point_expect_error_diagnostic
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::TrueKeyword.into(), b"true"),
-            (SyntaxKind::NumericLiteralToken.into(), b".25")
+            (SyntaxKind::TrueKeyword, b"true"),
+            (SyntaxKind::NumericLiteralToken, b".25")
         }
     };
 
@@ -129,10 +129,10 @@ fn test_scan_numeric_when_123_immediately_followed_by_true_expect_error_diagnost
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NumericLiteralToken.into(), b"123"),
-            (SyntaxKind::TrueKeyword.into(), b"true")
+            (SyntaxKind::NumericLiteralToken, b"123"),
+            (SyntaxKind::TrueKeyword, b"true")
         }
     };
 
@@ -146,10 +146,10 @@ fn test_scan_numeric_when_456_immediately_followed_by_false_expect_error_diagnos
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NumericLiteralToken.into(), b"456"),
-            (SyntaxKind::FalseKeyword.into(), b"false")
+            (SyntaxKind::NumericLiteralToken, b"456"),
+            (SyntaxKind::FalseKeyword, b"false")
         }
     };
 
@@ -163,10 +163,10 @@ fn test_scan_numeric_when_789_immediately_followed_by_null_expect_error_diagnost
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NumericLiteralToken.into(), b"789"),
-            (SyntaxKind::NullKeyword.into(), b"null")
+            (SyntaxKind::NumericLiteralToken, b"789"),
+            (SyntaxKind::NullKeyword, b"null")
         }
     };
 
@@ -180,10 +180,10 @@ fn test_scan_numeric_when_decimal_immediately_followed_by_true_expect_error_diag
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NumericLiteralToken.into(), b"3.14"),
-            (SyntaxKind::TrueKeyword.into(), b"true")
+            (SyntaxKind::NumericLiteralToken, b"3.14"),
+            (SyntaxKind::TrueKeyword, b"true")
         }
     };
 
@@ -197,10 +197,10 @@ fn test_scan_numeric_when_negative_followed_by_null_expect_error_diagnostic() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
-            (SyntaxKind::NumericLiteralToken.into(), b"-5"),
-            (SyntaxKind::NullKeyword.into(), b"null")
+            (SyntaxKind::NumericLiteralToken, b"-5"),
+            (SyntaxKind::NullKeyword, b"null")
         }
     };
 
@@ -218,12 +218,12 @@ fn test_scan_keyword_when_true_followed_by_space_and_digit_expect_no_diagnostic(
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::TrueKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::TrueKeyword) => {
                 text(b"true"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"0")
+            (SyntaxKind::NumericLiteralToken, b"0")
         }
     };
 
@@ -237,12 +237,12 @@ fn test_scan_numeric_when_123_followed_by_space_and_true_expect_no_diagnostic() 
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"123"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::TrueKeyword.into(), b"true")
+            (SyntaxKind::TrueKeyword, b"true")
         }
     };
 
@@ -256,9 +256,9 @@ fn test_scan_keyword_when_null_followed_by_name_delimiter_expect_no_diagnostic()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NullKeyword.into(), b"null"),
-            (SyntaxKind::NameLiteralToken.into(), b"/Type")
+        SyntaxKind::None => {
+            (SyntaxKind::NullKeyword, b"null"),
+            (SyntaxKind::NameLiteralToken, b"/Type")
         }
     };
 
@@ -272,9 +272,9 @@ fn test_scan_numeric_when_123_followed_by_array_bracket_expect_no_diagnostic() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"123"),
-            (SyntaxKind::OpenBracketToken.into(), b"[")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"123"),
+            (SyntaxKind::OpenBracketToken, b"[")
         }
     };
 

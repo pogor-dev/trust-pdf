@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use syntax_2::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 #[test]
 fn test_scan_hex_string_when_simple_hex_string_expect_hex_string_literal_token() {
@@ -11,8 +11,8 @@ fn test_scan_hex_string_when_simple_hex_string_expect_hex_string_literal_token()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<4E6F762073686D6F7A206B6120706F702E>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<4E6F762073686D6F7A206B6120706F702E>")
         }
     };
 
@@ -26,8 +26,8 @@ fn test_scan_hex_string_when_empty_string_expect_hex_string_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<>")
         }
     };
 
@@ -41,8 +41,8 @@ fn test_scan_hex_string_when_even_number_of_digits_expect_hex_string_literal_tok
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<901FA3>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<901FA3>")
         }
     };
 
@@ -57,8 +57,8 @@ fn test_scan_hex_string_when_odd_number_of_digits_expect_hex_string_literal_toke
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<901FA>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<901FA>")
         }
     };
 
@@ -72,8 +72,8 @@ fn test_scan_hex_string_when_contains_whitespace_expect_hex_string_literal_token
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<48 65 6C 6C 6F>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<48 65 6C 6C 6F>")
         }
     };
 
@@ -88,8 +88,8 @@ fn test_scan_hex_string_when_contains_newlines_expect_hex_string_literal_token()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), input)
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, input)
         }
     };
 
@@ -103,8 +103,8 @@ fn test_scan_hex_string_when_lowercase_digits_expect_hex_string_literal_token() 
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<abcdef>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<abcdef>")
         }
     };
 
@@ -117,8 +117,8 @@ fn test_scan_hex_string_when_mixed_case_expect_hex_string_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<AbCdEf123456>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<AbCdEf123456>")
         }
     };
 
@@ -131,12 +131,12 @@ fn test_scan_hex_string_when_two_strings_delimited_expect_two_hex_string_literal
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken) => {
                 text(b"<48656C6C6F>"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::HexStringLiteralToken.into(), b"<576F726C64>")
+            (SyntaxKind::HexStringLiteralToken, b"<576F726C64>")
         }
     };
 
@@ -150,8 +150,8 @@ fn test_scan_hex_string_when_single_digit_expect_hex_string_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), b"<A>")
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, b"<A>")
         }
     };
 
@@ -166,8 +166,8 @@ fn test_scan_hex_string_when_contains_tabs_expect_hex_string_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::HexStringLiteralToken.into(), input)
+        SyntaxKind::None => {
+            (SyntaxKind::HexStringLiteralToken, input)
         }
     };
 
@@ -182,9 +182,9 @@ fn test_scan_hex_string_when_invalid_character_expect_invalid_character_diagnost
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidCharacterInHexString.into(), "Invalid character in hex string"),
-            (SyntaxKind::HexStringLiteralToken.into(), input)
+            (SyntaxKind::HexStringLiteralToken, input)
         }
     };
 
@@ -199,9 +199,9 @@ fn test_scan_hex_string_when_unclosed_expect_invalid_character_diagnostic() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::UnbalancedHexString.into(), "Unbalanced hex string"),
-            (SyntaxKind::HexStringLiteralToken.into(), input)
+            (SyntaxKind::HexStringLiteralToken, input)
         }
     };
 

@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use syntax_2::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 #[test]
 fn test_scan_name_when_simple_name_expect_name_literal_token() {
@@ -10,8 +10,8 @@ fn test_scan_name_when_simple_name_expect_name_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/Name1")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/Name1")
         }
     };
 
@@ -24,8 +24,8 @@ fn test_scan_name_when_empty_name_expect_name_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/")
         }
     };
 
@@ -39,8 +39,8 @@ fn test_scan_name_when_contains_special_characters_expect_name_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/A;Name_With-Various***Characters?")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/A;Name_With-Various***Characters?")
         }
     };
 
@@ -53,8 +53,8 @@ fn test_scan_name_when_contains_hex_escape_for_space_expect_name_literal_token()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/Lime#20Green")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/Lime#20Green")
         }
     };
 
@@ -68,8 +68,8 @@ fn test_scan_name_when_hex_escape_encodes_delimiter_expect_name_literal_token() 
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/Name#2FChild")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/Name#2FChild")
         }
     };
 
@@ -82,12 +82,12 @@ fn test_scan_name_when_two_names_separated_by_whitespace_expect_two_name_literal
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken) => {
                 text(b"/First"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NameLiteralToken.into(), b"/Second")
+            (SyntaxKind::NameLiteralToken, b"/Second")
         }
     };
 
@@ -100,9 +100,9 @@ fn test_scan_name_when_two_names_adjacent_expect_two_name_literal_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), b"/Name1"),
-            (SyntaxKind::NameLiteralToken.into(), b"/Name2")
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, b"/Name1"),
+            (SyntaxKind::NameLiteralToken, b"/Name2")
         }
     };
 
@@ -116,9 +116,9 @@ fn test_scan_name_when_invalid_hex_escape_expect_invalid_hex_escape_diagnostic()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidHexEscapeInName.into(), "Invalid hex escape in name"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -132,9 +132,9 @@ fn test_scan_name_when_truncated_hex_escape_expect_invalid_hex_escape_diagnostic
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidHexEscapeInName.into(), "Invalid hex escape in name"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -148,9 +148,9 @@ fn test_scan_name_when_double_hash_expect_single_invalid_hex_escape_diagnostic()
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidHexEscapeInName.into(), "Invalid hex escape in name"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -165,8 +165,8 @@ fn test_scan_name_when_multiple_hex_escapes_expect_name_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into(), input)
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -180,9 +180,9 @@ fn test_scan_name_when_non_regular_ascii_expect_invalid_non_regular_character_di
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -196,9 +196,9 @@ fn test_scan_name_when_high_byte_expect_invalid_non_regular_character_diagnostic
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 
@@ -213,12 +213,12 @@ fn test_scan_name_when_whitespace_in_body_splits_token_expect_whitespace_then_nu
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NameLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NameLiteralToken) => {
                 text(b"/Name"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into(), b"123")
+            (SyntaxKind::NumericLiteralToken, b"123")
         }
     };
 
@@ -233,9 +233,9 @@ fn test_scan_name_when_single_hex_digit_followed_by_non_hex_expect_invalid_hex_e
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
+        SyntaxKind::None => {
             @diagnostic(Error, DiagnosticKind::InvalidHexEscapeInName.into(), "Invalid hex escape in name"),
-            (SyntaxKind::NameLiteralToken.into(), input)
+            (SyntaxKind::NameLiteralToken, input)
         }
     };
 

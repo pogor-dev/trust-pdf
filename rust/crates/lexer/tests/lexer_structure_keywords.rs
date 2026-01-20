@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{SyntaxKind, tree};
+use syntax_2::{SyntaxKind, tree};
 
 /// Tests for PDF structure keywords: obj, endobj, R, stream, endstream, xref, f, n, trailer, startxref
 ///
@@ -18,8 +18,8 @@ fn test_scan_keyword_when_obj_expect_indirect_object_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::IndirectObjectKeyword.into(), b"obj")
+        SyntaxKind::None => {
+            (SyntaxKind::IndirectObjectKeyword, b"obj")
         }
     };
 
@@ -32,8 +32,8 @@ fn test_scan_keyword_when_endobj_expect_indirect_end_object_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::IndirectEndObjectKeyword.into(), b"endobj")
+        SyntaxKind::None => {
+            (SyntaxKind::IndirectEndObjectKeyword, b"endobj")
         }
     };
 
@@ -46,8 +46,8 @@ fn test_scan_keyword_when_uppercase_r_expect_indirect_reference_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::IndirectReferenceKeyword.into(), b"R")
+        SyntaxKind::None => {
+            (SyntaxKind::IndirectReferenceKeyword, b"R")
         }
     };
 
@@ -61,16 +61,16 @@ fn test_scan_keyword_when_indirect_object_pattern_expect_correct_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"1"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"0"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::IndirectObjectKeyword.into(), b"obj")
+            (SyntaxKind::IndirectObjectKeyword, b"obj")
         }
     };
 
@@ -84,16 +84,16 @@ fn test_scan_keyword_when_indirect_reference_pattern_expect_correct_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"5"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::NumericLiteralToken.into()) => {
+            (SyntaxKind::NumericLiteralToken) => {
                 text(b"0"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::IndirectReferenceKeyword.into(), b"R")
+            (SyntaxKind::IndirectReferenceKeyword, b"R")
         }
     };
 
@@ -110,8 +110,8 @@ fn test_scan_keyword_when_stream_expect_stream_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into(), b"stream")
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword, b"stream")
         }
     };
 
@@ -124,8 +124,8 @@ fn test_scan_keyword_when_endstream_expect_end_stream_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+        SyntaxKind::None => {
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -142,8 +142,8 @@ fn test_scan_keyword_when_xref_expect_xref_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::XRefKeyword.into(), b"xref")
+        SyntaxKind::None => {
+            (SyntaxKind::XRefKeyword, b"xref")
         }
     };
 
@@ -156,8 +156,8 @@ fn test_scan_keyword_when_lowercase_f_expect_xref_free_entry_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::XRefFreeEntryKeyword.into(), b"f")
+        SyntaxKind::None => {
+            (SyntaxKind::XRefFreeEntryKeyword, b"f")
         }
     };
 
@@ -170,8 +170,8 @@ fn test_scan_keyword_when_lowercase_n_expect_xref_in_use_entry_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::XRefInUseEntryKeyword.into(), b"n")
+        SyntaxKind::None => {
+            (SyntaxKind::XRefInUseEntryKeyword, b"n")
         }
     };
 
@@ -184,8 +184,8 @@ fn test_scan_keyword_when_trailer_expect_file_trailer_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::FileTrailerKeyword.into(), b"trailer")
+        SyntaxKind::None => {
+            (SyntaxKind::FileTrailerKeyword, b"trailer")
         }
     };
 
@@ -198,8 +198,8 @@ fn test_scan_keyword_when_startxref_expect_start_xref_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StartXRefKeyword.into(), b"startxref")
+        SyntaxKind::None => {
+            (SyntaxKind::StartXRefKeyword, b"startxref")
         }
     };
 
@@ -217,8 +217,8 @@ fn test_scan_keyword_when_uppercase_obj_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"OBJ")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"OBJ")
         }
     };
 
@@ -231,8 +231,8 @@ fn test_scan_keyword_when_mixed_case_stream_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"Stream")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"Stream")
         }
     };
 
@@ -246,8 +246,8 @@ fn test_scan_keyword_when_lowercase_r_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"r")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"r")
         }
     };
 
@@ -264,9 +264,9 @@ fn test_scan_keyword_when_obj_followed_by_delimiter_expect_obj_keyword() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::IndirectObjectKeyword.into(), b"obj"),
-            (SyntaxKind::OpenDictToken.into(), b"<<")
+        SyntaxKind::None => {
+            (SyntaxKind::IndirectObjectKeyword, b"obj"),
+            (SyntaxKind::OpenDictToken, b"<<")
         }
     };
 
@@ -279,10 +279,10 @@ fn test_scan_keyword_when_stream_followed_by_newline_expect_stream_keyword_with_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             }
         }
     };
@@ -296,18 +296,18 @@ fn test_scan_keyword_when_multiple_structure_keywords_expect_separate_tokens() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::IndirectObjectKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::IndirectObjectKeyword) => {
                 text(b"obj"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::IndirectEndObjectKeyword.into()) => {
+            (SyntaxKind::IndirectEndObjectKeyword) => {
                 text(b"endobj"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             },
-            (SyntaxKind::StreamKeyword.into(), b"stream"),
-            (SyntaxKind::RawStreamDataToken.into(), b" "),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::StreamKeyword, b"stream"),
+            (SyntaxKind::RawStreamDataToken, b" "),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 

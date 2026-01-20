@@ -17,7 +17,7 @@ pub use self::{
     cache::NodeCache,
     diagnostic::{DiagnosticSeverity, GreenDiagnostic},
     diagnostics::GreenDiagnostics,
-    node::{GreenNode, GreenNodeData},
+    node::{GreenNode, GreenNodeData, Slot},
     token::{GreenToken, GreenTokenData},
     trivia::{GreenTrivia, GreenTriviaData},
 };

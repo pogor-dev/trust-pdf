@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{SyntaxKind, tree};
+use syntax_2::{SyntaxKind, tree};
 
 #[test]
 fn test_scan_numeric_literal_when_integer_123_expect_numeric_literal_token() {
@@ -10,8 +10,8 @@ fn test_scan_numeric_literal_when_integer_123_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"123")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"123")
         }
     };
 
@@ -24,8 +24,8 @@ fn test_scan_numeric_literal_when_integer_43445_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"43445")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"43445")
         }
     };
 
@@ -38,8 +38,8 @@ fn test_scan_numeric_literal_when_positive_integer_expect_numeric_literal_token(
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"+17")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"+17")
         }
     };
 
@@ -52,8 +52,8 @@ fn test_scan_numeric_literal_when_negative_integer_expect_numeric_literal_token(
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"-98")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"-98")
         }
     };
 
@@ -66,8 +66,8 @@ fn test_scan_numeric_literal_when_zero_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"0")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"0")
         }
     };
 
@@ -80,8 +80,8 @@ fn test_scan_numeric_literal_when_leading_zeros_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"00987")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"00987")
         }
     };
 
@@ -94,8 +94,8 @@ fn test_scan_numeric_literal_when_real_number_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"34.5")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"34.5")
         }
     };
 
@@ -108,8 +108,8 @@ fn test_scan_numeric_literal_when_negative_real_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"-3.62")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"-3.62")
         }
     };
 
@@ -122,8 +122,8 @@ fn test_scan_numeric_literal_when_positive_real_expect_numeric_literal_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"+123.6")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"+123.6")
         }
     };
 
@@ -136,8 +136,8 @@ fn test_scan_numeric_literal_when_trailing_decimal_point_expect_numeric_literal_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"4.")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"4.")
         }
     };
 
@@ -151,8 +151,8 @@ fn test_scan_numeric_literal_when_leading_decimal_point_expect_numeric_literal_t
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"-.002")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"-.002")
         }
     };
 
@@ -165,8 +165,8 @@ fn test_scan_numeric_literal_when_leading_zeros_with_decimal_expect_numeric_lite
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b"009.87")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b"009.87")
         }
     };
 
@@ -180,8 +180,8 @@ fn test_scan_numeric_literal_when_only_decimal_fraction_expect_numeric_literal_t
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::NumericLiteralToken.into(), b".34")
+        SyntaxKind::None => {
+            (SyntaxKind::NumericLiteralToken, b".34")
         }
     };
 
@@ -194,8 +194,8 @@ fn test_scan_numeric_literal_when_double_plus_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"++")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"++")
         }
     };
 
@@ -208,8 +208,8 @@ fn test_scan_numeric_literal_when_sign_mid_number_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"+345-36")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"+345-36")
         }
     };
 
@@ -222,8 +222,8 @@ fn test_scan_numeric_literal_when_multiple_decimal_points_expect_bad_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b"12.34.56")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b"12.34.56")
         }
     };
 
@@ -236,8 +236,8 @@ fn test_scan_numeric_literal_when_multiple_decimals_starting_with_point_expect_b
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::BadToken.into(), b".1.2.3")
+        SyntaxKind::None => {
+            (SyntaxKind::BadToken, b".1.2.3")
         }
     };
 

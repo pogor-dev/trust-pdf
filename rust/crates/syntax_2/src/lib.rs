@@ -8,7 +8,7 @@ pub use crate::{
     diagnostic_kind::DiagnosticKind,
     green::{
         DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
-        GreenTrivia, GreenTriviaData,
+        GreenTrivia, GreenTriviaData, Slot,
     },
     syntax_kind::SyntaxKind,
     utility_types::NodeOrTokenOrTrivia,

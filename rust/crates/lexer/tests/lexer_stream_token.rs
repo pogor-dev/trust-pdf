@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax::{SyntaxKind, tree};
+use syntax_2::{SyntaxKind, tree};
 
 /// Tests for PDF stream tokens (RawStreamDataToken)
 ///
@@ -38,13 +38,13 @@ fn test_scan_stream_when_empty_stream_with_lf_expect_stream_keyword_data_and_end
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b""),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b""),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -58,13 +58,13 @@ fn test_scan_stream_when_empty_stream_with_crlf_expect_stream_keyword_data_and_e
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b""),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b""),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -78,13 +78,13 @@ fn test_scan_stream_when_stream_with_simple_data_expect_stream_keyword_data_and_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"Hello, World!"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"Hello, World!"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -99,13 +99,13 @@ fn test_scan_stream_when_stream_with_binary_data_expect_stream_keyword_data_and_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"\x00\x01\x02\xff\xfe\xfd"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"\x00\x01\x02\xff\xfe\xfd"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -123,13 +123,13 @@ fn test_scan_stream_when_stream_with_multiple_lines_expect_stream_keyword_data_a
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"Line 1\nLine 2\nLine 3"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"Line 1\nLine 2\nLine 3"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -145,14 +145,14 @@ fn test_scan_stream_when_stream_with_eol_before_endstream_expect_stream_keyword_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data content"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+            (SyntaxKind::RawStreamDataToken, b"data content"),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
                 text(b"endstream")
             }
         }
@@ -168,13 +168,13 @@ fn test_scan_stream_when_stream_with_spaces_in_data_expect_stream_keyword_data_a
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data  \t  with\twhitespace"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"data  \t  with\twhitespace"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -193,13 +193,13 @@ fn test_scan_stream_when_stream_with_pdf_operators_expect_stream_keyword_data_an
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"BT\n/F1 12 Tf\n100 700 Td\n(Hello) TjET"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"BT\n/F1 12 Tf\n100 700 Td\n(Hello) TjET"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -213,13 +213,13 @@ fn test_scan_stream_when_stream_with_hex_data_expect_stream_keyword_data_and_end
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"<48656C6C6F>"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"<48656C6C6F>"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -237,13 +237,13 @@ fn test_scan_stream_when_stream_with_crlf_eol_after_keyword_expect_stream_keywor
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"Binary data here"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"Binary data here"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -257,14 +257,14 @@ fn test_scan_stream_when_stream_with_mixed_line_endings_in_content_expect_stream
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"Line1\r\nLine2\nLine3"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\r\n"),
+            (SyntaxKind::RawStreamDataToken, b"Line1\r\nLine2\nLine3"),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\r\n"),
                 text(b"endstream")
             }
         }
@@ -285,13 +285,13 @@ fn test_scan_stream_when_stream_with_null_bytes_expect_stream_keyword_data_and_e
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data\x00with\x00nulls\x00here"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"data\x00with\x00nulls\x00here"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -318,13 +318,13 @@ fn test_scan_stream_when_stream_with_all_byte_values_expect_stream_keyword_data_
     let expected_data = &data[STREAM.len()..data.len() - ENDSTREAM.len()];
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), expected_data),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, expected_data),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -342,16 +342,16 @@ fn test_scan_stream_when_stream_followed_by_whitespace_expect_raw_stream_token_a
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+            (SyntaxKind::RawStreamDataToken, b"data"),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
                 text(b"endstream"),
-                trivia(SyntaxKind::WhitespaceTrivia.into(), b" ")
+                trivia(SyntaxKind::WhitespaceTrivia, b" ")
             }
         }
     };
@@ -366,18 +366,18 @@ fn test_scan_stream_when_stream_followed_by_newline_expect_raw_stream_token_and_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+            (SyntaxKind::RawStreamDataToken, b"data"),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
                 text(b"endstream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::IndirectEndObjectKeyword.into(), b"endobj")
+            (SyntaxKind::IndirectEndObjectKeyword, b"endobj")
         }
     };
 
@@ -391,16 +391,16 @@ fn test_scan_stream_when_stream_followed_by_comment_expect_raw_stream_token_and_
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
+            (SyntaxKind::RawStreamDataToken, b"data"),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
                 text(b"endstream"),
-                trivia(SyntaxKind::CommentTrivia.into(), b"%comment")
+                trivia(SyntaxKind::CommentTrivia, b"%comment")
             }
         }
     };
@@ -420,17 +420,17 @@ fn test_scan_stream_when_in_indirect_object_context_expect_stream_and_endobj() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"image data here"),
-            (SyntaxKind::EndStreamKeyword.into()) => {
+            (SyntaxKind::RawStreamDataToken, b"image data here"),
+            (SyntaxKind::EndStreamKeyword) => {
                 text(b"endstream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::IndirectEndObjectKeyword.into(), b"endobj")
+            (SyntaxKind::IndirectEndObjectKeyword, b"endobj")
         }
     };
 
@@ -461,16 +461,16 @@ fn test_scan_stream_when_large_stream_expect_raw_stream_token() {
     let expected_data = &stream_data[STREAM.len()..stream_data.len() - ENDSTREAM.len() - 1]; // -1 for the final newline
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), expected_data),
-            (SyntaxKind::EndStreamKeyword.into()) => {
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n"),
-                text(b"endstream"),
-            },
+            (SyntaxKind::RawStreamDataToken, expected_data),
+            (SyntaxKind::EndStreamKeyword) => {
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n"),
+                text(b"endstream")
+            }
         }
     };
 
@@ -488,13 +488,13 @@ fn test_scan_stream_when_endstream_not_on_separate_line_expect_raw_stream_token(
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"data"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -508,12 +508,12 @@ fn test_scan_stream_when_eof_before_endstream_expect_raw_stream_token_and_eof() 
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"truncated stream data with no end stream"),
+            (SyntaxKind::RawStreamDataToken, b"truncated stream data with no end stream")
         }
     };
 
@@ -528,13 +528,13 @@ fn test_scan_stream_when_stream_data_contains_partial_endstream_expect_raw_strea
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"end stream end "),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"end stream end "),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -551,13 +551,13 @@ fn test_scan_stream_when_stream_length_matches_spec_expect_raw_stream_token() {
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"123 bytes of actual stream content here."),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"123 bytes of actual stream content here."),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
@@ -571,13 +571,13 @@ fn test_scan_stream_when_stream_with_no_eol_before_endstream_expect_raw_stream_t
     let actual_node = generate_node_from_lexer(&mut lexer);
 
     let expected_node = tree! {
-        SyntaxKind::LexerNode.into() => {
-            (SyntaxKind::StreamKeyword.into()) => {
+        SyntaxKind::None => {
+            (SyntaxKind::StreamKeyword) => {
                 text(b"stream"),
-                trivia(SyntaxKind::EndOfLineTrivia.into(), b"\n")
+                trivia(SyntaxKind::EndOfLineTrivia, b"\n")
             },
-            (SyntaxKind::RawStreamDataToken.into(), b"data without EOL before"),
-            (SyntaxKind::EndStreamKeyword.into(), b"endstream")
+            (SyntaxKind::RawStreamDataToken, b"data without EOL before"),
+            (SyntaxKind::EndStreamKeyword, b"endstream")
         }
     };
 
