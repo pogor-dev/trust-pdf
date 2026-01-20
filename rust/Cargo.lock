@@ -468,7 +468,7 @@ dependencies = [
  "lsp-types",
  "serde",
  "serde_json",
- "syntax",
+ "syntax_2",
  "tracing",
 ]
 
@@ -584,7 +584,7 @@ version = "0.1.0"
 dependencies = [
  "lexer",
  "pretty_assertions",
- "syntax",
+ "syntax_2",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]

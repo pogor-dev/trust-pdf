@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # Local crates
 lexer.workspace = true
-syntax.workspace = true
+syntax_2.workspace = true
 
 # Non-local crates
 pretty_assertions.workspace = true
