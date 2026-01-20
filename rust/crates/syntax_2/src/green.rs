@@ -8,7 +8,7 @@ mod node;
 mod token;
 mod trivia;
 
-use self::element::GreenElement;
+pub use self::element::GreenElement;
 
 pub(crate) use self::element::GreenElementRef;
 

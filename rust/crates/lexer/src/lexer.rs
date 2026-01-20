@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax::{DiagnosticKind, DiagnosticSeverity, GreenCache, GreenNodeBuilder, GreenToken, GreenTriviaInTree, GreenTriviaListInTree, NodeOrToken, SyntaxKind};
+use syntax_2::{DiagnosticKind, DiagnosticSeverity, GreenDiagnostic, GreenElement, GreenNode, GreenToken, GreenTrivia, SyntaxKind};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
@@ -12,15 +12,24 @@ pub struct Lexer<'source> {
     pub(super) source: &'source [u8],
     pub(super) position: usize,
     pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
-    cache: GreenCache,
     is_raw_stream: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct TokenInfo<'a> {
     kind: SyntaxKind,
     bytes: &'a [u8],
     diagnostics: Vec<(DiagnosticSeverity, u16, &'static str)>,
+}
+
+impl<'a> Default for TokenInfo<'a> {
+    fn default() -> Self {
+        Self {
+            kind: SyntaxKind::None,
+            bytes: b"",
+            diagnostics: Vec::new(),
+        }
+    }
 }
 
 impl<'source> Lexer<'source> {
@@ -29,7 +38,6 @@ impl<'source> Lexer<'source> {
             source,
             position: 0,
             lexeme: None,
-            cache: GreenCache::default(),
             is_raw_stream: false,
         }
     }
@@ -62,21 +70,41 @@ impl<'source> Lexer<'source> {
         self.scan_token(&mut token_info);
         let trailing_trivia = self.scan_trivia(&token_info);
 
-        // Build the token
-        let mut builder = GreenNodeBuilder::new(); // TODO: optimize to avoid node builder allocation
-        builder.start_node(SyntaxKind::LexerNode.into());
-        builder.token(token_info.kind.into(), token_info.bytes, leading_trivia.pieces(), trailing_trivia.pieces());
-        // Attach all diagnostics to the token just added
-        for (severity, code, message) in &token_info.diagnostics {
-            builder.add_diagnostic(*severity, *code, *message).expect("Token already added");
-        }
-        builder.finish_node();
-        let node = builder.finish();
+        // Build trivia lists
+        let leading = if leading_trivia.is_empty() {
+            None
+        } else {
+            Some(GreenNode::new(
+                SyntaxKind::List,
+                leading_trivia.into_iter().map(GreenElement::Trivia).collect::<Vec<_>>(),
+                None,
+            ))
+        };
 
-        match node.children().next() {
-            Some(NodeOrToken::Token(token)) => token,
-            _ => panic!("Expected a token node"),
-        }
+        let trailing = if trailing_trivia.is_empty() {
+            None
+        } else {
+            Some(GreenNode::new(
+                SyntaxKind::List,
+                trailing_trivia.into_iter().map(GreenElement::Trivia).collect::<Vec<_>>(),
+                None,
+            ))
+        };
+
+        // Build diagnostics if any
+        let diagnostics = if token_info.diagnostics.is_empty() {
+            None
+        } else {
+            let diag_list = token_info
+                .diagnostics
+                .iter()
+                .map(|(severity, code, message)| GreenDiagnostic::new(*code, *severity, message))
+                .collect::<Vec<_>>();
+            Some(syntax_2::GreenDiagnostics::new(&diag_list))
+        };
+
+        // Create the token
+        GreenToken::new(token_info.kind, token_info.bytes, leading, trailing, diagnostics)
     }
 
     /// Scans the main token content from the current position.
@@ -157,8 +185,8 @@ impl<'source> Lexer<'source> {
     /// - Comments: `%` to end of line
     ///
     /// Trivia is scanned greedily until a non-trivia character is encountered.
-    /// Returns a cached trivia list for efficient memory usage and deduplication.
-    fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> GreenTriviaListInTree {
+    /// Returns a vector of GreenTrivia elements.
+    fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> Vec<GreenTrivia> {
         let mut trivia = Vec::new();
         loop {
             let first_byte = match self.peek() {
@@ -189,17 +217,16 @@ impl<'source> Lexer<'source> {
                 _ => break,
             }
         }
-        self.cache.trivia_list(&trivia).1
+        trivia
     }
 
-    /// Scans consecutive whitespace characters and returns a cached trivia entry.
+    /// Scans consecutive whitespace characters and returns a trivia element.
     ///
     /// Consumes space (0x20), NULL (0x00), tab (0x09), and form feed (0x0C) characters
-    /// greedily until a non-whitespace character is encountered. The scanned bytes are
-    /// cached for memory efficiency and deduplication.
+    /// greedily until a non-whitespace character is encountered.
     ///
     /// Does not consume end-of-line sequences (CR/LF) - those are handled separately.
-    fn scan_whitespace(&mut self) -> GreenTriviaInTree {
+    fn scan_whitespace(&mut self) -> GreenTrivia {
         let pos = self.position;
         self.advance(); // consume the first whitespace
 
@@ -213,20 +240,18 @@ impl<'source> Lexer<'source> {
         }
 
         let spaces = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::WhitespaceTrivia.into(), spaces).1
+        GreenTrivia::new(SyntaxKind::WhitespaceTrivia, spaces)
     }
 
-    /// Scans a single end-of-line sequence and returns a cached trivia entry.
+    /// Scans a single end-of-line sequence and returns a trivia element.
     ///
     /// Recognizes PDF EOL formats as [`SyntaxKind::EndOfLineTrivia`]: LF (0x0A), CR (0x0D), or CR+LF (0x0D 0x0A).
     /// Consumes exactly one EOL sequence per call. Multiple consecutive EOLs (e.g., "\n\n") are handled
     /// by the caller invoking this method repeatedly via `scan_trivia()`, creating separate trivia entries
     /// for each EOL sequence for proper PDF semantics.
     ///
-    /// The scanned bytes are cached for memory efficiency.
-    ///
     /// See: ISO 32000-2:2020, §7.2.3 Character set.
-    fn scan_end_of_line(&mut self) -> GreenTriviaInTree {
+    fn scan_end_of_line(&mut self) -> GreenTrivia {
         let pos = self.position;
 
         if let Some(byte) = self.peek() {
@@ -242,19 +267,17 @@ impl<'source> Lexer<'source> {
         }
 
         let eol_bytes = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::EndOfLineTrivia.into(), eol_bytes).1
+        GreenTrivia::new(SyntaxKind::EndOfLineTrivia, eol_bytes)
     }
 
-    /// Scans a PDF comment and returns a cached trivia entry.
+    /// Scans a PDF comment and returns a trivia element.
     ///
     /// Comments in PDF begin with `%` and extend to the end of the line.
     /// The comment includes the `%` character but stops before the EOL sequence.
     /// The EOL is handled separately by `scan_trivia()` as its own trivia piece.
     ///
-    /// The scanned bytes (including `%`) are cached for memory efficiency.
-    ///
     /// See: ISO 32000-2:2020, §7.2.4 Comments.
-    fn scan_comment(&mut self) -> GreenTriviaInTree {
+    fn scan_comment(&mut self) -> GreenTrivia {
         let pos = self.position;
         self.advance(); // consume the '%'
 
@@ -268,7 +291,7 @@ impl<'source> Lexer<'source> {
         }
 
         let comment_bytes = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::CommentTrivia.into(), comment_bytes).1
+        GreenTrivia::new(SyntaxKind::CommentTrivia, comment_bytes)
     }
 
     /// Scans a numeric literal (integer or real number) and populates token_info.

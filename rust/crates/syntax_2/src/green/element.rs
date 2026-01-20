@@ -1,6 +1,6 @@
 use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, NodeOrTokenOrTrivia, SyntaxKind};
 
-pub(super) type GreenElement = NodeOrTokenOrTrivia<GreenNode, GreenToken, GreenTrivia>;
+pub type GreenElement = NodeOrTokenOrTrivia<GreenNode, GreenToken, GreenTrivia>;
 pub(crate) type GreenElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenData, &'a GreenTriviaData>;
 
 impl GreenElement {

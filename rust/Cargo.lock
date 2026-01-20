@@ -157,8 +157,7 @@ name = "lexer"
 version = "0.1.0"
 dependencies = [
  "pretty_assertions",
- "syntax",
- "triomphe",
+ "syntax_2",
 ]
 
 [[package]]
