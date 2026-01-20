@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax_2::{DiagnosticKind, DiagnosticSeverity, GreenDiagnostic, GreenElement, GreenNode, GreenToken, GreenTrivia, SyntaxKind};
+use syntax_2::{DiagnosticKind, DiagnosticSeverity, GreenDiagnostic, GreenElement, GreenNode, GreenToken, GreenTrivia, NodeCache, SyntaxKind};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
@@ -13,6 +13,7 @@ pub struct Lexer<'source> {
     pub(super) position: usize,
     pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
     is_raw_stream: bool,
+    cache: NodeCache,
 }
 
 #[derive(Debug)]
@@ -39,6 +40,7 @@ impl<'source> Lexer<'source> {
             position: 0,
             lexeme: None,
             is_raw_stream: false,
+            cache: NodeCache::default(),
         }
     }
 
@@ -103,8 +105,8 @@ impl<'source> Lexer<'source> {
             Some(syntax_2::GreenDiagnostics::new(&diag_list))
         };
 
-        // Create the token
-        GreenToken::new(token_info.kind, token_info.bytes, leading, trailing, diagnostics)
+        // Create the token using cache for deduplication
+        self.cache.token(token_info.kind, token_info.bytes, leading, trailing, diagnostics).1
     }
 
     /// Scans the main token content from the current position.
@@ -240,7 +242,7 @@ impl<'source> Lexer<'source> {
         }
 
         let spaces = &self.source[pos..self.position];
-        GreenTrivia::new(SyntaxKind::WhitespaceTrivia, spaces)
+        self.cache.trivia(SyntaxKind::WhitespaceTrivia, spaces).1
     }
 
     /// Scans a single end-of-line sequence and returns a trivia element.
@@ -267,7 +269,7 @@ impl<'source> Lexer<'source> {
         }
 
         let eol_bytes = &self.source[pos..self.position];
-        GreenTrivia::new(SyntaxKind::EndOfLineTrivia, eol_bytes)
+        self.cache.trivia(SyntaxKind::EndOfLineTrivia, eol_bytes).1
     }
 
     /// Scans a PDF comment and returns a trivia element.
@@ -291,7 +293,7 @@ impl<'source> Lexer<'source> {
         }
 
         let comment_bytes = &self.source[pos..self.position];
-        GreenTrivia::new(SyntaxKind::CommentTrivia, comment_bytes)
+        self.cache.trivia(SyntaxKind::CommentTrivia, comment_bytes).1
     }
 
     /// Scans a numeric literal (integer or real number) and populates token_info.

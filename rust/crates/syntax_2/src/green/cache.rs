@@ -66,16 +66,8 @@ fn node_hash(node: &GreenNodeData) -> u64 {
     h.finish()
 }
 
-fn element_id(slot: &Slot) -> *const () {
-    match slot {
-        Slot::Node { node, .. } => node as *const GreenNode as *const (),
-        Slot::Token { token, .. } => token as *const GreenToken as *const (),
-        Slot::Trivia { trivia, .. } => trivia as *const GreenTrivia as *const (),
-    }
-}
-
 impl NodeCache {
-    pub(crate) fn node(
+    pub fn node(
         &mut self,
         kind: SyntaxKind,
         children: &mut Vec<(u64, GreenElement)>,
@@ -143,7 +135,7 @@ impl NodeCache {
         (hash, node)
     }
 
-    pub(crate) fn token(
+    pub fn token(
         &mut self,
         kind: SyntaxKind,
         text: &[u8],
@@ -175,7 +167,7 @@ impl NodeCache {
         (hash, token)
     }
 
-    pub(crate) fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTrivia) {
+    pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) -> (u64, GreenTrivia) {
         let hash = {
             let mut h = FxHasher::default();
             kind.hash(&mut h);
