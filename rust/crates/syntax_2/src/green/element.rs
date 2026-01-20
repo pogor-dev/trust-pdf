@@ -50,19 +50,19 @@ mod green_element_tests {
     use pretty_assertions::assert_eq;
 
     fn empty_trivia_list() -> Option<GreenNode> {
-        Some(GreenNode::new(SyntaxKind::List, vec![]))
+        Some(GreenNode::new(SyntaxKind::List, vec![], None))
     }
 
     #[test]
     fn test_kind_when_node_expect_node_kind() {
-        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![], None);
         let element = GreenElement::Node(node);
         assert_eq!(element.kind(), SyntaxKind::ArrayExpression);
     }
 
     #[test]
     fn test_kind_when_token_expect_token_kind() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let element = GreenElement::Token(token);
         assert_eq!(element.kind(), SyntaxKind::NumericLiteralToken);
     }
@@ -76,15 +76,15 @@ mod green_element_tests {
 
     #[test]
     fn test_width_when_node_expect_node_width() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list());
-        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)]);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list(), None);
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)], None);
         let element = GreenElement::Node(node);
         assert_eq!(element.width(), 3);
     }
 
     #[test]
     fn test_width_when_token_expect_token_width() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"456", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"456", empty_trivia_list(), empty_trivia_list(), None);
         let element = GreenElement::Token(token);
         assert_eq!(element.width(), 3);
     }
@@ -100,10 +100,10 @@ mod green_element_tests {
     fn test_full_width_when_node_expect_node_full_width() {
         let leading_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
-        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", Some(leading), Some(trailing));
-        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)]);
+        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)], None);
+        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)], None);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", Some(leading), Some(trailing), None);
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)], None);
         let element = GreenElement::Node(node);
         assert_eq!(element.full_width(), 5); // 2 (leading) + 2 (token) + 1 (trailing)
     }
@@ -112,9 +112,9 @@ mod green_element_tests {
     fn test_full_width_when_token_expect_token_full_width() {
         let leading_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
-        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)]);
-        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", Some(leading), Some(trailing));
+        let leading = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(leading_trivia)], None);
+        let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)], None);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", Some(leading), Some(trailing), None);
         let element = GreenElement::Token(token);
         assert_eq!(element.full_width(), 5); // 1 (leading) + 2 (token) + 2 (trailing)
     }
@@ -128,8 +128,8 @@ mod green_element_tests {
 
     #[test]
     fn test_eq_when_same_node_expect_equal() {
-        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
-        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![], None);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![], None);
         let element1 = GreenElement::Node(node1);
         let element2 = GreenElement::Node(node2);
         assert_eq!(element1, element2);
@@ -137,8 +137,8 @@ mod green_element_tests {
 
     #[test]
     fn test_eq_when_same_token_expect_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let element1 = GreenElement::Token(token1);
         let element2 = GreenElement::Token(token2);
         assert_eq!(element1, element2);
@@ -155,8 +155,8 @@ mod green_element_tests {
 
     #[test]
     fn test_eq_when_different_variants_expect_not_equal() {
-        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![]);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![], None);
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let element1 = GreenElement::Node(node);
         let element2 = GreenElement::Token(token);
         assert_ne!(element1, element2);
@@ -164,10 +164,10 @@ mod green_element_tests {
 
     #[test]
     fn test_eq_when_different_node_content_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list());
-        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)]);
-        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)]);
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"1", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"2", empty_trivia_list(), empty_trivia_list(), None);
+        let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token1)], None);
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token2)], None);
         let element1 = GreenElement::Node(node1);
         let element2 = GreenElement::Node(node2);
         assert_ne!(element1, element2);
@@ -175,7 +175,7 @@ mod green_element_tests {
 
     #[test]
     fn test_clone_when_node_expect_cloned() {
-        let node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![]);
+        let node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![], None);
         let element1 = GreenElement::Node(node);
         let element2 = element1.clone();
         assert_eq!(element1, element2);
@@ -184,7 +184,7 @@ mod green_element_tests {
 
     #[test]
     fn test_clone_when_token_expect_cloned() {
-        let token = GreenToken::new(SyntaxKind::StringLiteralToken, b"test", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::StringLiteralToken, b"test", empty_trivia_list(), empty_trivia_list(), None);
         let element1 = GreenElement::Token(token);
         let element2 = element1.clone();
         assert_eq!(element1, element2);
@@ -206,7 +206,7 @@ mod green_element_tests {
     fn test_hash_consistency() {
         use std::collections::HashSet;
 
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let element1 = GreenElement::Token(token.clone());
         let element2 = GreenElement::Token(token);
 

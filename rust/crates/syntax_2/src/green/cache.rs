@@ -2,6 +2,7 @@ use hashbrown::hash_map::RawEntryMut;
 use rustc_hash::FxHasher;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
+use super::diagnostics::GreenDiagnostics;
 use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, SyntaxKind, green::node::Slot};
 
 use super::element::GreenElement;
@@ -74,8 +75,15 @@ fn element_id(slot: &Slot) -> *const () {
 }
 
 impl NodeCache {
-    pub(crate) fn node(&mut self, kind: SyntaxKind, children: &mut Vec<(u64, GreenElement)>, first_child: usize) -> (u64, GreenNode) {
-        let build_node = move |children: &mut Vec<(u64, GreenElement)>| GreenNode::new(kind, children.drain(first_child..).map(|(_, it)| it));
+    pub(crate) fn node(
+        &mut self,
+        kind: SyntaxKind,
+        children: &mut Vec<(u64, GreenElement)>,
+        first_child: usize,
+        diagnostics: Option<GreenDiagnostics>,
+    ) -> (u64, GreenNode) {
+        let build_node =
+            move |children: &mut Vec<(u64, GreenElement)>| GreenNode::new(kind, children.drain(first_child..).map(|(_, it)| it), diagnostics.clone());
 
         let children_ref = &children[first_child..];
         if children_ref.len() > 3 {
@@ -135,7 +143,14 @@ impl NodeCache {
         (hash, node)
     }
 
-    pub(crate) fn token(&mut self, kind: SyntaxKind, text: &[u8], leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> (u64, GreenToken) {
+    pub(crate) fn token(
+        &mut self,
+        kind: SyntaxKind,
+        text: &[u8],
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Option<GreenDiagnostics>,
+    ) -> (u64, GreenToken) {
         let hash = {
             let mut h = FxHasher::default();
             kind.hash(&mut h);
@@ -151,7 +166,7 @@ impl NodeCache {
         let token = match entry {
             RawEntryMut::Occupied(entry) => entry.key().0.clone(),
             RawEntryMut::Vacant(entry) => {
-                let token = GreenToken::new(kind, text, leading_trivia, trailing_trivia);
+                let token = GreenToken::new(kind, text, leading_trivia, trailing_trivia, diagnostics);
                 entry.insert_with_hasher(hash, NoHash(token.clone()), (), |t| token_hash(&t.0));
                 token
             }
@@ -195,8 +210,8 @@ mod node_cache_tests {
     fn test_token_deduplication_when_same_kind_and_text_expect_same_instance() {
         let mut cache = NodeCache::default();
 
-        let (hash1, token1) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
-        let (hash2, token2) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let (hash1, token1) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
+        let (hash2, token2) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
 
         assert_eq!(hash1, hash2, "hashes should be equal");
         // Check that we get the same Arc instance by comparing pointer addresses
@@ -211,7 +226,7 @@ mod node_cache_tests {
 
         // Add the same token multiple times
         for _ in 0..5 {
-            let _ = cache.token(SyntaxKind::StringLiteralToken, b"hello", None, None);
+            let _ = cache.token(SyntaxKind::StringLiteralToken, b"hello", None, None, None);
         }
 
         // The cache should only have 1 entry for this token
@@ -222,9 +237,9 @@ mod node_cache_tests {
     fn test_token_cache_with_different_tokens_expect_multiple_entries() {
         let mut cache = NodeCache::default();
 
-        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
-        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None);
-        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None);
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None, None);
+        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None, None);
 
         assert_eq!(cache.tokens.len(), 3, "cache should store 3 different tokens");
     }
@@ -271,8 +286,8 @@ mod node_cache_tests {
     fn test_token_hash_consistency_when_same_token_expect_same_hash() {
         let mut cache = NodeCache::default();
 
-        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
-        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
+        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
 
         assert_eq!(hash1, hash2, "same token should produce the same hash");
     }
@@ -281,8 +296,8 @@ mod node_cache_tests {
     fn test_token_hash_different_when_different_tokens() {
         let mut cache = NodeCache::default();
 
-        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
-        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None);
+        let (hash1, _) = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
+        let (hash2, _) = cache.token(SyntaxKind::NumericLiteralToken, b"99", None, None, None);
 
         assert_ne!(hash1, hash2, "different tokens should produce different hashes");
     }
@@ -292,9 +307,9 @@ mod node_cache_tests {
         let mut cache = NodeCache::default();
 
         // Add various elements
-        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None);
+        let _ = cache.token(SyntaxKind::NumericLiteralToken, b"42", None, None, None);
         let _ = cache.trivia(SyntaxKind::WhitespaceTrivia, b"  ");
-        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None);
+        let _ = cache.token(SyntaxKind::StringLiteralToken, b"test", None, None, None);
         let _ = cache.trivia(SyntaxKind::CommentTrivia, b"% comment");
 
         assert_eq!(cache.tokens.len(), 2, "cache should have 2 tokens");

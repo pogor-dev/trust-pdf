@@ -167,9 +167,10 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_trivia_data_memory_layout() {
-        // GreenTriviaData is transparent wrapper around ReprThin
-        // Size depends on HeaderSlice layout
-        assert!(std::mem::size_of::<GreenTriviaData>() >= std::mem::size_of::<GreenTriviaHead>());
+        // GreenTriviaData is transparent wrapper around HeaderSlice<GreenTriviaHead, [u8; 0]>
+        // HeaderSlice with repr(C): header(2 bytes) + padding(6 bytes) + length(8 bytes) + slice(0 bytes) = 16 bytes
+        assert_eq!(std::mem::size_of::<GreenTriviaData>(), 16);
+        assert_eq!(std::mem::align_of::<GreenTriviaData>(), std::mem::align_of::<usize>());
     }
 
     #[test]

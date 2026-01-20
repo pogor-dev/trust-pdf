@@ -5,6 +5,7 @@ use std::{
     ops, ptr,
 };
 
+use super::diagnostics::GreenDiagnostics;
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
@@ -19,6 +20,7 @@ struct GreenTokenHead {
     full_width: u32,
     leading_trivia: Option<GreenNode>,
     trailing_trivia: Option<GreenNode>,
+    diagnostics: Option<GreenDiagnostics>,
     _c: Count<GreenToken>,
 }
 
@@ -35,6 +37,12 @@ impl GreenTokenData {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
+    }
+
+    /// Returns diagnostics attached to this token.
+    #[inline]
+    pub fn diagnostics(&self) -> Option<&GreenDiagnostics> {
+        self.data.header.diagnostics.as_ref()
     }
 
     /// Text of this token.
@@ -172,7 +180,13 @@ impl fmt::Debug for GreenToken {
 impl GreenToken {
     /// Creates new token.
     #[inline]
-    pub fn new(kind: SyntaxKind, text: &[u8], leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenToken {
+    pub fn new(
+        kind: SyntaxKind,
+        text: &[u8],
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Option<GreenDiagnostics>,
+    ) -> GreenToken {
         assert!(text.len() <= u32::MAX as usize, "token text length exceeds u32::MAX");
         let full_width = text.len() as u32 + leading_trivia.as_ref().map_or(0, |t| t.full_width()) + trailing_trivia.as_ref().map_or(0, |t| t.full_width());
         let head = GreenTokenHead {
@@ -180,6 +194,7 @@ impl GreenToken {
             full_width,
             leading_trivia,
             trailing_trivia,
+            diagnostics,
             _c: Count::new(),
         };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
@@ -230,19 +245,26 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_token_head_memory_layout() {
-        // GreenTokenHead: kind (2 bytes) + full_width (4 bytes) + 2 GreenNode pointers + _c (0 bytes)
-        assert!(std::mem::size_of::<GreenTokenHead>() >= 6);
+        // GreenTokenHead: kind (2 bytes) + full_width (4 bytes) + leading_trivia (usize) + trailing_trivia (usize) + diagnostics (usize) + _c (0 bytes)
+        // Expected: 2 + 4 + 3*usize = 6 + 3*usize bytes (with padding for alignment)
+        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 8 + 3 * std::mem::size_of::<usize>());
+        assert_eq!(std::mem::align_of::<GreenTokenHead>(), std::mem::align_of::<usize>());
     }
 
     #[test]
     fn test_green_token_data_memory_layout() {
-        // GreenTokenData is transparent wrapper around ReprThin
-        assert!(std::mem::size_of::<GreenTokenData>() >= std::mem::size_of::<GreenTokenHead>());
+        // GreenTokenData is transparent wrapper around HeaderSlice<GreenTokenHead, [u8; 0]>
+        // HeaderSlice = header + length(usize) + [u8; 0]
+        assert_eq!(
+            std::mem::size_of::<GreenTokenData>(),
+            std::mem::size_of::<GreenTokenHead>() + std::mem::size_of::<usize>()
+        );
+        assert_eq!(std::mem::align_of::<GreenTokenData>(), std::mem::align_of::<GreenTokenHead>());
     }
 
     #[test]
     fn test_green_token_memory_layout() {
-        // GreenToken wraps ThinArc pointer (8 bytes on 64-bit)
+        // GreenToken wraps ThinArc pointer
         assert_eq!(std::mem::size_of::<GreenToken>(), std::mem::size_of::<usize>());
         assert_eq!(std::mem::align_of::<GreenToken>(), std::mem::align_of::<usize>());
     }
@@ -254,70 +276,70 @@ mod green_token_tests {
     use pretty_assertions::assert_eq;
 
     fn empty_trivia_list() -> Option<GreenNode> {
-        Some(GreenNode::new(SyntaxKind::List, vec![]))
+        Some(GreenNode::new(SyntaxKind::List, vec![], None))
     }
 
     #[test]
     fn test_new_token() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(token.text(), b"42");
     }
 
     #[test]
     fn test_kind() {
-        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"foo", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"foo", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.kind(), SyntaxKind::NameLiteralToken);
     }
 
     #[test]
     fn test_text() {
-        let token = GreenToken::new(SyntaxKind::StringLiteralToken, b"hello", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::StringLiteralToken, b"hello", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.text(), b"hello");
     }
 
     #[test]
     fn test_full_text() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.full_text(), b"123");
     }
 
     #[test]
     fn test_width() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"456", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"456", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.width(), 3);
     }
 
     #[test]
     fn test_full_width() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"789", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"789", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.full_width(), 3);
     }
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token1, token2);
     }
 
     #[test]
     fn test_eq_when_different_text_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"43", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"43", empty_trivia_list(), empty_trivia_list(), None);
         assert_ne!(token1, token2);
     }
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NameLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NameLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         assert_ne!(token1, token2);
     }
 
     #[test]
     fn test_clone() {
-        let token1 = GreenToken::new(SyntaxKind::StringLiteralToken, b"test", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::StringLiteralToken, b"test", empty_trivia_list(), empty_trivia_list(), None);
         let token2 = token1.clone();
         assert_eq!(token1, token2);
         assert_eq!(token2.kind(), SyntaxKind::StringLiteralToken);
@@ -326,13 +348,13 @@ mod green_token_tests {
 
     #[test]
     fn test_display() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"999", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"999", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.to_string(), "999");
     }
 
     #[test]
     fn test_debug() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let debug_str = format!("{:?}", token);
         let expected = "GreenToken { kind: NumericLiteralToken, text: \"42\", width: 2, full_text: \"42\", full_width: 2, leading_trivia: Some(GreenNode { kind: List, full_width: 0, slot_count: 0 }), trailing_trivia: Some(GreenNode { kind: List, full_width: 0, slot_count: 0 }) }";
         assert_eq!(debug_str, expected);
@@ -340,14 +362,14 @@ mod green_token_tests {
 
     #[test]
     fn test_empty_text() {
-        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"", empty_trivia_list(), empty_trivia_list(), None);
         assert_eq!(token.text(), b"");
         assert_eq!(token.width(), 0);
     }
 
     #[test]
     fn test_into_raw_and_from_raw() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"777", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"777", empty_trivia_list(), empty_trivia_list(), None);
         let ptr = GreenToken::into_raw(token.clone());
         let reconstructed = unsafe { GreenToken::from_raw(ptr) };
         assert_eq!(token, reconstructed);
@@ -355,10 +377,62 @@ mod green_token_tests {
 
     #[test]
     fn test_borrow() {
-        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"abc", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NameLiteralToken, b"abc", empty_trivia_list(), empty_trivia_list(), None);
         let borrowed: &GreenTokenData = token.borrow();
         assert_eq!(borrowed.kind(), SyntaxKind::NameLiteralToken);
         assert_eq!(borrowed.text(), b"abc");
+    }
+
+    #[test]
+    fn test_token_with_no_diagnostics() {
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        assert!(token.diagnostics().is_none());
+    }
+
+    #[test]
+    fn test_token_with_diagnostics() {
+        use crate::green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics};
+
+        let diag = GreenDiagnostic::new(1001, DiagnosticSeverity::Warning, "test warning");
+        let diagnostics = GreenDiagnostics::new(&[diag]);
+
+        let token = GreenToken::new(
+            SyntaxKind::NumericLiteralToken,
+            b"42",
+            empty_trivia_list(),
+            empty_trivia_list(),
+            Some(diagnostics.clone()),
+        );
+
+        assert!(token.diagnostics().is_some());
+        let retrieved = token.diagnostics().expect("diagnostics should exist");
+        assert_eq!(retrieved.len(), 1);
+        assert_eq!(retrieved.get(0).expect("diagnostic 0").code(), 1001);
+        assert_eq!(retrieved.get(0).expect("diagnostic 0").severity(), DiagnosticSeverity::Warning);
+        assert_eq!(retrieved.get(0).expect("diagnostic 0").message(), "test warning");
+    }
+
+    #[test]
+    fn test_token_with_multiple_diagnostics() {
+        use crate::green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics};
+
+        let diag1 = GreenDiagnostic::new(2001, DiagnosticSeverity::Error, "syntax error");
+        let diag2 = GreenDiagnostic::new(2002, DiagnosticSeverity::Info, "helpful info");
+        let diagnostics = GreenDiagnostics::new(&[diag1, diag2]);
+
+        let token = GreenToken::new(
+            SyntaxKind::StringLiteralToken,
+            b"test",
+            empty_trivia_list(),
+            empty_trivia_list(),
+            Some(diagnostics),
+        );
+
+        let retrieved = token.diagnostics().expect("diagnostics should exist");
+        assert_eq!(retrieved.len(), 2);
+        assert_eq!(retrieved.count_by_severity(DiagnosticSeverity::Error), 1);
+        assert_eq!(retrieved.count_by_severity(DiagnosticSeverity::Info), 1);
+        assert!(retrieved.has_errors());
     }
 }
 
@@ -368,12 +442,12 @@ mod green_token_data_tests {
     use pretty_assertions::assert_eq;
 
     fn empty_trivia_list() -> Option<GreenNode> {
-        Some(GreenNode::new(SyntaxKind::List, vec![]))
+        Some(GreenNode::new(SyntaxKind::List, vec![], None))
     }
 
     #[test]
     fn test_to_owned() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"123", empty_trivia_list(), empty_trivia_list(), None);
         let data: &GreenTokenData = &*token;
         let owned = data.to_owned();
         assert_eq!(token, owned);
@@ -381,8 +455,8 @@ mod green_token_data_tests {
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"99", empty_trivia_list(), empty_trivia_list(), None);
         let data1: &GreenTokenData = &*token1;
         let data2: &GreenTokenData = &*token2;
         assert_eq!(data1, data2);
@@ -390,8 +464,8 @@ mod green_token_data_tests {
 
     #[test]
     fn test_eq_when_different_text_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"11", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"22", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"11", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"22", empty_trivia_list(), empty_trivia_list(), None);
         let data1: &GreenTokenData = &*token1;
         let data2: &GreenTokenData = &*token2;
         assert_ne!(data1, data2);
@@ -399,8 +473,8 @@ mod green_token_data_tests {
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
-        let token2 = GreenToken::new(SyntaxKind::NameLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token1 = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
+        let token2 = GreenToken::new(SyntaxKind::NameLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let data1: &GreenTokenData = &*token1;
         let data2: &GreenTokenData = &*token2;
         assert_ne!(data1, data2);
@@ -408,7 +482,7 @@ mod green_token_data_tests {
 
     #[test]
     fn test_write_to_with_no_trivia() {
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list());
+        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
         let data: &GreenTokenData = &*token;
         assert_eq!(data.write_to(false, false), b"42");
         assert_eq!(data.write_to(true, true), b"42");
