@@ -87,9 +87,8 @@ impl Lexer {
         let token = self.lexer.next_token();
 
         // Get token properties
-        let syntax_kind: SyntaxKind = token.kind().into();
-        let kind = format!("{:?}", syntax_kind);
-        let text = String::from_utf8_lossy(&token.bytes()).to_string();
+        let kind = format!("{:?}", token.kind());
+        let text = String::from_utf8_lossy(token.text()).to_string();
         let full_width = token.full_width() as usize;
         TokenResult { kind, text, width: full_width }
     }

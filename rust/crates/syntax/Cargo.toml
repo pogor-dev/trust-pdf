@@ -7,18 +7,11 @@ license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
 
-# Avoid loading benches from the benches directory so we can add more
-# dependencies in there which would otherwise hog down testing this crate.
-autobenches = false
-
 [dependencies]
 # Local crates
-rowan = { path = "../rowan" }
 
 # Non-local crates
-
-[dev-dependencies]
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+countme.workspace = true
+hashbrown.workspace = true
+pretty_assertions.workspace = true
+rustc-hash.workspace = true

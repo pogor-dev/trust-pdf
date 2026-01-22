@@ -1,7 +1,7 @@
 use crate::line_map::{compute_line_starts, offset_to_line_col};
 use lexer::Lexer;
 use lsp_types::SemanticToken;
-use syntax::SyntaxKind;
+use syntax::{Slot, SyntaxKind};
 
 #[repr(u32)]
 #[derive(Clone, Copy)]
@@ -64,7 +64,7 @@ pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
 
     loop {
         let tok = lexer.next_token();
-        let kind: SyntaxKind = tok.kind().into();
+        let kind = tok.kind();
         let width = tok.full_width() as usize;
 
         if kind == SyntaxKind::EndOfFileToken {
@@ -73,34 +73,40 @@ pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
 
         // Leading trivia comments
         let mut leading_consumed: usize = 0;
-        for piece in tok.leading_trivia().pieces() {
-            let pkind: SyntaxKind = piece.kind().into();
-            let plen = piece.full_width() as usize;
-            if pkind == SyntaxKind::CommentTrivia {
-                let abs = offset + leading_consumed;
-                emit(abs, piece.full_bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+        if let Some(leading_node) = tok.leading_trivia() {
+            for slot in leading_node.slots() {
+                if let Slot::Trivia { trivia, .. } = slot {
+                    let plen = trivia.text().len();
+                    if trivia.kind() == SyntaxKind::CommentTrivia {
+                        let abs = offset + leading_consumed;
+                        emit(abs, plen as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                    }
+                    leading_consumed += plen;
+                }
             }
-            leading_consumed += plen;
         }
 
         // Main token
         if let Some(token_type) = map_kind(kind) {
-            let token_start = offset + tok.leading_trivia().full_width() as usize;
-            let token_len = tok.bytes().len() as u32;
+            let token_start = offset + leading_consumed;
+            let token_len = tok.text().len() as u32;
             emit(token_start, token_len, token_type, &mut prev_line, &mut prev_col);
         }
 
         // Trailing trivia comments
-        let trailing_base = offset + tok.leading_trivia().full_width() as usize + tok.bytes().len();
+        let trailing_base = offset + leading_consumed + tok.text().len();
         let mut trailing_consumed: usize = 0;
-        for piece in tok.trailing_trivia().pieces() {
-            let pkind: SyntaxKind = piece.kind().into();
-            let plen = piece.full_width() as usize;
-            if pkind == SyntaxKind::CommentTrivia {
-                let abs = trailing_base + trailing_consumed;
-                emit(abs, piece.full_bytes().len() as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+        if let Some(trailing_node) = tok.trailing_trivia() {
+            for slot in trailing_node.slots() {
+                if let Slot::Trivia { trivia, .. } = slot {
+                    let plen = trivia.text().len();
+                    if trivia.kind() == SyntaxKind::CommentTrivia {
+                        let abs = trailing_base + trailing_consumed;
+                        emit(abs, plen as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                    }
+                    trailing_consumed += plen;
+                }
             }
-            trailing_consumed += plen;
         }
 
         offset += width;
