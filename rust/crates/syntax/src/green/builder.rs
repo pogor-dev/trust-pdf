@@ -47,7 +47,7 @@ impl GreenNodeBuilder {
     pub fn trivia(&mut self, kind: SyntaxKind, text: &[u8]) {
         let token_builder = self.current_token.as_mut().expect("No current token");
         let trivia = GreenTrivia::new(kind, text);
-        
+
         if token_builder.text_set {
             // After text() call - trailing trivia
             token_builder.trailing_trivia.push(trivia);
@@ -62,14 +62,14 @@ impl GreenNodeBuilder {
     pub fn finish_token(&mut self) {
         let token_builder = self.current_token.take().expect("No current token to finish");
         let text = token_builder.text.expect("Token text must be set before finishing the token");
-        
+
         let leading_trivia = if token_builder.leading_trivia.is_empty() {
             None
         } else {
             Some(GreenNode::new(
                 SyntaxKind::List,
                 token_builder.leading_trivia.into_iter().map(GreenElement::Trivia),
-                None
+                None,
             ))
         };
 
@@ -79,7 +79,7 @@ impl GreenNodeBuilder {
             Some(GreenNode::new(
                 SyntaxKind::List,
                 token_builder.trailing_trivia.into_iter().map(GreenElement::Trivia),
-                None
+                None,
             ))
         };
 
@@ -112,13 +112,13 @@ impl GreenNodeBuilder {
                 let mut all_diags = existing_diags;
                 all_diags.push(diagnostic);
                 let new_diagnostics = Some(GreenDiagnostics::new(&all_diags));
-                
+
                 *token = GreenToken::new(
                     token.kind(),
                     token.text(),
                     token.leading_trivia().clone(),
                     token.trailing_trivia().clone(),
-                    new_diagnostics
+                    new_diagnostics,
                 );
             }
             GreenElement::Node(node) => {
@@ -127,14 +127,18 @@ impl GreenNodeBuilder {
                 let mut all_diags = existing_diags;
                 all_diags.push(diagnostic);
                 let new_diagnostics = Some(GreenDiagnostics::new(&all_diags));
-                
+
                 // Reconstruct node with new diagnostics
-                let slots: Vec<_> = node.slots().cloned().map(|s| match s {
-                    crate::green::node::Slot::Node { node, .. } => GreenElement::Node(node),
-                    crate::green::node::Slot::Token { token, .. } => GreenElement::Token(token),
-                    crate::green::node::Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia),
-                }).collect();
-                
+                let slots: Vec<_> = node
+                    .slots()
+                    .cloned()
+                    .map(|s| match s {
+                        crate::green::node::Slot::Node { node, .. } => GreenElement::Node(node),
+                        crate::green::node::Slot::Token { token, .. } => GreenElement::Token(token),
+                        crate::green::node::Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia),
+                    })
+                    .collect();
+
                 *node = GreenNode::new(node.kind(), slots, new_diagnostics);
             }
             GreenElement::Trivia(_) => {
@@ -156,7 +160,7 @@ impl GreenNodeBuilder {
     #[inline]
     pub fn finish_node(&mut self) {
         let (kind, first_child) = self.parents.pop().expect("No current node to finish");
-        
+
         let diagnostics = if self.pending_diagnostics.is_empty() {
             None
         } else {

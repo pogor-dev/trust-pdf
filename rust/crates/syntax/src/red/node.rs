@@ -174,7 +174,7 @@ impl<'a> Iterator for ChildIterator<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tree, SyntaxElement, SyntaxKind, SyntaxNode};
+    use crate::{SyntaxElement, SyntaxKind, SyntaxNode, tree};
     use pretty_assertions::assert_eq;
 
     #[test]

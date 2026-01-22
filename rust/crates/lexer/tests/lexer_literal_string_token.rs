@@ -5,7 +5,7 @@ use support::{assert_nodes_equal, generate_node_from_lexer};
 use syntax::{
     DiagnosticKind,
     DiagnosticSeverity::{Error, Warning},
-    SyntaxKind, tree
+    SyntaxKind, tree,
 };
 
 #[test]

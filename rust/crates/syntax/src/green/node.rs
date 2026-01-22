@@ -486,7 +486,10 @@ mod memory_layout_tests {
     fn test_green_node_data_memory_layout() {
         // GreenNodeData is transparent wrapper around HeaderSlice<GreenNodeHead, [Slot; 0]>
         // HeaderSlice = header + length(usize) + [Slot; 0]
-        assert_eq!(std::mem::size_of::<GreenNodeData>(), std::mem::size_of::<GreenNodeHead>() + std::mem::size_of::<usize>());
+        assert_eq!(
+            std::mem::size_of::<GreenNodeData>(),
+            std::mem::size_of::<GreenNodeHead>() + std::mem::size_of::<usize>()
+        );
         assert_eq!(std::mem::align_of::<GreenNodeData>(), std::mem::align_of::<GreenNodeHead>());
     }
 
@@ -1218,18 +1221,14 @@ mod slots_iterator_tests {
 
     #[test]
     fn test_node_with_diagnostics() {
-        use crate::green::{GreenDiagnostic, GreenDiagnostics, DiagnosticSeverity};
-        
+        use crate::green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics};
+
         let diag = GreenDiagnostic::new(3001, DiagnosticSeverity::Error, "parse error");
         let diagnostics = GreenDiagnostics::new(&[diag]);
-        
+
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), empty_trivia_list(), None);
-        let node = GreenNode::new(
-            SyntaxKind::ArrayExpression,
-            vec![GreenElement::Token(token)],
-            Some(diagnostics.clone())
-        );
-        
+        let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenElement::Token(token)], Some(diagnostics.clone()));
+
         assert!(node.diagnostics().is_some());
         let retrieved = node.diagnostics().expect("diagnostics should exist");
         assert_eq!(retrieved.len(), 1);
@@ -1240,20 +1239,16 @@ mod slots_iterator_tests {
 
     #[test]
     fn test_node_with_multiple_diagnostics() {
-        use crate::green::{GreenDiagnostic, GreenDiagnostics, DiagnosticSeverity};
-        
+        use crate::green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics};
+
         let diag1 = GreenDiagnostic::new(4001, DiagnosticSeverity::Warning, "ambiguous syntax");
         let diag2 = GreenDiagnostic::new(4002, DiagnosticSeverity::Error, "unexpected token");
         let diag3 = GreenDiagnostic::new(4003, DiagnosticSeverity::Info, "consider using");
         let diagnostics = GreenDiagnostics::new(&[diag1, diag2, diag3]);
-        
+
         let token = GreenToken::new(SyntaxKind::StringLiteralToken, b"test", empty_trivia_list(), empty_trivia_list(), None);
-        let node = GreenNode::new(
-            SyntaxKind::DictionaryExpression,
-            vec![GreenElement::Token(token)],
-            Some(diagnostics)
-        );
-        
+        let node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenElement::Token(token)], Some(diagnostics));
+
         let retrieved = node.diagnostics().expect("diagnostics should exist");
         assert_eq!(retrieved.len(), 3);
         assert_eq!(retrieved.count_by_severity(DiagnosticSeverity::Error), 1);
@@ -1264,13 +1259,13 @@ mod slots_iterator_tests {
 
     #[test]
     fn test_node_empty_with_diagnostics() {
-        use crate::green::{GreenDiagnostic, GreenDiagnostics, DiagnosticSeverity};
-        
+        use crate::green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics};
+
         let diag = GreenDiagnostic::new(5001, DiagnosticSeverity::Warning, "empty node warning");
         let diagnostics = GreenDiagnostics::new(&[diag]);
-        
+
         let node = GreenNode::new(SyntaxKind::List, vec![], Some(diagnostics));
-        
+
         assert_eq!(node.slot_count(), 0);
         assert!(node.diagnostics().is_some());
         let retrieved = node.diagnostics().expect("diagnostics should exist");

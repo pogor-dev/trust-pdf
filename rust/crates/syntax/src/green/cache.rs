@@ -2,8 +2,8 @@ use hashbrown::hash_map::RawEntryMut;
 use rustc_hash::FxHasher;
 use std::hash::{BuildHasherDefault, Hash, Hasher};
 
-use super::diagnostics::GreenDiagnostics;
 use super::diagnostic::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnosticData};
+use super::diagnostics::GreenDiagnostics;
 use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, SyntaxKind, green::node::Slot};
 
 use super::element::GreenElement;
@@ -363,7 +363,11 @@ mod node_cache_tests {
         assert_eq!(hash1, hash2, "hashes should be equal");
         let ptr1 = GreenDiagnostic::into_raw(diag1.clone());
         let ptr2 = GreenDiagnostic::into_raw(diag2.clone());
-        assert_eq!(ptr1.as_ptr(), ptr2.as_ptr(), "diagnostics should point to the same memory location (deduplicated)");
+        assert_eq!(
+            ptr1.as_ptr(),
+            ptr2.as_ptr(),
+            "diagnostics should point to the same memory location (deduplicated)"
+        );
     }
 
     #[test]
