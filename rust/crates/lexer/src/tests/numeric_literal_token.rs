@@ -1,5 +1,5 @@
-use crate::Lexer;
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
+use crate::Lexer;
 use syntax::{SyntaxKind, tree};
 
 #[test]
