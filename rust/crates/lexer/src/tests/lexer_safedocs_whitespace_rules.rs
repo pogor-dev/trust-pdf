@@ -1,7 +1,5 @@
-mod support;
-
-use lexer::Lexer;
-use support::{assert_nodes_equal, generate_node_from_lexer};
+use crate::Lexer;
+use super::utils::{assert_nodes_equal, generate_node_from_lexer};
 use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 /// Tests for SafeDocs PDF Compacted Syntax Matrix whitespace rules.

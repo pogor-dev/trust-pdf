@@ -1,4 +1,4 @@
-use lexer::Lexer;
+use crate::Lexer;
 use pretty_assertions::assert_eq;
 use syntax::{GreenNode, GreenNodeBuilder, Slot, SyntaxKind};
 
