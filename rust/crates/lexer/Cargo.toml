@@ -13,7 +13,7 @@ crate-type = ["rlib"]
 
 [dependencies]
 # Local crates
-syntax_2 = { path = "../syntax_2" }
+syntax.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true

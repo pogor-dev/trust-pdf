@@ -182,7 +182,7 @@ name = "lexer"
 version = "0.1.0"
 dependencies = [
  "pretty_assertions",
- "syntax_2",
+ "syntax",
 ]
 
 [[package]]
@@ -420,7 +420,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "syntax_2"
+name = "syntax"
 version = "0.1.0"
 dependencies = [
  "countme",
@@ -470,7 +470,7 @@ dependencies = [
  "lsp-types",
  "serde",
  "serde_json",
- "syntax_2",
+ "syntax",
  "tracing",
 ]
 
@@ -594,7 +594,7 @@ version = "0.1.0"
 dependencies = [
  "lexer",
  "pretty_assertions",
- "syntax_2",
+ "syntax",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]

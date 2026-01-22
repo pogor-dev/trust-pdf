@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use syntax_2::{DiagnosticKind, DiagnosticSeverity, GreenElement, GreenNode, GreenToken, GreenTrivia, NodeCache, SyntaxKind};
+use syntax::{DiagnosticKind, DiagnosticSeverity, GreenElement, GreenNode, GreenToken, GreenTrivia, NodeCache, SyntaxKind};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
@@ -102,7 +102,7 @@ impl<'source> Lexer<'source> {
                 .iter()
                 .map(|(severity, code, message)| self.cache.diagnostic(*code, *severity, message).1)
                 .collect::<Vec<_>>();
-            Some(syntax_2::GreenDiagnostics::new(&diag_list))
+            Some(syntax::GreenDiagnostics::new(&diag_list))
         };
 
         // Create the token using cache for deduplication

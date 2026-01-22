@@ -2,8 +2,8 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax_2::SyntaxKind;
-use syntax_2::tree;
+use syntax::SyntaxKind;
+use syntax::tree;
 
 #[test]
 fn test_scan_array_open_bracket_expect_open_bracket_token() {

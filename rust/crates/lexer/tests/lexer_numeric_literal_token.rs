@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax_2::{SyntaxKind, tree};
+use syntax::{SyntaxKind, tree};
 
 #[test]
 fn test_scan_numeric_literal_when_integer_123_expect_numeric_literal_token() {

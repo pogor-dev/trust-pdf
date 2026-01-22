@@ -45,8 +45,8 @@
 /// # Example Usage
 ///
 /// ```ignore
-/// use syntax_2::tree;
-/// use syntax_2::SyntaxKind;
+/// use syntax::tree;
+/// use syntax::SyntaxKind;
 ///
 /// const PARENT: SyntaxKind = SyntaxKind(1);
 /// const CHILD: SyntaxKind = SyntaxKind(2);

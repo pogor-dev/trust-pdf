@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax_2::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
 
 #[test]
 fn test_scan_hex_string_when_simple_hex_string_expect_hex_string_literal_token() {

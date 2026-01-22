@@ -2,7 +2,7 @@ mod support;
 
 use lexer::Lexer;
 use support::{assert_nodes_equal, generate_node_from_lexer};
-use syntax_2::{
+use syntax::{
     DiagnosticKind,
     DiagnosticSeverity::{Error, Warning},
     SyntaxKind, tree

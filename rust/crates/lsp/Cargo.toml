@@ -19,4 +19,4 @@ tracing.workspace = true
 
 # Local crates
 lexer.workspace = true
-syntax_2.workspace = true
+syntax.workspace = true

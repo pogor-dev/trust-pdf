@@ -1,6 +1,6 @@
 use lexer::Lexer;
 use pretty_assertions::assert_eq;
-use syntax_2::{GreenNode, GreenNodeBuilder, Slot, SyntaxKind};
+use syntax::{GreenNode, GreenNodeBuilder, Slot, SyntaxKind};
 
 /// Asserts that two green nodes have identical token streams and diagnostics.
 pub fn assert_nodes_equal(actual: &GreenNode, expected: &GreenNode) {

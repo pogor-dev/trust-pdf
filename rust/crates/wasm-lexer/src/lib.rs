@@ -4,7 +4,7 @@
 //! from TypeScript/JavaScript via `wasm-bindgen`.
 
 use lexer::Lexer as RustLexer;
-use syntax_2::SyntaxKind;
+use syntax::SyntaxKind;
 use wasm_bindgen::prelude::*;
 
 /// Token returned by the WASM lexer.

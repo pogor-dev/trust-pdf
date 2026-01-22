@@ -1,7 +1,7 @@
 use crate::line_map::{compute_line_starts, offset_to_line_col};
 use lexer::Lexer;
 use lsp_types::SemanticToken;
-use syntax_2::{Slot, SyntaxKind};
+use syntax::{Slot, SyntaxKind};
 
 #[repr(u32)]
 #[derive(Clone, Copy)]
