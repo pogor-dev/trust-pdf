@@ -13,9 +13,7 @@ repository = "https://github.com/pogor-dev/trust-pdf"
 # Local crates
 parser = { path = "./crates/parser", version = "0.1.0" }
 lexer = { path = "./crates/lexer", version = "0.1.0" }
-rowan = { path = "./crates/rowan", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
-syntax = { path = "./crates/syntax", version = "0.1.0" }
 syntax_2 = { path = "./crates/syntax_2", version = "0.1.0" }
 trust-pdf-analyzer = { path = "./crates/lsp", version = "0.1.0" }
 wasm-lexer = { path = "./crates/wasm-lexer", version = "0.1.0" }
@@ -23,7 +21,7 @@ wasm-lexer = { path = "./crates/wasm-lexer", version = "0.1.0" }
 # Non-local crates
 anyhow = "1.0.100"
 bumpalo = "3.19.1"
-cargo-deny = "0.18.3"
+cargo-deny = "0.19.0"
 cargo-llvm-cov = "0.6.14"
 countme = "3.0.1"
 hashbrown = "0.16.1"
@@ -38,8 +36,8 @@ serde = "1.0.228"
 serde_json = "1.0.149"
 tracing = "0.1.44"
 triomphe = "0.1.15"
-wasm-bindgen = "0.2.106"
-wasm-bindgen-test = "0.3.56"
+wasm-bindgen = "0.2.108"
+wasm-bindgen-test = "0.3.58"
 
 # Optimized profiles for faster builds
 [profile.dev]
