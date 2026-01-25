@@ -3,7 +3,9 @@
 mod arc;
 mod diagnostic_kind;
 mod green;
+mod internal;
 mod red;
+mod syntax_factory;
 mod syntax_kind;
 mod utility_types;
 
