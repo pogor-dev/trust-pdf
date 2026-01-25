@@ -5,10 +5,6 @@ pub enum SyntaxKind {
     List,
     BadToken,
 
-    #[doc(hidden)]
-    /// Placeholder node for lexer phase.
-    LexerNode,
-
     EndOfFileToken,
 
     // trivia
@@ -236,36 +232,4 @@ pub enum SyntaxKind {
     EvenOddClipOperator,
     /// Append curved segment to path (final point replicated) (`y`).
     CurveToFinalReplicatedOperator,
-}
-
-impl From<u16> for SyntaxKind {
-    #[inline]
-    fn from(d: u16) -> SyntaxKind {
-        unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
-    }
-}
-
-impl From<SyntaxKind> for u16 {
-    #[inline]
-    fn from(k: SyntaxKind) -> u16 {
-        k as u16
-    }
-}
-
-impl From<SyntaxKind> for rowan::SyntaxKind {
-    fn from(kind: SyntaxKind) -> Self {
-        rowan::SyntaxKind(kind as u16)
-    }
-}
-
-impl From<rowan::SyntaxKind> for SyntaxKind {
-    fn from(kind: rowan::SyntaxKind) -> Self {
-        SyntaxKind::from(kind.0)
-    }
-}
-
-impl Default for SyntaxKind {
-    fn default() -> Self {
-        SyntaxKind::None
-    }
 }

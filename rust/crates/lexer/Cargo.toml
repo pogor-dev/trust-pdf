@@ -17,6 +17,3 @@ syntax.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
-
-# Non-local crates
-triomphe.workspace = true

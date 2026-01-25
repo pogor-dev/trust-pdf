@@ -45,6 +45,14 @@ applyTo: "**/*.rs,**/Cargo.toml"
 - Implement robust error recovery and resilience mechanisms to handle malformed or corrupted PDF files gracefully.
 - Ensure that the compiler can recover from errors and continue processing to the extent possible.
 
+## Debugging Macro Expansion Issues
+
+When encountering recursion limit errors or other issues with macro expansions:
+- Use `cargo-expand` to inspect the expanded macro output and diagnose the problem
+- Install with: `cargo install cargo-expand`
+- Expand specific modules: `cargo expand path::to::module`
+- This allows analysis of what the macro expansion produced and identification of recursion or other expansion issues
+
 ## Documentation Standards
 
 - When adding code documentation, provide short and concise explanations that are accessible to developers without compiler design or PDF specification experience.
