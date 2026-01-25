@@ -3,9 +3,8 @@
 mod arc;
 mod diagnostic_kind;
 mod green;
-mod internal;
+mod green_nodes;
 mod red;
-mod syntax_factory;
 mod syntax_kind;
 mod utility_types;
 
@@ -15,6 +14,7 @@ pub use crate::{
         DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
         GreenTrivia, GreenTriviaData, NodeCache, Slot,
     },
+    green_nodes::*,
     red::{ChildIterator, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTrivia},
     syntax_kind::SyntaxKind,
     utility_types::NodeOrTokenOrTrivia,
