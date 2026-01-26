@@ -1,3 +1,4 @@
+mod factory;
 mod nodes;
 
-pub use self::nodes::*;
+pub use self::{factory::GreenSyntaxFactory, nodes::*};

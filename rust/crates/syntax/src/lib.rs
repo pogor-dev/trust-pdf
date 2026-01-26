@@ -11,8 +11,8 @@ mod utility_types;
 pub use crate::{
     diagnostic_kind::DiagnosticKind,
     green::{
-        DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
-        GreenTrait, GreenTrivia, GreenTriviaData, NodeCache, Slot,
+        DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenNodeSyntax, GreenToken,
+        GreenTokenData, GreenTrait, GreenTrivia, GreenTriviaData, NodeCache, Slot,
     },
     green_nodes::*,
     red::{ChildIterator, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTrivia},

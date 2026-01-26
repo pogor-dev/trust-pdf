@@ -742,7 +742,6 @@ mod green_node_tests {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)], None);
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), Some(trailing.clone()), None);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), Some(trailing.clone()), None);
         let slots = vec![GreenElement::Token(token)];
         let node = GreenNode::new(SyntaxKind::ArrayExpression, slots, None);
 
