@@ -4,6 +4,7 @@ use std::hash::{BuildHasherDefault, Hash, Hasher};
 
 use super::diagnostic::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnosticData};
 use super::diagnostics::GreenDiagnostics;
+use crate::GreenTrait;
 use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, SyntaxKind, green::node::Slot};
 
 use super::element::GreenElement;

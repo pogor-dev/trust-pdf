@@ -12,7 +12,7 @@ pub use crate::{
     diagnostic_kind::DiagnosticKind,
     green::{
         DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenToken, GreenTokenData,
-        GreenTrivia, GreenTriviaData, NodeCache, Slot,
+        GreenTrait, GreenTrivia, GreenTriviaData, NodeCache, Slot,
     },
     green_nodes::*,
     red::{ChildIterator, SyntaxElement, SyntaxNode, SyntaxToken, SyntaxTrivia},

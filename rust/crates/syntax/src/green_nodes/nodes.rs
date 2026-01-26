@@ -4,7 +4,7 @@ use crate::{GreenNode, SyntaxKind};
 #[derive(Clone)]
 pub struct PdfDocumentSyntax {
     kind: SyntaxKind,
-    bodies: PdfDocumentInnerSyntax,
+    bodies: GreenNode,
 }
 
 #[derive(Clone)]

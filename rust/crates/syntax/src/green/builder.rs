@@ -1,5 +1,5 @@
 use crate::{
-    GreenNode, GreenToken, GreenTrivia, SyntaxKind,
+    GreenNode, GreenToken, GreenTrait, GreenTrivia, SyntaxKind,
     green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, element::GreenElement},
 };
 
