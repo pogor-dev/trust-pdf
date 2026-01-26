@@ -1,6 +1,14 @@
-use crate::{GreenLiteralExpressionSyntax, GreenToken, SyntaxKind};
+use std::sync::{OnceLock, RwLock};
 
-pub struct GreenSyntaxFactory;
+use crate::{GreenCst, GreenLiteralExpressionSyntax, GreenToken, NodeCache, SyntaxKind};
+
+static CACHE: OnceLock<RwLock<NodeCache>> = OnceLock::new();
+
+fn cache() -> &'static RwLock<NodeCache> {
+    CACHE.get_or_init(|| RwLock::new(NodeCache::default()))
+}
+
+pub struct GreenSyntaxFactory();
 
 impl GreenSyntaxFactory {
     pub fn literal_expression(kind: SyntaxKind, token: GreenToken) -> GreenLiteralExpressionSyntax {
@@ -30,6 +38,15 @@ impl GreenSyntaxFactory {
             token.kind()
         );
 
-        GreenLiteralExpressionSyntax::new(kind, token, None)
+        let mut children = vec![(0u64, token.clone().into())];
+        let (_, node) = cache()
+            .write()
+            .expect("Failed to acquire write lock on node cache")
+            .node(kind, &mut children, 0, None);
+
+        match GreenLiteralExpressionSyntax::cast(node) {
+            Some(lit_expr) => lit_expr,
+            None => panic!("Failed to cast cached node to GreenLiteralExpressionSyntax"),
+        }
     }
 }

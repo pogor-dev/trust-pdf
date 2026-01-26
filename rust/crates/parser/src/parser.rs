@@ -1,5 +1,5 @@
 use lexer::Lexer;
-use syntax::PdfDocumentSyntax;
+use syntax::GreenPdfDocumentSyntax;
 
 pub struct Parser<'source> {
     lexer: Lexer<'source>,
@@ -11,7 +11,7 @@ impl<'source> Parser<'source> {
         Self { lexer }
     }
 
-    pub fn parse_pdf_document(&mut self) -> PdfDocumentSyntax {
+    pub fn parse_pdf_document(&mut self) -> GreenPdfDocumentSyntax {
         // Parsing logic goes here
         unreachable!()
     }

@@ -1,22 +1,36 @@
 use crate::{
-    GreenNode, GreenToken, GreenTrait, GreenTrivia, SyntaxKind,
+    GreenNode, GreenToken, GreenTrait, GreenTrivia, NodeCache, NodeOrTokenOrTrivia, Slot, SyntaxKind,
+    cow_mut::CowMut,
     green::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, element::GreenElement},
 };
 
 /// A builder for a green tree.
 #[derive(Default, Debug)]
-pub struct GreenNodeBuilder {
+pub struct GreenNodeBuilder<'cache> {
+    cache: CowMut<'cache, NodeCache>,
     parents: Vec<(SyntaxKind, usize)>,
-    children: Vec<GreenElement>,
+    children: Vec<(u64, GreenElement)>,
     current_token: Option<TokenBuilder>,
     pending_diagnostics: Vec<GreenDiagnostic>,
 }
 
-impl GreenNodeBuilder {
+impl<'cache> GreenNodeBuilder<'cache> {
     /// Creates a new empty builder.
     #[inline]
-    pub fn new() -> GreenNodeBuilder {
+    pub fn new() -> GreenNodeBuilder<'static> {
         GreenNodeBuilder::default()
+    }
+
+    /// Reusing `NodeCache` between different `GreenNodeBuilder`s saves memory.
+    /// It allows to structurally share underlying trees.
+    pub fn with_cache(cache: &mut NodeCache) -> GreenNodeBuilder<'_> {
+        GreenNodeBuilder {
+            cache: CowMut::Borrowed(cache),
+            parents: Vec::new(),
+            children: Vec::new(),
+            current_token: None,
+            pending_diagnostics: Vec::new(),
+        }
     }
 
     /// Start new token and make it current.
@@ -63,34 +77,31 @@ impl GreenNodeBuilder {
         let token_builder = self.current_token.take().expect("No current token to finish");
         let text = token_builder.text.expect("Token text must be set before finishing the token");
 
-        let leading_trivia = if token_builder.leading_trivia.is_empty() {
-            None
-        } else {
-            Some(GreenNode::new(
+        let leading_trivia = match token_builder.leading_trivia.is_empty() {
+            true => None,
+            false => Some(GreenNode::new(
                 SyntaxKind::List,
                 token_builder.leading_trivia.into_iter().map(GreenElement::Trivia),
                 None,
-            ))
+            )),
         };
 
-        let trailing_trivia = if token_builder.trailing_trivia.is_empty() {
-            None
-        } else {
-            Some(GreenNode::new(
+        let trailing_trivia = match token_builder.trailing_trivia.is_empty() {
+            true => None,
+            false => Some(GreenNode::new(
                 SyntaxKind::List,
                 token_builder.trailing_trivia.into_iter().map(GreenElement::Trivia),
                 None,
-            ))
+            )),
         };
 
-        let diagnostics = if self.pending_diagnostics.is_empty() {
-            None
-        } else {
-            Some(GreenDiagnostics::new(&self.pending_diagnostics))
+        let diagnostics = match self.pending_diagnostics.is_empty() {
+            true => None,
+            false => Some(GreenDiagnostics::new(&self.pending_diagnostics)),
         };
 
-        let token = GreenToken::new(token_builder.kind, &text, leading_trivia, trailing_trivia, diagnostics);
-        self.children.push(GreenElement::Token(token));
+        let (hash, token) = self.cache.token(token_builder.kind, &text, leading_trivia, trailing_trivia, diagnostics);
+        self.children.push((hash, token.into()));
         self.pending_diagnostics.clear();
     }
 
@@ -106,7 +117,7 @@ impl GreenNodeBuilder {
         let diagnostic = GreenDiagnostic::new(code, severity, message);
 
         match &mut self.children[last_idx] {
-            GreenElement::Token(token) => {
+            (_, GreenElement::Token(token)) => {
                 // Create new token with diagnostic added
                 let existing_diags = token.diagnostics().map(|d| d.diagnostics().to_vec()).unwrap_or_default();
                 let mut all_diags = existing_diags;
@@ -121,7 +132,7 @@ impl GreenNodeBuilder {
                     new_diagnostics,
                 );
             }
-            GreenElement::Node(node) => {
+            (_, GreenElement::Node(node)) => {
                 // Create new node with diagnostic added
                 let existing_diags = node.diagnostics().map(|d| d.diagnostics().to_vec()).unwrap_or_default();
                 let mut all_diags = existing_diags;
@@ -133,15 +144,15 @@ impl GreenNodeBuilder {
                     .slots()
                     .cloned()
                     .map(|s| match s {
-                        crate::green::node::Slot::Node { node, .. } => GreenElement::Node(node),
-                        crate::green::node::Slot::Token { token, .. } => GreenElement::Token(token),
-                        crate::green::node::Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia),
+                        Slot::Node { node, .. } => GreenElement::Node(node),
+                        Slot::Token { token, .. } => GreenElement::Token(token),
+                        Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia),
                     })
                     .collect();
 
                 *node = GreenNode::new(node.kind(), slots, new_diagnostics);
             }
-            GreenElement::Trivia(_) => {
+            (_, GreenElement::Trivia(_)) => {
                 return Err("Cannot add diagnostics to trivia");
             }
         }
@@ -161,15 +172,13 @@ impl GreenNodeBuilder {
     pub fn finish_node(&mut self) {
         let (kind, first_child) = self.parents.pop().expect("No current node to finish");
 
-        let diagnostics = if self.pending_diagnostics.is_empty() {
-            None
-        } else {
-            Some(GreenDiagnostics::new(&self.pending_diagnostics))
+        let diagnostics = match self.pending_diagnostics.is_empty() {
+            true => None,
+            false => Some(GreenDiagnostics::new(&self.pending_diagnostics)),
         };
 
-        let children = self.children.drain(first_child..);
-        let node = GreenNode::new(kind, children, diagnostics);
-        self.children.push(GreenElement::Node(node));
+        let (hash, node) = self.cache.node(kind, &mut self.children, first_child, diagnostics);
+        self.children.push((hash, node.into()));
         self.pending_diagnostics.clear();
     }
 
@@ -177,9 +186,10 @@ impl GreenNodeBuilder {
     #[inline]
     pub fn finish(mut self) -> GreenNode {
         assert_eq!(self.children.len(), 1, "Builder should have exactly one root element");
-        match self.children.pop().unwrap() {
-            GreenElement::Node(node) => node,
-            _ => panic!("Expected root element to be a GreenNode"),
+        match self.children.pop().unwrap().1 {
+            NodeOrTokenOrTrivia::Node(node) => node,
+            NodeOrTokenOrTrivia::Token(_) => panic!(),
+            NodeOrTokenOrTrivia::Trivia(_) => panic!(),
         }
     }
 }

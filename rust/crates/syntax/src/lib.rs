@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
 mod arc;
+mod cow_mut;
 mod diagnostic_kind;
 mod green;
 mod green_nodes;
@@ -11,7 +12,7 @@ mod utility_types;
 pub use crate::{
     diagnostic_kind::DiagnosticKind,
     green::{
-        DiagnosticSeverity, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenNodeSyntax, GreenToken,
+        DiagnosticSeverity, GreenCst, GreenDiagnostic, GreenDiagnostics, GreenElement, GreenNode, GreenNodeBuilder, GreenNodeData, GreenNodeSyntax, GreenToken,
         GreenTokenData, GreenTrait, GreenTrivia, GreenTriviaData, NodeCache, Slot,
     },
     green_nodes::*,

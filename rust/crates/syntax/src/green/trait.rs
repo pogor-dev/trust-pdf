@@ -1,5 +1,15 @@
 use crate::{GreenDiagnostics, GreenElement, GreenNode, SyntaxKind, green::Slots};
 
+/// Trait providing typed casting from a generic `GreenNode` into a specific
+/// wrapper type. This mirrors Roslyn's `CanCast`/`Cast` pattern.
+pub trait GreenCst: Sized {
+    /// Returns true if the provided node matches the expected shape/kind.
+    fn can_cast(node: &GreenNode) -> bool;
+
+    /// Attempts to cast the provided node into the typed wrapper.
+    fn cast(node: GreenNode) -> Option<Self>;
+}
+
 pub trait GreenTrait {
     fn kind(&self) -> SyntaxKind;
     fn diagnostics(&self) -> Option<&GreenDiagnostics>;
