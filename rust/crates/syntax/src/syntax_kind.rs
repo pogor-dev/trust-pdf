@@ -74,8 +74,8 @@ pub enum SyntaxKind {
     // stream expressions
     StreamExpression,
     StreamBodyExpression,
-    OperandOperatorExpression,
-    OperatorExpression,
+    StreamRawDataExpression,
+    StreamOperandOperatorExpression,
 
     // cross-reference expressions
     XRefTableExpression,
@@ -85,6 +85,7 @@ pub enum SyntaxKind {
 
     // trailer expressions
     FileTrailerExpression,
+    FileTrailerStartXrefExpression,
 
     // other expressions
     PdfDocument,
