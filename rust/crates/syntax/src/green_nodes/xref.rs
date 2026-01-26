@@ -22,6 +22,19 @@ impl GreenXRefTableExpressionSyntax {
     }
 }
 
+impl GreenCst for GreenXRefTableExpressionSyntax {
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::XRefTableExpression && node.slot_count() == 1
+    }
+
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenXRefTableExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GreenXRefSectionSyntax(GreenExpressionSyntax);
 

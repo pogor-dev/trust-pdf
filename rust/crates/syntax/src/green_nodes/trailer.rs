@@ -39,6 +39,21 @@ impl FileTrailerExpressionSyntax {
     }
 }
 
+impl GreenCst for FileTrailerExpressionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::FileTrailerExpression && node.slot_count() == 3
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(FileTrailerExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct FileTrailerStartXrefExpressionSyntax(GreenExpressionSyntax);
 
