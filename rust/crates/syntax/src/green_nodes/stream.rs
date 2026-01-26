@@ -1,4 +1,4 @@
-use crate::{GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind};
+use crate::{GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenListSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind};
 
 #[derive(Clone)]
 pub struct GreenStreamExpressionSyntax(GreenExpressionSyntax);
@@ -73,10 +73,9 @@ impl GreenStreamBodySyntax {
     }
 
     #[inline]
-    pub fn decoded_data(&self) -> Option<GreenNode> {
-        // TODO: Add SyntaxList?
+    pub fn decoded_data(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(0) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }
@@ -142,9 +141,9 @@ impl GreenStreamOperatorOperandExpressionSyntax {
     }
 
     #[inline]
-    pub fn operands(&self) -> Option<GreenNode> {
+    pub fn operands(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(0) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }

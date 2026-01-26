@@ -1,6 +1,6 @@
 use crate::{
-    GreenCst, GreenDiagnostics, GreenDirectObjectOrIndirectReferenceExpressionSyntax, GreenElement, GreenExpressionSyntax, GreenLiteralExpressionSyntax,
-    GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind,
+    GreenCst, GreenDiagnostics, GreenDirectObjectOrIndirectReferenceExpressionSyntax, GreenElement, GreenExpressionSyntax, GreenListSyntax,
+    GreenLiteralExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind,
 };
 
 #[derive(Clone)]
@@ -32,9 +32,9 @@ impl GreenArrayExpressionSyntax {
     }
 
     #[inline]
-    pub fn elements(&self) -> Option<GreenNode> {
+    pub fn elements(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(1) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }
@@ -96,9 +96,9 @@ impl GreenDictionaryExpressionSyntax {
     }
 
     #[inline]
-    pub fn entries(&self) -> Option<GreenNode> {
+    pub fn entries(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(1) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }

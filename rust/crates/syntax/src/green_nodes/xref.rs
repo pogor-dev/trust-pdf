@@ -1,6 +1,6 @@
 use crate::{
-    GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenLiteralExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait,
-    SyntaxKind,
+    GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenListSyntax, GreenLiteralExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken,
+    GreenTrait, SyntaxKind,
 };
 
 #[derive(Clone)]
@@ -14,9 +14,9 @@ impl GreenXRefTableExpressionSyntax {
     }
 
     #[inline]
-    pub fn sections(&self) -> Option<GreenNode> {
+    pub fn sections(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(0) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }
@@ -33,9 +33,9 @@ impl GreenXRefSectionSyntax {
     }
 
     #[inline]
-    pub fn subsections(&self) -> Option<GreenNode> {
+    pub fn subsections(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(0) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }
@@ -78,9 +78,9 @@ impl GreenXRefSubSectionSyntax {
     }
 
     #[inline]
-    pub fn entries(&self) -> Option<GreenNode> {
+    pub fn entries(&self) -> Option<GreenListSyntax> {
         match self.0.green().slot(2) {
-            Some(GreenElement::Node(n)) => Some(n),
+            Some(GreenElement::Node(n)) => GreenListSyntax::cast(n),
             _ => None,
         }
     }
