@@ -4,13 +4,13 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct GreenPdfVersionExpressionSyntax(GreenExpressionSyntax);
+pub struct GreenPdfVersionSyntax(GreenExpressionSyntax);
 
-impl GreenPdfVersionExpressionSyntax {
+impl GreenPdfVersionSyntax {
     pub fn new(kind: SyntaxKind, major_version_token: GreenToken, minor_version_token: GreenToken, diagnostics: Option<GreenDiagnostics>) -> Self {
         let slots = vec![GreenElement::Token(major_version_token), GreenElement::Token(minor_version_token)];
         let green = GreenNode::new(kind, slots, diagnostics);
-        GreenPdfVersionExpressionSyntax(GreenExpressionSyntax(green))
+        GreenPdfVersionSyntax(GreenExpressionSyntax(green))
     }
 
     #[inline]
@@ -30,7 +30,7 @@ impl GreenPdfVersionExpressionSyntax {
     }
 }
 
-impl GreenCst for GreenPdfVersionExpressionSyntax {
+impl GreenCst for GreenPdfVersionSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
         node.kind() == SyntaxKind::PdfVersionExpression && node.slot_count() == 2
@@ -39,7 +39,7 @@ impl GreenCst for GreenPdfVersionExpressionSyntax {
     #[inline]
     fn cast(node: GreenNode) -> Option<Self> {
         match Self::can_cast(&node) {
-            true => Some(GreenPdfVersionExpressionSyntax(GreenExpressionSyntax(node))),
+            true => Some(GreenPdfVersionSyntax(GreenExpressionSyntax(node))),
             false => None,
         }
     }

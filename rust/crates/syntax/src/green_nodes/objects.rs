@@ -187,7 +187,7 @@ impl IndirectObjectExpressionSyntax {
 impl GreenCst for IndirectObjectExpressionSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
-        node.kind() == SyntaxKind::IndirectObjectDefinition && node.slot_count() == 3
+        node.kind() == SyntaxKind::IndirectObjectExpression && node.slot_count() == 3
     }
 
     #[inline]
@@ -289,7 +289,7 @@ impl GreenIndirectObjectHeaderExpressionSyntax {
 impl GreenCst for GreenIndirectObjectHeaderExpressionSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
-        node.kind() == SyntaxKind::IndirectObjectDefinition && node.slot_count() == 3 // TODO: Validate slot kinds?
+        node.kind() == SyntaxKind::IndirectObjectHeaderExpression && node.slot_count() == 3 // TODO: Validate slot kinds?
     }
 
     #[inline]

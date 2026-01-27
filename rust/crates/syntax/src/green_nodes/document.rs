@@ -1,5 +1,5 @@
 use crate::{
-    FileTrailerExpressionSyntax, GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenListSyntax, GreenNode, GreenNodeSyntax, GreenTrait,
+    FileTrailerSyntax, GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenListSyntax, GreenNode, GreenNodeSyntax, GreenTrait,
     GreenXRefTableExpressionSyntax, SyntaxKind,
 };
 
@@ -63,9 +63,9 @@ impl GreenPdfDocumentElementSyntax {
     }
 
     #[inline]
-    pub fn trailer(&self) -> Option<FileTrailerExpressionSyntax> {
+    pub fn trailer(&self) -> Option<FileTrailerSyntax> {
         match self.0.green().slot(2) {
-            Some(GreenElement::Node(n)) => FileTrailerExpressionSyntax::cast(n),
+            Some(GreenElement::Node(n)) => FileTrailerSyntax::cast(n),
             _ => None,
         }
     }
@@ -74,7 +74,7 @@ impl GreenPdfDocumentElementSyntax {
 impl GreenCst for GreenPdfDocumentElementSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
-        node.kind() == SyntaxKind::PdfDocumentElement && node.slot_count() == 3
+        node.kind() == SyntaxKind::PdfDocumentElementExpression && node.slot_count() == 3
     }
 
     #[inline]

@@ -65,8 +65,8 @@ pub enum SyntaxKind {
 
     // indirect object expressions
     IndirectObjectExpression,
-    IndirectObjectDefinition,
-    IndirectObjectBody,
+    IndirectObjectHeaderExpression,
+    IndirectObjectBodyExpression,
 
     // indirect reference expressions
     IndirectReferenceExpression,
@@ -87,9 +87,9 @@ pub enum SyntaxKind {
     FileTrailerExpression,
     FileTrailerStartXrefExpression,
 
-    // other expressions
+    // document and structural elements
     PdfDocument,
-    PdfDocumentElement,
+    PdfDocumentElementExpression,
     PdfVersionExpression,
 
     // PDF content stream operators as defined by ISO 32000-2, Annex A.2, Table A.1

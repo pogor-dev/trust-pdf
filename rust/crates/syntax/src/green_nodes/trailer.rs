@@ -4,14 +4,14 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct FileTrailerExpressionSyntax(GreenExpressionSyntax);
+pub struct FileTrailerSyntax(GreenExpressionSyntax);
 
-impl FileTrailerExpressionSyntax {
+impl FileTrailerSyntax {
     pub fn new(kind: SyntaxKind, trailer_token: GreenToken, body: GreenNode, start_xref: GreenNode, diagnostics: Option<GreenDiagnostics>) -> Self {
         let slots = vec![GreenElement::Token(trailer_token), GreenElement::Node(body), GreenElement::Node(start_xref)];
 
         let green = GreenNode::new(kind, slots, diagnostics);
-        FileTrailerExpressionSyntax(GreenExpressionSyntax(green))
+        FileTrailerSyntax(GreenExpressionSyntax(green))
     }
 
     #[inline]
@@ -31,15 +31,15 @@ impl FileTrailerExpressionSyntax {
     }
 
     #[inline]
-    pub fn start_xref(&self) -> Option<FileTrailerStartXrefExpressionSyntax> {
+    pub fn start_xref(&self) -> Option<FileTrailerStartXrefSyntax> {
         match self.0.green().slot(2) {
-            Some(GreenElement::Node(n)) => FileTrailerStartXrefExpressionSyntax::cast(n),
+            Some(GreenElement::Node(n)) => FileTrailerStartXrefSyntax::cast(n),
             _ => None,
         }
     }
 }
 
-impl GreenCst for FileTrailerExpressionSyntax {
+impl GreenCst for FileTrailerSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
         node.kind() == SyntaxKind::FileTrailerExpression && node.slot_count() == 3
@@ -48,16 +48,16 @@ impl GreenCst for FileTrailerExpressionSyntax {
     #[inline]
     fn cast(node: GreenNode) -> Option<Self> {
         match Self::can_cast(&node) {
-            true => Some(FileTrailerExpressionSyntax(GreenExpressionSyntax(node))),
+            true => Some(FileTrailerSyntax(GreenExpressionSyntax(node))),
             false => None,
         }
     }
 }
 
 #[derive(Clone)]
-pub struct FileTrailerStartXrefExpressionSyntax(GreenExpressionSyntax);
+pub struct FileTrailerStartXrefSyntax(GreenExpressionSyntax);
 
-impl FileTrailerStartXrefExpressionSyntax {
+impl FileTrailerStartXrefSyntax {
     pub fn new(
         kind: SyntaxKind,
         start_xref_token: GreenToken,
@@ -72,7 +72,7 @@ impl FileTrailerStartXrefExpressionSyntax {
         ];
 
         let green = GreenNode::new(kind, slots, diagnostics);
-        FileTrailerStartXrefExpressionSyntax(GreenExpressionSyntax(green))
+        FileTrailerStartXrefSyntax(GreenExpressionSyntax(green))
     }
 
     #[inline]
@@ -100,7 +100,7 @@ impl FileTrailerStartXrefExpressionSyntax {
     }
 }
 
-impl GreenCst for FileTrailerStartXrefExpressionSyntax {
+impl GreenCst for FileTrailerStartXrefSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
         node.kind() == SyntaxKind::FileTrailerStartXrefExpression && node.slot_count() == 3
@@ -109,7 +109,7 @@ impl GreenCst for FileTrailerStartXrefExpressionSyntax {
     #[inline]
     fn cast(node: GreenNode) -> Option<Self> {
         match Self::can_cast(&node) {
-            true => Some(FileTrailerStartXrefExpressionSyntax(GreenExpressionSyntax(node))),
+            true => Some(FileTrailerStartXrefSyntax(GreenExpressionSyntax(node))),
             false => None,
         }
     }
