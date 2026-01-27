@@ -237,7 +237,7 @@ macro_rules! tree {
 
 #[cfg(test)]
 mod builder_tests {
-    use crate::{SyntaxKind, green::DiagnosticSeverity};
+    use crate::{GreenTrait, SyntaxKind, green::DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     // Using existing SyntaxKind variants for tests

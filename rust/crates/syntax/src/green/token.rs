@@ -7,7 +7,7 @@ use std::{
 
 use super::diagnostics::GreenDiagnostics;
 use crate::{
-    GreenNode,
+    GreenNode, GreenTrait,
     arc::{Arc, HeaderSlice, ThinArc},
 };
 use countme::Count;

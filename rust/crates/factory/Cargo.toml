@@ -1,5 +1,5 @@
 [package]
-name = "parser"
+name = "factory"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 # Local crates
 lexer.workspace = true
+parser.workspace = true
 syntax.workspace = true
 
 # Non-local crates

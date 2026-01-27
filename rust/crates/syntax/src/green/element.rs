@@ -1,4 +1,4 @@
-use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrivia, GreenTriviaData, NodeOrTokenOrTrivia, SyntaxKind};
+use crate::{GreenNode, GreenNodeData, GreenToken, GreenTokenData, GreenTrait, GreenTrivia, GreenTriviaData, NodeOrTokenOrTrivia, SyntaxKind};
 
 pub type GreenElement = NodeOrTokenOrTrivia<GreenNode, GreenToken, GreenTrivia>;
 pub(crate) type GreenElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenData, &'a GreenTriviaData>;
@@ -29,6 +29,27 @@ impl GreenElement {
             GreenElement::Token(t) => t.full_width(),
             GreenElement::Trivia(tr) => tr.width(),
         }
+    }
+}
+
+impl From<GreenToken> for GreenElement {
+    #[inline]
+    fn from(token: GreenToken) -> GreenElement {
+        NodeOrTokenOrTrivia::Token(token)
+    }
+}
+
+impl From<GreenNode> for GreenElement {
+    #[inline]
+    fn from(node: GreenNode) -> GreenElement {
+        NodeOrTokenOrTrivia::Node(node)
+    }
+}
+
+impl From<GreenTrivia> for GreenElement {
+    #[inline]
+    fn from(trivia: GreenTrivia) -> GreenElement {
+        NodeOrTokenOrTrivia::Trivia(trivia)
     }
 }
 

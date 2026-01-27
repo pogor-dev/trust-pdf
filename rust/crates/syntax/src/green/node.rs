@@ -7,7 +7,7 @@ use std::{
 
 use super::diagnostics::GreenDiagnostics;
 use crate::{
-    GreenToken, GreenTrivia,
+    GreenToken, GreenTrait, GreenTrivia,
     arc::{Arc, HeaderSlice, ThinArc},
     green::{GreenElement, GreenElementRef, token::GreenTokenData, trivia::GreenTriviaData},
 };
@@ -32,92 +32,6 @@ pub struct GreenNodeData {
 }
 
 impl GreenNodeData {
-    /// Kind of this node.
-    #[inline]
-    pub fn kind(&self) -> SyntaxKind {
-        self.data.header.kind
-    }
-
-    /// Returns diagnostics attached to this node.
-    #[inline]
-    pub fn diagnostics(&self) -> Option<&GreenDiagnostics> {
-        self.data.header.diagnostics.as_ref()
-    }
-
-    /// Text of this node.
-    #[inline]
-    pub fn text(&self) -> Vec<u8> {
-        self.write_to(false, false)
-    }
-
-    /// Full text of this node.
-    #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
-        self.write_to(true, true)
-    }
-
-    /// Returns the length of the text covered by this node.
-    #[inline]
-    pub fn width(&self) -> u32 {
-        let first_leading_width = self.first_token().and_then(|t| t.leading_trivia()).map_or(0, |t| t.full_width());
-        let last_trailing_width = self.last_token().and_then(|t| t.trailing_trivia()).map_or(0, |t| t.full_width());
-        self.full_width() - first_leading_width - last_trailing_width
-    }
-
-    /// Full text width of this node.
-    #[inline]
-    pub fn full_width(&self) -> u32 {
-        self.data.header.full_width
-    }
-
-    /// The leading trivia of this Node.
-    #[inline]
-    pub fn leading_trivia(&self) -> Option<GreenNode> {
-        self.first_token().and_then(|t| t.leading_trivia())
-    }
-
-    /// The trailing trivia of this Node.
-    #[inline]
-    pub fn trailing_trivia(&self) -> Option<GreenNode> {
-        self.last_token().and_then(|t| t.trailing_trivia())
-    }
-
-    #[inline]
-    pub fn slot_count(&self) -> usize {
-        self.slots().len()
-    }
-
-    #[inline]
-    pub fn slots(&self) -> Slots<'_> {
-        Slots { raw: self.data.slice().iter() }
-    }
-
-    #[inline]
-    pub fn slot(&self, index: usize) -> Option<GreenElement> {
-        self.slots().nth(index).map(|slot| match slot {
-            Slot::Node { node, .. } => GreenElement::Node(node.clone()),
-            Slot::Token { token, .. } => GreenElement::Token(token.clone()),
-            Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia.clone()),
-        })
-    }
-
-    /// Compute the starting offset of slot `index` relative to this node.
-    /// (Useful for red position computation.)
-    pub fn slot_offset(&self, index: usize) -> Option<u32> {
-        if index >= self.slot_count() {
-            return None;
-        }
-        let mut off = 0u32;
-        for i in 0..index {
-            if let Some(slot) = self.slot(i) {
-                off += slot.width();
-            } else {
-                return None;
-            }
-        }
-        Some(off)
-    }
-
     /// Returns the node's text as a byte vector.
     ///
     /// Similar to Roslyn's WriteTo implementation, uses an explicit stack to avoid
@@ -217,6 +131,94 @@ impl GreenNodeData {
             }
         }
         None
+    }
+}
+
+impl GreenTrait for GreenNodeData {
+    /// Kind of this node.
+    #[inline]
+    fn kind(&self) -> SyntaxKind {
+        self.data.header.kind
+    }
+
+    /// Returns diagnostics attached to this node.
+    #[inline]
+    fn diagnostics(&self) -> Option<&GreenDiagnostics> {
+        self.data.header.diagnostics.as_ref()
+    }
+
+    /// Text of this node.
+    #[inline]
+    fn text(&self) -> Vec<u8> {
+        self.write_to(false, false)
+    }
+
+    /// Full text of this node.
+    #[inline]
+    fn full_text(&self) -> Vec<u8> {
+        self.write_to(true, true)
+    }
+
+    /// Returns the length of the text covered by this node.
+    #[inline]
+    fn width(&self) -> u32 {
+        let first_leading_width = self.first_token().and_then(|t| t.leading_trivia()).map_or(0, |t| t.full_width());
+        let last_trailing_width = self.last_token().and_then(|t| t.trailing_trivia()).map_or(0, |t| t.full_width());
+        self.full_width() - first_leading_width - last_trailing_width
+    }
+
+    /// Full text width of this node.
+    #[inline]
+    fn full_width(&self) -> u32 {
+        self.data.header.full_width
+    }
+
+    /// The leading trivia of this Node.
+    #[inline]
+    fn leading_trivia(&self) -> Option<GreenNode> {
+        self.first_token().and_then(|t| t.leading_trivia())
+    }
+
+    /// The trailing trivia of this Node.
+    #[inline]
+    fn trailing_trivia(&self) -> Option<GreenNode> {
+        self.last_token().and_then(|t| t.trailing_trivia())
+    }
+
+    #[inline]
+    fn slot_count(&self) -> usize {
+        self.slots().len()
+    }
+
+    #[inline]
+    fn slots(&self) -> Slots<'_> {
+        Slots { raw: self.data.slice().iter() }
+    }
+
+    #[inline]
+    fn slot(&self, index: usize) -> Option<GreenElement> {
+        self.slots().nth(index).map(|slot| match slot {
+            Slot::Node { node, .. } => GreenElement::Node(node.clone()),
+            Slot::Token { token, .. } => GreenElement::Token(token.clone()),
+            Slot::Trivia { trivia, .. } => GreenElement::Trivia(trivia.clone()),
+        })
+    }
+
+    /// Compute the starting offset of slot `index` relative to this node.
+    /// (Useful for red position computation.)
+    fn slot_offset(&self, index: usize) -> Option<u32> {
+        if index >= self.slot_count() {
+            return None;
+        }
+        let mut off = 0u32;
+        for i in 0..index {
+            if let Some(slot) = self.slot(i) {
+                off += slot.width();
+            } else {
+                return None;
+            }
+        }
+        Some(off)
     }
 }
 
@@ -739,7 +741,6 @@ mod green_node_tests {
     fn test_trailing_trivia() {
         let trailing_trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"  ");
         let trailing = GreenNode::new(SyntaxKind::List, vec![GreenElement::Trivia(trailing_trivia)], None);
-        let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), Some(trailing.clone()), None);
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken, b"42", empty_trivia_list(), Some(trailing.clone()), None);
         let slots = vec![GreenElement::Token(token)];
         let node = GreenNode::new(SyntaxKind::ArrayExpression, slots, None);

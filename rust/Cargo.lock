@@ -99,6 +99,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
+name = "factory"
+version = "0.1.0"
+dependencies = [
+ "lexer",
+ "parser",
+ "syntax",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,6 +282,10 @@ checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 [[package]]
 name = "parser"
 version = "0.1.0"
+dependencies = [
+ "lexer",
+ "syntax",
+]
 
 [[package]]
 name = "pin-project-lite"

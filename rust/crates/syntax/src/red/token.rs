@@ -1,6 +1,6 @@
 use std::{fmt, ops};
 
-use crate::{GreenToken, SyntaxKind};
+use crate::{GreenToken, GreenTrait, SyntaxKind};
 
 use super::SyntaxNode;
 

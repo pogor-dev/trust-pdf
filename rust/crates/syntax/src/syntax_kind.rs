@@ -65,8 +65,8 @@ pub enum SyntaxKind {
 
     // indirect object expressions
     IndirectObjectExpression,
-    IndirectObjectDefinition,
-    IndirectObjectBody,
+    IndirectObjectHeaderExpression,
+    IndirectObjectBodyExpression,
 
     // indirect reference expressions
     IndirectReferenceExpression,
@@ -74,8 +74,14 @@ pub enum SyntaxKind {
     // stream expressions
     StreamExpression,
     StreamBodyExpression,
-    OperandOperatorExpression,
-    OperatorExpression,
+    StreamRawDataExpression,
+    StreamOperandOperatorExpression,
+
+    // stream content block expressions
+    TextObjectExpression,
+    InlineImageExpression,
+    MarkedContentExpression,
+    CompatibilityExpression,
 
     // cross-reference expressions
     XRefTableExpression,
@@ -85,6 +91,12 @@ pub enum SyntaxKind {
 
     // trailer expressions
     FileTrailerExpression,
+    FileTrailerStartXrefExpression,
+
+    // document and structural elements
+    PdfDocument,
+    PdfDocumentElementExpression,
+    PdfVersionExpression,
 
     // PDF content stream operators as defined by ISO 32000-2, Annex A.2, Table A.1
     /// Close, fill, and stroke path using non-zero winding number rule (`b`).
