@@ -188,8 +188,12 @@ impl<'cache> GreenNodeBuilder<'cache> {
         assert_eq!(self.children.len(), 1, "Builder should have exactly one root element");
         match self.children.pop().unwrap().1 {
             NodeOrTokenOrTrivia::Node(node) => node,
-            NodeOrTokenOrTrivia::Token(_) => panic!(),
-            NodeOrTokenOrTrivia::Trivia(_) => panic!(),
+            NodeOrTokenOrTrivia::Token(_) => {
+                panic!("Expected root element to be a GreenNode, but found Token");
+            }
+            NodeOrTokenOrTrivia::Trivia(_) => {
+                panic!("Expected root element to be a GreenNode, but found Trivia");
+            }
         }
     }
 }
