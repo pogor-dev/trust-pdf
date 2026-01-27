@@ -29,3 +29,18 @@ impl GreenPdfVersionExpressionSyntax {
         }
     }
 }
+
+impl GreenCst for GreenPdfVersionExpressionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::PdfVersionExpression && node.slot_count() == 2
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenPdfVersionExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}

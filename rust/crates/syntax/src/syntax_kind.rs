@@ -89,6 +89,8 @@ pub enum SyntaxKind {
 
     // other expressions
     PdfDocument,
+    PdfDocumentElement,
+    PdfVersionExpression,
 
     // PDF content stream operators as defined by ISO 32000-2, Annex A.2, Table A.1
     /// Close, fill, and stroke path using non-zero winding number rule (`b`).

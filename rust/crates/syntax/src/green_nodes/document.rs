@@ -22,6 +22,21 @@ impl GreenPdfDocumentSyntax {
     }
 }
 
+impl GreenCst for GreenPdfDocumentSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::PdfDocument && node.slot_count() == 1
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenPdfDocumentSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 pub struct GreenPdfDocumentElementSyntax(GreenExpressionSyntax);
 
 impl GreenPdfDocumentElementSyntax {
@@ -52,6 +67,21 @@ impl GreenPdfDocumentElementSyntax {
         match self.0.green().slot(2) {
             Some(GreenElement::Node(n)) => FileTrailerExpressionSyntax::cast(n),
             _ => None,
+        }
+    }
+}
+
+impl GreenCst for GreenPdfDocumentElementSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::PdfDocumentElement && node.slot_count() == 3
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenPdfDocumentElementSyntax(GreenExpressionSyntax(node))),
+            false => None,
         }
     }
 }

@@ -48,6 +48,21 @@ impl GreenArrayExpressionSyntax {
     }
 }
 
+impl GreenCst for GreenArrayExpressionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::ArrayExpression && node.slot_count() == 3
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenArrayExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GreenArrayElementExpressionSyntax(GreenExpressionSyntax);
 
@@ -63,6 +78,21 @@ impl GreenArrayElementExpressionSyntax {
         match self.0.green().slot(0) {
             Some(GreenElement::Node(n)) => GreenDirectObjectOrIndirectReferenceExpressionSyntax::cast(n),
             _ => None,
+        }
+    }
+}
+
+impl GreenCst for GreenArrayElementExpressionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::ArrayElementExpression && node.slot_count() == 1
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenArrayElementExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
         }
     }
 }
@@ -150,6 +180,21 @@ impl GreenDictionaryElementSyntax {
         match self.0.green().slot(1) {
             Some(GreenElement::Node(n)) => GreenDirectObjectOrIndirectReferenceExpressionSyntax::cast(n),
             _ => None,
+        }
+    }
+}
+
+impl GreenCst for GreenDictionaryElementSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::DictionaryElementExpression && node.slot_count() == 2
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenDictionaryElementSyntax(GreenExpressionSyntax(node))),
+            false => None,
         }
     }
 }

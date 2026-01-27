@@ -54,6 +54,21 @@ impl GreenXRefSectionSyntax {
     }
 }
 
+impl GreenCst for GreenXRefSectionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::XRefSectionExpression && node.slot_count() == 1
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenXRefSectionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GreenXRefSubSectionSyntax(GreenExpressionSyntax);
 
@@ -99,6 +114,21 @@ impl GreenXRefSubSectionSyntax {
     }
 }
 
+impl GreenCst for GreenXRefSubSectionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::XRefSubSectionExpression && node.slot_count() == 3
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenXRefSubSectionSyntax(GreenExpressionSyntax(node))),
+            false => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct GreenXRefEntryExpressionSyntax(GreenExpressionSyntax);
 
@@ -140,6 +170,21 @@ impl GreenXRefEntryExpressionSyntax {
         match self.0.green().slot(2) {
             Some(GreenElement::Token(t)) => Some(t),
             _ => None,
+        }
+    }
+}
+
+impl GreenCst for GreenXRefEntryExpressionSyntax {
+    #[inline]
+    fn can_cast(node: &GreenNode) -> bool {
+        node.kind() == SyntaxKind::XRefEntryExpression && node.slot_count() == 3
+    }
+
+    #[inline]
+    fn cast(node: GreenNode) -> Option<Self> {
+        match Self::can_cast(&node) {
+            true => Some(GreenXRefEntryExpressionSyntax(GreenExpressionSyntax(node))),
+            false => None,
         }
     }
 }
