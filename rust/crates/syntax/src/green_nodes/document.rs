@@ -4,6 +4,8 @@ use crate::{
 };
 
 // TODO: lex the PDF version separately? Might be false positive inside the document
+/// Root PDF document structure
+/// ISO 32000-2:2020, 7.5 — File structure
 pub struct GreenPdfDocumentSyntax(GreenExpressionSyntax);
 
 impl GreenPdfDocumentSyntax {
@@ -37,6 +39,8 @@ impl GreenCst for GreenPdfDocumentSyntax {
     }
 }
 
+/// Document element: collection of objects, xref table, and trailer
+/// ISO 32000-2:2020, 7.5 — File structure
 pub struct GreenPdfDocumentElementSyntax(GreenExpressionSyntax);
 
 impl GreenPdfDocumentElementSyntax {

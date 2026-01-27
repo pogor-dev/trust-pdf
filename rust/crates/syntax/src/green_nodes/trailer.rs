@@ -3,6 +3,8 @@ use crate::{
     SyntaxKind,
 };
 
+/// File trailer: trailer dictionary and startxref byte offset
+/// ISO 32000-2:2020, 7.5.5 — File trailer
 #[derive(Clone)]
 pub struct FileTrailerSyntax(GreenExpressionSyntax);
 
@@ -54,6 +56,8 @@ impl GreenCst for FileTrailerSyntax {
     }
 }
 
+/// startxref byte offset: startxref <byte-offset> %%EOF
+/// ISO 32000-2:2020, 7.5.5 — File trailer
 #[derive(Clone)]
 pub struct FileTrailerStartXrefSyntax(GreenExpressionSyntax);
 

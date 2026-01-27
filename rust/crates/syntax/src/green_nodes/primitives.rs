@@ -1,5 +1,7 @@
 use crate::{GreenCst, GreenDiagnostics, GreenElement, GreenExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind};
 
+/// Literal value: number, name, string, hex string, boolean, or null
+/// ISO 32000-2:2020, 7.3 — Objects
 #[derive(Clone)]
 pub struct GreenLiteralExpressionSyntax(pub GreenExpressionSyntax);
 

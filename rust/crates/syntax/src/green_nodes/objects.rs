@@ -3,6 +3,8 @@ use crate::{
     GreenToken, GreenTrait, SyntaxKind,
 };
 
+/// Direct object: a value that is not an indirect reference
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 #[derive(Clone)]
 pub struct GreenDirectObjectExpressionSyntax(GreenExpressionSyntax);
 
@@ -37,6 +39,8 @@ impl GreenCst for GreenDirectObjectExpressionSyntax {
     }
 }
 
+/// Indirect reference: objNumber genNumber R
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 #[derive(Clone)]
 pub struct GreenIndirectReferenceExpressionSyntax(GreenExpressionSyntax);
 
@@ -97,6 +101,8 @@ impl GreenCst for GreenIndirectReferenceExpressionSyntax {
     }
 }
 
+/// Either a direct object or an indirect reference
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 #[derive(Clone)]
 pub struct GreenDirectObjectOrIndirectReferenceExpressionSyntax(GreenExpressionSyntax);
 
@@ -139,6 +145,8 @@ impl GreenCst for GreenDirectObjectOrIndirectReferenceExpressionSyntax {
     }
 }
 
+/// Indirect object: objNumber genNumber obj ... endobj
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 #[derive(Clone)]
 pub struct IndirectObjectExpressionSyntax(GreenExpressionSyntax);
 
@@ -200,6 +208,8 @@ impl GreenCst for IndirectObjectExpressionSyntax {
 }
 
 #[derive(Clone)]
+/// Content of an indirect object: either a direct object or stream
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 pub struct GreenIndirectBodyExpressionSyntax(GreenExpressionSyntax);
 
 impl GreenIndirectBodyExpressionSyntax {
@@ -241,6 +251,8 @@ impl GreenCst for GreenIndirectBodyExpressionSyntax {
     }
 }
 
+/// Indirect object header: objNumber genNumber obj
+/// ISO 32000-2:2020, 7.3.10 — Indirect objects
 #[derive(Clone)]
 pub struct GreenIndirectObjectHeaderExpressionSyntax(GreenExpressionSyntax);
 

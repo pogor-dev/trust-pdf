@@ -3,6 +3,8 @@ use crate::{
     GreenTrait, SyntaxKind,
 };
 
+/// Cross-reference table: xref sections with entries
+/// ISO 32000-2:2020, 7.5.4 — Cross-reference table
 #[derive(Clone)]
 pub struct GreenXRefTableExpressionSyntax(GreenExpressionSyntax);
 
@@ -35,6 +37,8 @@ impl GreenCst for GreenXRefTableExpressionSyntax {
     }
 }
 
+/// Single xref section with subsections
+/// ISO 32000-2:2020, 7.5.4 — Cross-reference table
 #[derive(Clone)]
 pub struct GreenXRefSectionSyntax(GreenExpressionSyntax);
 
@@ -69,6 +73,8 @@ impl GreenCst for GreenXRefSectionSyntax {
     }
 }
 
+/// xref subsection with contiguous entry range
+/// ISO 32000-2:2020, 7.5.4 — Cross-reference table
 #[derive(Clone)]
 pub struct GreenXRefSubSectionSyntax(GreenExpressionSyntax);
 
@@ -129,6 +135,8 @@ impl GreenCst for GreenXRefSubSectionSyntax {
     }
 }
 
+/// xref entry: byte-offset generation-number in-use-flag
+/// ISO 32000-2:2020, 7.5.4 — Cross-reference table
 #[derive(Clone)]
 pub struct GreenXRefEntryExpressionSyntax(GreenExpressionSyntax);
 

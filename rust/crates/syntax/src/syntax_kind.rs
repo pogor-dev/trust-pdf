@@ -77,6 +77,12 @@ pub enum SyntaxKind {
     StreamRawDataExpression,
     StreamOperandOperatorExpression,
 
+    // stream content block expressions
+    TextObjectExpression,
+    InlineImageExpression,
+    MarkedContentExpression,
+    CompatibilityExpression,
+
     // cross-reference expressions
     XRefTableExpression,
     XRefSectionExpression,

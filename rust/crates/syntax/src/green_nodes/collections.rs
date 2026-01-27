@@ -3,6 +3,8 @@ use crate::{
     GreenLiteralExpressionSyntax, GreenNode, GreenNodeSyntax, GreenToken, GreenTrait, SyntaxKind,
 };
 
+/// Array object: [ element1 element2 ... ]
+/// ISO 32000-2:2020, 7.3.6 — Arrays
 #[derive(Clone)]
 pub struct GreenArrayExpressionSyntax(GreenExpressionSyntax);
 
@@ -63,6 +65,8 @@ impl GreenCst for GreenArrayExpressionSyntax {
     }
 }
 
+/// Element within an array
+/// ISO 32000-2:2020, 7.3.6 — Arrays
 #[derive(Clone)]
 pub struct GreenArrayElementExpressionSyntax(GreenExpressionSyntax);
 
@@ -97,6 +101,8 @@ impl GreenCst for GreenArrayElementExpressionSyntax {
     }
 }
 
+/// Dictionary object: << key1 value1 key2 value2 ... >>
+/// ISO 32000-2:2020, 7.3.7 — Dictionaries
 #[derive(Clone)]
 pub struct GreenDictionaryExpressionSyntax(GreenExpressionSyntax);
 
@@ -157,6 +163,8 @@ impl GreenCst for GreenDictionaryExpressionSyntax {
     }
 }
 
+/// Key-value entry within a dictionary
+/// ISO 32000-2:2020, 7.3.7 — Dictionaries
 #[derive(Clone)]
 pub struct GreenDictionaryElementSyntax(GreenExpressionSyntax);
 

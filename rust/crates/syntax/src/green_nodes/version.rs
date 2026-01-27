@@ -3,6 +3,8 @@ use crate::{
     SyntaxKind,
 };
 
+/// PDF version: %PDF-major.minor
+/// ISO 32000-2:2020, 7.5.2 — File header
 #[derive(Clone)]
 pub struct GreenPdfVersionSyntax(GreenExpressionSyntax);
 
