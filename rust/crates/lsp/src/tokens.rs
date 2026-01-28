@@ -13,6 +13,52 @@ pub enum TokenType {
     Comment = 4,
 }
 
+/// Builder for semantic tokens using relative encoding.
+/// Tokens are encoded as deltas from the previous token position.
+struct SemanticTokensBuilder {
+    data: Vec<SemanticToken>,
+    prev_line: u32,
+    prev_char: u32,
+}
+
+impl SemanticTokensBuilder {
+    fn new() -> Self {
+        SemanticTokensBuilder {
+            data: Vec::new(),
+            prev_line: 0,
+            prev_char: 0,
+        }
+    }
+
+    /// Push a token with absolute line/character position and length
+    fn push(&mut self, line: u32, char: u32, length: u32, token_type: TokenType) {
+        let mut delta_line = line;
+        let mut delta_start = char;
+
+        if !self.data.is_empty() {
+            delta_line -= self.prev_line;
+            if delta_line == 0 {
+                delta_start -= self.prev_char;
+            }
+        }
+
+        self.data.push(SemanticToken {
+            delta_line,
+            delta_start,
+            length,
+            token_type: token_type as u32,
+            token_modifiers_bitset: 0,
+        });
+
+        self.prev_line = line;
+        self.prev_char = char;
+    }
+
+    fn build(self) -> Vec<SemanticToken> {
+        self.data
+    }
+}
+
 pub fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
     use SyntaxKind as K;
     let t = match kind {
@@ -28,7 +74,9 @@ pub fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
         | K::XRefFreeEntryKeyword
         | K::XRefInUseEntryKeyword
         | K::FileTrailerKeyword
-        | K::StartXRefKeyword => TokenType::Keyword,
+        | K::StartXRefKeyword
+        | K::PdfVersionToken
+        | K::EndOfFileMarkerToken => TokenType::Keyword,
         K::StringLiteralToken | K::HexStringLiteralToken => TokenType::String,
         K::NumericLiteralToken => TokenType::Number,
         K::NameLiteralToken => TokenType::Property,
@@ -38,79 +86,64 @@ pub fn map_kind(kind: SyntaxKind) -> Option<TokenType> {
 }
 
 pub fn compute_semantic_tokens(text: &str) -> Vec<SemanticToken> {
-    let mut data: Vec<SemanticToken> = Vec::new();
+    let mut builder = SemanticTokensBuilder::new();
     let line_starts = compute_line_starts(text.as_bytes());
 
     let mut lexer = Lexer::new(text.as_bytes());
     let mut offset: usize = 0;
-    let mut prev_line: u32 = 0;
-    let mut prev_col: u32 = 0;
-
-    // Helper to push a semantic token given an absolute byte offset
-    let mut emit = |abs_offset: usize, length: u32, token_type: TokenType, prev_line: &mut u32, prev_col: &mut u32| {
-        let (line, col) = offset_to_line_col(abs_offset, &line_starts);
-        let (dl, dc) = if line == *prev_line { (0, col - *prev_col) } else { (line - *prev_line, col) };
-        *prev_line = line;
-        *prev_col = col;
-
-        data.push(SemanticToken {
-            delta_line: dl,
-            delta_start: dc,
-            length,
-            token_type: token_type as u32,
-            token_modifiers_bitset: 0,
-        });
-    };
 
     loop {
-        let tok = lexer.next_token();
-        let kind = tok.kind();
-        let width = tok.full_width() as usize;
+        let token = lexer.next_token();
+        let token_kind = token.kind();
+        let token_width = token.width() as usize;
+        let token_full_width = token.full_width() as usize;
 
-        if kind == SyntaxKind::EndOfFileToken {
+        if token_kind == SyntaxKind::EndOfFileToken {
             break;
         }
 
         // Leading trivia comments
         let mut leading_consumed: usize = 0;
-        if let Some(leading_node) = tok.leading_trivia() {
+        if let Some(leading_node) = token.leading_trivia() {
             for slot in leading_node.slots() {
                 if let Slot::Trivia { trivia, .. } = slot {
-                    let plen = trivia.text().len();
+                    let trivia_width = trivia.width() as usize;
                     if trivia.kind() == SyntaxKind::CommentTrivia {
-                        let abs = offset + leading_consumed;
-                        emit(abs, plen as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                        let abs_offset = offset + leading_consumed;
+                        let (line, col) = offset_to_line_col(abs_offset, &line_starts);
+                        builder.push(line, col as u32, trivia.width() as u32, TokenType::Comment);
                     }
-                    leading_consumed += plen;
+                    leading_consumed += trivia_width;
                 }
             }
         }
 
         // Main token
-        if let Some(token_type) = map_kind(kind) {
-            let token_start = offset + leading_consumed;
-            let token_len = tok.text().len() as u32;
-            emit(token_start, token_len, token_type, &mut prev_line, &mut prev_col);
+        if let Some(token_type) = map_kind(token_kind) {
+            let abs_offset = offset + leading_consumed;
+            let (line, col) = offset_to_line_col(abs_offset, &line_starts);
+            builder.push(line, col as u32, token_width as u32, token_type);
         }
 
         // Trailing trivia comments
-        let trailing_base = offset + leading_consumed + tok.text().len();
+        let trailing_base = offset + leading_consumed + token_width;
         let mut trailing_consumed: usize = 0;
-        if let Some(trailing_node) = tok.trailing_trivia() {
+        if let Some(trailing_node) = token.trailing_trivia() {
             for slot in trailing_node.slots() {
                 if let Slot::Trivia { trivia, .. } = slot {
-                    let plen = trivia.text().len();
+                    let trivia_width = trivia.width() as usize;
                     if trivia.kind() == SyntaxKind::CommentTrivia {
-                        let abs = trailing_base + trailing_consumed;
-                        emit(abs, plen as u32, TokenType::Comment, &mut prev_line, &mut prev_col);
+                        let abs_offset = trailing_base + trailing_consumed;
+                        let (line, col) = offset_to_line_col(abs_offset, &line_starts);
+                        builder.push(line, col as u32, trivia.width() as u32, TokenType::Comment);
                     }
-                    trailing_consumed += plen;
+                    trailing_consumed += trivia_width;
                 }
             }
         }
 
-        offset += width;
+        offset += token_full_width;
     }
 
-    data
+    builder.build()
 }

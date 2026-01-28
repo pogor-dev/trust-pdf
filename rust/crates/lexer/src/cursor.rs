@@ -58,6 +58,15 @@ impl<'source> Lexer<'source> {
         }
     }
 
+    /// Check if the bytes at the current position match the given sequence.
+    ///
+    /// Returns `true` if all bytes in `sequence` match starting from the current position,
+    /// `false` otherwise (including when there aren't enough bytes remaining).
+    #[inline]
+    pub(super) fn matches_sequence(&self, sequence: &[u8]) -> bool {
+        self.source.get(self.position..).map_or(false, |remaining| remaining.starts_with(sequence))
+    }
+
     /// Peek at the first byte without advancing the cursor.
     pub(super) fn peek(&self) -> Option<u8> {
         self.peek_by(0)
