@@ -138,7 +138,7 @@ impl<'source> Lexer<'source> {
                 // In raw stream mode, everything until 'endstream' is treated as a raw data token
                 self.scan_raw_stream_data(token_info);
             }
-            b'%' if self.is_pdf_version_token() => {
+            b'%' if self.is_valid_pdf_version_token() => {
                 self.scan_pdf_version(token_info);
             }
             b'%' if self.is_eof_token() => {
@@ -221,7 +221,7 @@ impl<'source> Lexer<'source> {
                 }
                 b'%' => {
                     // Check if this is a special token that should be scanned as a token, not trivia
-                    if self.is_pdf_version_token() || self.is_eof_token() {
+                    if self.is_valid_pdf_version_token() || self.is_eof_token() {
                         break; // Let scan_token handle these
                     }
                     trivia.push(self.scan_comment());
@@ -282,49 +282,64 @@ impl<'source> Lexer<'source> {
         self.cache.trivia(SyntaxKind::EndOfLineTrivia, eol_bytes).1
     }
 
-    /// Checks if the current position starts a PDF version token like `%PDF-1.7`.
+    /// Checks if the current position starts a valid PDF version token like `%PDF-1.7`.
     ///
-    /// See: ISO 32000-2:2020, §7.5.2 File header.
-    fn is_pdf_version_token(&self) -> bool {
-        self.peek() == Some(b'%')
-            && self.peek_by(1) == Some(b'P')
-            && self.peek_by(2) == Some(b'D')
-            && self.peek_by(3) == Some(b'F')
-            && self.peek_by(4) == Some(b'-')
+    /// A valid PDF version token has the exact format: %PDF-x.y where x and y are single digits,
+    /// and must be followed by whitespace, a delimiter, or EOF.
+    /// Any deviation (e.g., %PDF-1, %PDF-1.2.3, %PDF-abc, %PDF-1.7abc) is treated as a comment.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.2 File header and §7.2.3 Character set.
+    fn is_valid_pdf_version_token(&self) -> bool {
+        let valid_format = self.matches_sequence(b"%PDF-")
+            && matches!(self.peek_by(5), Some(b'0'..=b'9'))
+            && self.peek_by(6) == Some(b'.')
+            && matches!(self.peek_by(7), Some(b'0'..=b'9'))
+            && !matches!(self.peek_by(8), Some(b'0'..=b'9' | b'.'));
+
+        if !valid_format {
+            return false;
+        }
+
+        // Check if properly delimited (whitespace, delimiter, or EOF)
+        match self.peek_by(8) {
+            None => true, // EOF
+            Some(byte) => is_whitespace(byte, true) || is_delimiter(byte, false),
+        }
     }
 
     /// Checks if the current position starts an EOF marker `%%EOF`.
     ///
-    /// See: ISO 32000-2:2020, §7.5.5 File trailer.
+    /// The marker must be followed by whitespace, a delimiter, or EOF.
+    /// If not properly delimited, it's treated as a regular comment.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.5 File trailer and §7.2.3 Character set.
     fn is_eof_token(&self) -> bool {
-        self.peek() == Some(b'%')
-            && self.peek_by(1) == Some(b'%')
-            && self.peek_by(2) == Some(b'E')
-            && self.peek_by(3) == Some(b'O')
-            && self.peek_by(4) == Some(b'F')
+        let valid_format = self.matches_sequence(b"%%EOF");
+
+        if !valid_format {
+            return false;
+        }
+
+        // Check if properly delimited (whitespace, delimiter, or EOF)
+        match self.peek_by(5) {
+            None => true, // EOF
+            Some(byte) => is_whitespace(byte, true) || is_delimiter(byte, false),
+        }
     }
 
     /// Scans a PDF version token like `%PDF-1.7` or `%PDF-2.0`.
     ///
-    /// The version token consists of `%PDF-` followed by a major and minor version number.
-    /// This token appears at the beginning of a PDF file.
+    /// The version token consists of `%PDF-` followed by a major and minor version number,
+    /// each a single digit, in the format `%PDF-x.y`. The validation ensures only valid
+    /// version tokens are consumed here; malformed versions (e.g., `%PDF-1`, `%PDF-1.2.3`)
+    /// are treated as comments by `scan_trivia()`.
     ///
     /// See: ISO 32000-2:2020, §7.5.2 File header.
     fn scan_pdf_version(&mut self, token_info: &mut TokenInfo<'source>) {
         let pos = self.position;
 
-        // Consume %PDF-
-        self.advance_by(5);
-
-        // Consume version number (major.minor)
-        while let Some(byte) = self.peek() {
-            match byte {
-                b'0'..=b'9' | b'.' => {
-                    self.advance();
-                }
-                _ => break,
-            }
-        }
+        // Consume %PDF-x.y (validated by is_valid_pdf_version_token)
+        self.advance_by(8); // %PDF-x.y is exactly 8 bytes
 
         token_info.kind = SyntaxKind::PdfVersionToken;
         token_info.bytes = &self.source[pos..self.position];
