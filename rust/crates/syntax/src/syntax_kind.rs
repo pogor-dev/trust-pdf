@@ -5,6 +5,12 @@ pub enum SyntaxKind {
     List,
     BadToken,
 
+    /// `%PDF-1.7`
+    PdfVersionToken,
+
+    /// `%%EOF`
+    EndOfFileMarkerToken,
+
     EndOfFileToken,
 
     // trivia

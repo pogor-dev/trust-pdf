@@ -138,6 +138,12 @@ impl<'source> Lexer<'source> {
                 // In raw stream mode, everything until 'endstream' is treated as a raw data token
                 self.scan_raw_stream_data(token_info);
             }
+            b'%' if self.is_pdf_version_token() => {
+                self.scan_pdf_version(token_info);
+            }
+            b'%' if self.is_eof_token() => {
+                self.scan_eof_marker(token_info);
+            }
             b'0'..=b'9' | b'+' | b'-' | b'.' => {
                 self.scan_numeric_literal(token_info);
             }
@@ -214,6 +220,10 @@ impl<'source> Lexer<'source> {
                     trivia.push(self.scan_end_of_line());
                 }
                 b'%' => {
+                    // Check if this is a special token that should be scanned as a token, not trivia
+                    if self.is_pdf_version_token() || self.is_eof_token() {
+                        break; // Let scan_token handle these
+                    }
                     trivia.push(self.scan_comment());
                 }
                 _ => break,
@@ -270,6 +280,70 @@ impl<'source> Lexer<'source> {
 
         let eol_bytes = &self.source[pos..self.position];
         self.cache.trivia(SyntaxKind::EndOfLineTrivia, eol_bytes).1
+    }
+
+    /// Checks if the current position starts a PDF version token like `%PDF-1.7`.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.2 File header.
+    fn is_pdf_version_token(&self) -> bool {
+        self.peek() == Some(b'%')
+            && self.peek_by(1) == Some(b'P')
+            && self.peek_by(2) == Some(b'D')
+            && self.peek_by(3) == Some(b'F')
+            && self.peek_by(4) == Some(b'-')
+    }
+
+    /// Checks if the current position starts an EOF marker `%%EOF`.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.5 File trailer.
+    fn is_eof_token(&self) -> bool {
+        self.peek() == Some(b'%')
+            && self.peek_by(1) == Some(b'%')
+            && self.peek_by(2) == Some(b'E')
+            && self.peek_by(3) == Some(b'O')
+            && self.peek_by(4) == Some(b'F')
+    }
+
+    /// Scans a PDF version token like `%PDF-1.7` or `%PDF-2.0`.
+    ///
+    /// The version token consists of `%PDF-` followed by a major and minor version number.
+    /// This token appears at the beginning of a PDF file.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.2 File header.
+    fn scan_pdf_version(&mut self, token_info: &mut TokenInfo<'source>) {
+        let pos = self.position;
+
+        // Consume %PDF-
+        self.advance_by(5);
+
+        // Consume version number (major.minor)
+        while let Some(byte) = self.peek() {
+            match byte {
+                b'0'..=b'9' | b'.' => {
+                    self.advance();
+                }
+                _ => break,
+            }
+        }
+
+        token_info.kind = SyntaxKind::PdfVersionToken;
+        token_info.bytes = &self.source[pos..self.position];
+    }
+
+    /// Scans an EOF marker `%%EOF`.
+    ///
+    /// This marker can appear multiple times in incremental PDF updates.
+    /// It marks the logical end of a PDF document section.
+    ///
+    /// See: ISO 32000-2:2020, §7.5.5 File trailer.
+    fn scan_eof_marker(&mut self, token_info: &mut TokenInfo<'source>) {
+        let pos = self.position;
+
+        // Consume %%EOF
+        self.advance_by(5);
+
+        token_info.kind = SyntaxKind::EndOfFileMarkerToken;
+        token_info.bytes = &self.source[pos..self.position];
     }
 
     /// Scans a PDF comment and returns a trivia element.
