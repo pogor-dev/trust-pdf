@@ -1,6 +1,6 @@
 mod collections;
 mod document;
-mod factory;
+pub mod green_syntax_factory;
 mod nodes;
 mod objects;
 mod primitives;
@@ -9,4 +9,4 @@ mod trailer;
 mod version;
 mod xref;
 
-pub use self::{collections::*, document::*, factory::GreenSyntaxFactory, nodes::*, objects::*, primitives::*, stream::*, trailer::*, version::*, xref::*};
+pub use self::{collections::*, document::*, nodes::*, objects::*, primitives::*, stream::*, trailer::*, version::*, xref::*};

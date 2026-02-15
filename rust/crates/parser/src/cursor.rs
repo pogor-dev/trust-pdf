@@ -1,6 +1,6 @@
 use std::cmp::min;
 
-use syntax::{GreenToken, SyntaxKind};
+use syntax::{GreenToken, SyntaxKind, green_syntax_factory};
 
 use crate::Parser;
 
@@ -18,6 +18,7 @@ impl<'source> Parser<'source> {
         token
     }
 
+    // TODO: decide what functions should be inlined
     pub(super) fn peek_token(&mut self) -> GreenToken {
         self.peek_token_by(1)
     }
@@ -39,8 +40,40 @@ impl<'source> Parser<'source> {
 
     pub(super) fn advance_token(&mut self) -> GreenToken {
         let current_token = self.current_token();
-        self.window_offset += 1;
+        self.move_to_next_token();
         current_token
+    }
+
+    pub(super) fn eat_token(&mut self) -> GreenToken {
+        let current_token = self.current_token();
+        self.move_to_next_token();
+        current_token
+    }
+
+    pub(super) fn eat_token_or_create_missing(&mut self, expected: SyntaxKind) -> GreenToken {
+        debug_assert!(expected.is_any_token(), "Expected a token kind, got {:?}", expected);
+        let current_token = self.current_token();
+        let actual = current_token.kind();
+
+        if actual == expected {
+            return self.eat_token();
+        }
+
+        self.create_missing_token(expected, actual)
+    }
+
+    pub(super) fn eat_token_or_replace_with_missing(&mut self, expected: SyntaxKind) -> GreenToken {
+        debug_assert!(expected.is_any_token(), "Expected a token kind, got {:?}", expected);
+        let current_token = self.current_token();
+        let actual = current_token.kind();
+
+        if actual == expected {
+            return self.eat_token();
+        }
+
+        let replacement = self.create_missing_token(expected, actual);
+        // TODO: return AddTrailingSkippedSyntax(replacement, this.EatToken())
+        return replacement;
     }
 
     pub(super) fn pre_lex(&mut self) {
@@ -55,6 +88,19 @@ impl<'source> Parser<'source> {
                 break;
             }
         }
+    }
+
+    fn create_missing_token(&self, expected: SyntaxKind, actual: SyntaxKind) -> GreenToken {
+        green_syntax_factory::missing_token(expected)
+        /*
+           var token = SyntaxFactory.MissingToken(expected);
+           return WithAdditionalDiagnostics(token, this.GetExpectedMissingNodeOrTokenError(token, expected, actual));
+        */
+        // TODO: add diagnostic information to the token for error reporting
+    }
+
+    fn move_to_next_token(&mut self) {
+        self.window_offset += 1;
     }
 
     fn add_lexed_token(&mut self, token: GreenToken) {

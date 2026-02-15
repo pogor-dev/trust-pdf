@@ -3,23 +3,12 @@
 pub enum SyntaxKind {
     None,
     List,
-    BadToken,
 
     /// `%PDF-1.7`
     PdfVersionToken,
 
     /// `%%EOF`
     EndOfFileMarkerToken,
-
-    EndOfFileToken,
-
-    // trivia
-    // \r, \n, \r\n
-    EndOfLineTrivia,
-    /// Null, horizontal tab, form feed, vertical tab, space, non-breaking space
-    WhitespaceTrivia,
-    /// % Comment 1
-    CommentTrivia,
 
     // primitives
     NumericLiteralToken,
@@ -52,6 +41,21 @@ pub enum SyntaxKind {
     OpenDictToken,
     /// `>>`
     CloseDictToken,
+
+    // special tokens
+    /// End of file token, this is assumed to be textless token
+    EndOfFileToken,
+
+    // invalid tokens
+    BadToken,
+
+    // trivia
+    // \r, \n, \r\n
+    EndOfLineTrivia,
+    /// Null, horizontal tab, form feed, vertical tab, space, non-breaking space
+    WhitespaceTrivia,
+    /// % Comment 1
+    CommentTrivia,
 
     // primary expressions
     NumericLiteralExpression,
@@ -247,4 +251,18 @@ pub enum SyntaxKind {
     EvenOddClipOperator,
     /// Append curved segment to path (final point replicated) (`y`).
     CurveToFinalReplicatedOperator,
+}
+
+impl SyntaxKind {
+    pub const FIRST_TOKEN_KIND: SyntaxKind = SyntaxKind::PdfVersionToken;
+    pub const LAST_TOKEN_KIND: SyntaxKind = SyntaxKind::EndOfFileToken;
+
+    pub fn is_any_token(&self) -> bool {
+        let kind_value = *self as u16;
+        if kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
+            return true;
+        }
+
+        return false;
+    }
 }
