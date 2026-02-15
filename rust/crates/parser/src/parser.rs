@@ -14,7 +14,7 @@ pub struct Parser<'source> {
 
 // TODO: we should return red nodes instead, but as temporary measure we return green nodes
 impl<'source> Parser<'source> {
-    pub(crate) const CACHED_TOKEN_ARRAY_SIZE: usize = 64;
+    pub(super) const CACHED_TOKEN_ARRAY_SIZE: usize = 64;
 
     pub fn new(lexer: Lexer<'source>) -> Self {
         let mut parser = Self {
