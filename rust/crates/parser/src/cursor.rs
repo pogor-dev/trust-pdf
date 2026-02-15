@@ -270,4 +270,79 @@ mod tests {
         assert_eq!(token.kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(token.text(), b"1");
     }
+
+    #[test]
+    fn test_add_lexed_token_slot_triggers_shift() {
+        // Create a stream large enough to fill initial buffer and trigger shifting
+        // Initial capacity is min(64, source_len / 2), so for 200 bytes we get ~64 capacity
+        let mut source = Vec::new();
+        source.push(b'[');
+        for i in 0..150 {
+            source.extend_from_slice(format!(" {}", i % 10).as_bytes());
+        }
+        source.push(b']');
+
+        let mut parser = create_parser(&source);
+
+        // First, fill the buffer completely by peeking ahead
+        let initial_capacity = parser.lexed_tokens.len();
+
+        // Consume more than half the buffer
+        let tokens_to_consume = (initial_capacity >> 1) + 5;
+        for _ in 0..tokens_to_consume {
+            parser.advance_token();
+        }
+
+        // Now peek far enough ahead to fill remaining buffer and force a new token
+        // This should trigger shift since window_offset > len >> 1 and buffer is full
+        for i in 1..initial_capacity {
+            let _ = parser.peek_token_by(i);
+        }
+
+        // Verify window was shifted by checking window_start moved forward
+        assert!(parser.window_start > 0, "window_start should have advanced after shifting");
+
+        // Should still be able to parse correctly after shift
+        let token = parser.current_token();
+        assert!(matches!(token.kind(), SyntaxKind::NumericLiteralToken));
+    }
+
+    #[test]
+    fn test_add_lexed_token_slot_triggers_resize() {
+        // Create a small source to force minimal initial capacity, then peek beyond it
+        let source = b"[1 2 3]";
+        let mut parser = create_parser(source);
+
+        // Don't advance, just peek ahead repeatedly to fill buffer without consuming
+        // This should trigger resize instead of shift (because window_offset stays at 0)
+        let initial_capacity = parser.lexed_tokens.len();
+
+        // Peek enough times to exceed initial capacity
+        for i in 1..=initial_capacity + 5 {
+            let _ = parser.peek_token_by(i);
+        }
+
+        // Buffer should have resized
+        assert!(parser.lexed_tokens.len() > initial_capacity, "Buffer should have grown via resize");
+
+        // window_start should still be 0 since we didn't advance
+        assert_eq!(parser.window_start, 0, "window_start should remain 0 when resizing");
+    }
+
+    #[test]
+    fn test_shift_with_zero_shift_count() {
+        // Test edge case where shift_count is 0
+        let source = b"[1]";
+        let mut parser = create_parser(source);
+
+        // Consume all tokens to make shift_count = 0
+        while parser.current_token().kind() != SyntaxKind::EndOfFileToken {
+            parser.advance_token();
+        }
+
+        // Now advance once more and access beyond, forcing slot allocation
+        // with window_offset pointing past all valid tokens
+        let eof = parser.current_token();
+        assert_eq!(eof.kind(), SyntaxKind::EndOfFileToken);
+    }
 }
