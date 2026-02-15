@@ -1,34 +1,32 @@
-use std::cmp::min;
-
 use lexer::Lexer;
 use syntax::{GreenPdfDocumentSyntax, GreenToken};
 
 pub struct Parser<'source> {
     pub(super) lexer: Lexer<'source>,
-    pub(super) current_token: Option<GreenToken>,
-    pub(super) lexer_tokens: Vec<GreenToken>,
-    /// The index of the first token in the lexer_tokens vector
-    pub(super) first_token: usize,
-    /// The offset of the current token in the lexer_tokens vector
-    pub(super) token_offset: usize,
-    /// The total number of tokens cached in the lexer_tokens vector
-    pub(super) token_count: usize,
+    pub(super) lexed_tokens: Vec<Option<GreenToken>>,
+    /// Global token index for `lexed_tokens[0]` in the full stream.
+    pub(super) window_start: usize,
+    /// Slot offset of the current token within `lexed_tokens`.
+    pub(super) window_offset: usize,
+    /// Number of valid cached tokens in `lexed_tokens`.
+    pub(super) window_size: usize,
 }
 
 // TODO: we should return red nodes instead, but as temporary measure we return green nodes
 impl<'source> Parser<'source> {
-    const MAX_CACHED_TOKENS: usize = 64;
+    pub(crate) const CACHED_TOKEN_ARRAY_SIZE: usize = 64;
 
     pub fn new(lexer: Lexer<'source>) -> Self {
-        let source_len = lexer.source_length();
-        Self {
+        let mut parser = Self {
             lexer,
-            current_token: None,
-            lexer_tokens: Vec::with_capacity(min(Self::MAX_CACHED_TOKENS, source_len / 4)),
-            token_offset: 0,
-            token_count: 0,
-            first_token: 0,
-        }
+            lexed_tokens: vec![None; Self::CACHED_TOKEN_ARRAY_SIZE],
+            window_offset: 0,
+            window_size: 0,
+            window_start: 0,
+        };
+
+        parser.pre_lex();
+        parser
     }
 
     pub fn parse_pdf_document(&mut self) -> GreenPdfDocumentSyntax {

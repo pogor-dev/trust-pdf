@@ -1,15 +1,20 @@
+use std::cmp::min;
+
 use syntax::{GreenToken, SyntaxKind};
 
 use crate::Parser;
 
 impl<'source> Parser<'source> {
     pub(super) fn current_token(&mut self) -> GreenToken {
-        if self.token_offset >= self.token_count {
+        if self.window_offset >= self.window_size {
             let token = self.lexer.next_token();
             self.add_lexed_token(token);
         }
 
-        let token = self.lexer_tokens[self.token_offset].clone();
+        let token = self.lexed_tokens[self.window_offset]
+            .clone()
+            .expect("The sliding window logic must be broken, we don't expect the tokens to be None");
+
         token
     }
 
@@ -20,23 +25,27 @@ impl<'source> Parser<'source> {
     pub(super) fn peek_token_by(&mut self, offset: usize) -> GreenToken {
         debug_assert!(offset > 0, "Offset must be positive");
 
-        if self.token_offset + offset >= self.token_count {
+        if self.window_offset + offset >= self.window_size {
             let token = self.lexer.next_token();
             self.add_lexed_token(token);
         }
 
-        let token = self.lexer_tokens[self.token_offset + offset].clone();
+        let token = self.lexed_tokens[self.window_offset + offset]
+            .clone()
+            .expect("The sliding window logic must be broken, we don't expect the tokens to be None");
+
         token
     }
 
     pub(super) fn advance_token(&mut self) -> GreenToken {
         let current_token = self.current_token();
-        self.token_offset += 1;
+        self.window_offset += 1;
         current_token
     }
 
     pub(super) fn pre_lex(&mut self) {
-        for _ in 0..self.lexer_tokens.capacity() - 1 {
+        let size = min(Self::CACHED_TOKEN_ARRAY_SIZE, self.lexer.source_length() / 2);
+        for _ in 0..size {
             let token = self.lexer.next_token();
             let token_kind = token.kind();
 
@@ -49,42 +58,59 @@ impl<'source> Parser<'source> {
     }
 
     fn add_lexed_token(&mut self, token: GreenToken) {
-        if self.token_count >= self.lexer_tokens.len() {
-            self.add_token_slot();
+        if self.window_size >= self.lexed_tokens.len() {
+            self.add_lexed_token_slot();
         }
 
-        self.lexer_tokens[self.token_count] = token;
-        self.token_count += 1;
+        self.lexed_tokens[self.window_size] = Some(token);
+        self.window_size += 1;
     }
 
-    fn add_token_slot(&mut self) {
+    /// Maintains a sliding token buffer: shift left when the head is consumed,
+    /// otherwise grow capacity to keep incremental lexing bounded.
+    ///
+    /// `window_start` is the global index of the token stored in slot 0. When
+    /// we shift the window left, the same logical tokens move to lower slots,
+    /// so the global base index must advance by `shift_offset` to keep
+    /// `window_start + window_offset` pointing at the same token in the stream.
+    ///
+    /// Sliding window (global indexes vs buffer slots):
+    ///
+    /// ```text
+    /// Global token stream (indexes):
+    ///   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 ...
+    /// Buffer before shift (window_start = 0):
+    ///   [0 1 2 3 4 5 6 7 8 9 _ _ _ _ _ _ ...]
+    ///                ^ window_offset
+    /// Shift left by window_offset (e.g. 6) to keep recent tokens:
+    ///   [6 7 8 9 _ _ _ _ _ _ _ _ _ _ _ _ ...]
+    ///    ^ window_start increases by shift_offset, window_offset becomes 0
+    ///
+    /// Growth model (when not shifting):
+    ///   [0 1 2 3 4 5 6 7] -> resize(len * 2)
+    ///   [0 1 2 3 4 5 6 7 _ _ _ _ _ _ _ _] (doubled capacity with None slots)
+    /// ```
+    fn add_lexed_token_slot(&mut self) {
         // Shift tokens to the left if we've consumed more than half the buffer.
         // This prevents unbounded growth when incrementally lexing.
-        if self.token_offset > self.lexer_tokens.len() >> 1 {
-            let shift_offset = self.token_offset;
-            let shift_count = self.token_count - shift_offset;
+        if self.window_offset > self.lexed_tokens.len() >> 1 {
+            let shift_offset = self.window_offset;
+            let shift_count = self.window_size - shift_offset;
             debug_assert!(shift_offset > 0, "shift_offset must be greater than 0");
 
             // Shift remaining unconsumed tokens to the beginning of the buffer.
-            // SAFETY: We're shifting left (non-overlapping for reads) and the pointers are valid.
+            // Equivalent to Roslyn's Array.Copy(_lexedTokens, shiftOffset, _lexedTokens, 0, shiftCount)
             if shift_count > 0 {
-                unsafe {
-                    std::ptr::copy(self.lexer_tokens.as_ptr().add(shift_offset), self.lexer_tokens.as_mut_ptr(), shift_count);
+                for i in 0..shift_count {
+                    self.lexed_tokens[i] = self.lexed_tokens[i + shift_offset].take();
                 }
             }
 
-            self.first_token += shift_offset;
-            self.token_count -= shift_offset;
-            self.token_offset -= shift_offset;
+            self.window_start += shift_offset;
+            self.window_size -= shift_offset;
+            self.window_offset -= shift_offset;
         } else {
-            // Increase capacity and logical length without initializing new slots.
-            self.lexer_tokens.reserve(self.lexer_tokens.len() * 2);
-            // SAFETY: We've just reserved space, so new capacity exists.
-            // The uninitialized slots will be written to immediately in add_lexed_token.
-            unsafe {
-                let new_len = self.lexer_tokens.capacity();
-                self.lexer_tokens.set_len(new_len);
-            }
+            self.lexed_tokens.resize(self.lexed_tokens.len() * 2, None);
         }
     }
 }
