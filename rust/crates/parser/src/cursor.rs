@@ -92,11 +92,11 @@ impl<'source> Parser<'source> {
 
     fn create_missing_token(&self, expected: SyntaxKind, actual: SyntaxKind) -> GreenToken {
         green_syntax_factory::missing_token(expected)
+        // TODO: add diagnostic information to the token for error reporting
         /*
            var token = SyntaxFactory.MissingToken(expected);
            return WithAdditionalDiagnostics(token, this.GetExpectedMissingNodeOrTokenError(token, expected, actual));
         */
-        // TODO: add diagnostic information to the token for error reporting
     }
 
     fn move_to_next_token(&mut self) {
