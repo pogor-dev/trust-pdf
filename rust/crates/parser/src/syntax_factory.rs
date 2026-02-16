@@ -1,6 +1,7 @@
 use lexer::Lexer;
-use parser::Parser;
 use syntax::GreenPdfDocumentSyntax;
+
+use crate::Parser;
 
 pub fn parse_pdf_document(source: &[u8]) -> GreenPdfDocumentSyntax {
     let lexer = Lexer::new(source);

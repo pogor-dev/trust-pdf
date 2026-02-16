@@ -109,6 +109,11 @@ impl<'source> Lexer<'source> {
         self.cache.token(token_info.kind, token_info.bytes, leading, trailing, diagnostics).1
     }
 
+    /// Returns the full width of the source text being lexed.
+    pub fn source_length(&self) -> usize {
+        self.source.len()
+    }
+
     /// Scans the main token content from the current position.
     ///
     /// This function examines the first byte at the current position and dispatches

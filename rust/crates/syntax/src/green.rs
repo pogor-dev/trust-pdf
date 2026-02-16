@@ -3,6 +3,7 @@ mod cache;
 mod diagnostic;
 mod diagnostics;
 mod element;
+mod flags;
 #[path = "./green/trait.rs"]
 mod green_trait;
 mod macros;
