@@ -15,6 +15,8 @@ pub use self::element::GreenElement;
 
 pub(crate) use self::element::GreenElementRef;
 
+// TODO: consider adapting Roslyn style so green nodes are not public, and we only expose the syntax structs that wrap them.
+
 pub use self::{
     builder::GreenNodeBuilder,
     cache::NodeCache,

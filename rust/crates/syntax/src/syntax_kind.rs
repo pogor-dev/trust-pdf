@@ -265,4 +265,28 @@ impl SyntaxKind {
 
         return false;
     }
+
+    pub fn get_text(&self) -> &'static [u8] {
+        match self {
+            SyntaxKind::EndOfFileMarkerToken => b"%%EOF",
+            SyntaxKind::TrueKeyword => b"true",
+            SyntaxKind::FalseKeyword => b"false",
+            SyntaxKind::NullKeyword => b"null",
+            SyntaxKind::IndirectObjectKeyword => b"obj",
+            SyntaxKind::IndirectEndObjectKeyword => b"endobj",
+            SyntaxKind::IndirectReferenceKeyword => b"R",
+            SyntaxKind::StreamKeyword => b"stream",
+            SyntaxKind::EndStreamKeyword => b"endstream",
+            SyntaxKind::XRefKeyword => b"xref",
+            SyntaxKind::XRefFreeEntryKeyword => b"f",
+            SyntaxKind::XRefInUseEntryKeyword => b"n",
+            SyntaxKind::FileTrailerKeyword => b"trailer",
+            SyntaxKind::StartXRefKeyword => b"startxref",
+            SyntaxKind::OpenBracketToken => b"[",
+            SyntaxKind::CloseBracketToken => b"]",
+            SyntaxKind::OpenDictToken => b"<<",
+            SyntaxKind::CloseDictToken => b">>",
+            _ => b"",
+        }
+    }
 }

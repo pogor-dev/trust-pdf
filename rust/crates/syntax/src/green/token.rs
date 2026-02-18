@@ -19,8 +19,8 @@ struct GreenTokenHead {
     kind: SyntaxKind,
     full_width: u32,
     leading_trivia: Option<GreenNode>,
-    trailing_trivia: Option<GreenNode>,
-    diagnostics: Option<GreenDiagnostics>,
+    trailing_trivia: Option<GreenNode>,    // TODO: consider introducing specialized structs
+    diagnostics: Option<GreenDiagnostics>, // TODO: move out the diagnostics to save space
     _c: Count<GreenToken>,
 }
 
