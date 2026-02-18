@@ -8,6 +8,8 @@ pub(crate) trait GreenNodeTrait {
 
     fn flags(&self) -> GreenFlags;
 
+    fn set_flags(&mut self, flags: GreenFlags);
+
     #[inline]
     fn is_missing(&self) -> bool {
         !self.flags().contains(GreenFlags::IS_NOT_MISSING)
@@ -168,8 +170,8 @@ pub(crate) trait GreenNodeTrait {
     }
 
     #[inline]
-    fn write_trivia_to(&self) -> Vec<u8> {
-        Vec::new()
+    fn write_trivia_to(&self) -> &[u8] {
+        &[]
     }
 
     #[inline]

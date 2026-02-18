@@ -40,6 +40,11 @@ impl GreenNodeTrait for GreenNode {
     }
 
     #[inline]
+    fn set_flags(&mut self, flags: GreenFlags) {
+        self.node_flags_and_slot_count.set_node_flags(flags);
+    }
+
+    #[inline]
     fn full_width(&self) -> u32 {
         self.full_width
     }
