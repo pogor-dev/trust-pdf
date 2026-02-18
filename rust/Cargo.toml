@@ -11,8 +11,9 @@ repository = "https://github.com/pogor-dev/trust-pdf"
 
 [workspace.dependencies]
 # Local crates
-parser = { path = "./crates/parser", version = "0.1.0" }
+code_analysis = { path = "./crates/code_analysis", version = "0.1.0" }
 lexer = { path = "./crates/lexer", version = "0.1.0" }
+parser = { path = "./crates/parser", version = "0.1.0" }
 semantic = { path = "./crates/semantic", version = "0.1.0" }
 syntax = { path = "./crates/syntax", version = "0.1.0" }
 trust-pdf-analyzer = { path = "./crates/lsp", version = "0.1.0" }

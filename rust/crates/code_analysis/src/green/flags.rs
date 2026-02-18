@@ -4,7 +4,7 @@
 /// green nodes to track metadata without additional memory allocation.
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub(super) struct GreenFlags(u8);
+pub struct GreenFlags(u8);
 
 impl GreenFlags {
     pub const NONE: Self = Self(0);
@@ -27,6 +27,8 @@ impl GreenFlags {
     ///
     /// This pattern originates from Roslyn's syntax tree design.
     pub const IS_NOT_MISSING: Self = Self(1 << 0);
+
+    pub const CONTAINS_DIAGNOSTICS: Self = Self(1 << 1);
 }
 
 impl GreenFlags {
