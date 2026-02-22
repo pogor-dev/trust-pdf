@@ -9,6 +9,7 @@ mod green_trait;
 mod macros;
 mod node;
 mod token;
+mod token_no_trivia;
 mod trivia;
 
 pub use self::element::GreenElement;
@@ -25,5 +26,6 @@ pub use self::{
     green_trait::{GreenCst, GreenNodeSyntax, GreenTrait},
     node::{GreenNode, GreenNodeData, Slot, Slots},
     token::{GreenToken, GreenTokenData},
+    token_no_trivia::{GreenTokenNoTrivia, GreenTokenNoTriviaData},
     trivia::{GreenTrivia, GreenTriviaData},
 };
