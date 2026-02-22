@@ -1,8 +1,8 @@
 //! Green token representation for well-known PDF token text.
 //!
-//! This variant stores no per-instance text bytes. The token text is inferred
-//! directly from `SyntaxKind` via `SyntaxKind::get_text()`, which matches the
-//! fixed-text token pattern used for punctuation/keywords.
+//! This variant stores per-instance text bytes inline in the green node tail.
+//! The token text is read from the inline byte slice and may differ from
+//! `SyntaxKind::get_text()` when callers provide explicit payload text.
 
 use std::{
     borrow::Borrow,
@@ -138,10 +138,10 @@ impl fmt::Debug for GreenTokenWithValue {
 impl GreenTokenWithValue {
     /// Creates new token.
     #[inline]
-    pub fn new(kind: SyntaxKind) -> GreenTokenWithValue {
+    pub fn new(kind: SyntaxKind, value: &[u8]) -> GreenTokenWithValue {
         let flags = GreenFlags::IS_NOT_MISSING; // Tokens created via `new` are always not-missing
         let head = GreenTokenWithValueHead { kind, flags, _c: Count::new() };
-        let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
+        let ptr = ThinArc::from_header_and_iter(head, value.iter().copied());
         GreenTokenWithValue { ptr }
     }
 
@@ -239,82 +239,82 @@ mod green_token_tests {
 
     #[test]
     fn test_new_token() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        assert_eq!(token.kind(), SyntaxKind::TrueKeyword);
-        assert_eq!(token.text(), b"true");
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
+        assert_eq!(token.kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(token.text(), b"42");
     }
 
     #[test]
     fn test_new_when_created_expect_is_not_missing_flag_set() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
         assert!(token.flags().contains(GreenFlags::IS_NOT_MISSING));
     }
 
     #[test]
     fn test_kind() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        assert_eq!(token.kind(), SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken, b"Type");
+        assert_eq!(token.kind(), SyntaxKind::NameLiteralToken);
     }
 
     #[test]
     fn test_text() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        assert_eq!(token.text(), b"true");
+        let token = GreenTokenWithValue::new(SyntaxKind::StringLiteralToken, b"hello");
+        assert_eq!(token.text(), b"hello");
     }
 
     #[test]
     fn test_width() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        assert_eq!(token.width(), 4);
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"456");
+        assert_eq!(token.width(), 3);
     }
 
     #[test]
     fn test_eq_when_same_kind_expect_equal() {
-        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
+        let token2 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
         assert_eq!(token1, token2);
     }
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenTokenWithValue::new(SyntaxKind::FalseKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
+        let token2 = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken, b"42");
         assert_ne!(token1, token2);
     }
 
     #[test]
     fn test_clone() {
-        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::StringLiteralToken, b"test");
         let token2 = token1.clone();
         assert_eq!(token1, token2);
-        assert_eq!(token2.kind(), SyntaxKind::TrueKeyword);
-        assert_eq!(token2.text(), b"true");
+        assert_eq!(token2.kind(), SyntaxKind::StringLiteralToken);
+        assert_eq!(token2.text(), b"test");
     }
 
     #[test]
     fn test_display() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        assert_eq!(token.to_string(), "true");
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"999");
+        assert_eq!(token.to_string(), "999");
     }
 
     #[test]
     fn test_debug() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
         let debug_str = format!("{:?}", token);
-        let expected = "GreenTokenWithValue { kind: TrueKeyword, text: \"true\", width: 4 }";
+        let expected = "GreenTokenWithValue { kind: NumericLiteralToken, text: \"42\", width: 2 }";
         assert_eq!(debug_str, expected);
     }
 
     #[test]
     fn test_empty_text() {
-        let token = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken);
+        let token = GreenTokenWithValue::new(SyntaxKind::StringLiteralToken, b"");
         assert_eq!(token.text(), b"");
         assert_eq!(token.width(), 0);
     }
 
     #[test]
     fn test_into_raw_and_from_raw() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"777");
         let ptr = GreenTokenWithValue::into_raw(token.clone());
         let reconstructed = unsafe { GreenTokenWithValue::from_raw(ptr) };
         assert_eq!(token, reconstructed);
@@ -322,10 +322,10 @@ mod green_token_tests {
 
     #[test]
     fn test_borrow() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken, b"abc");
         let borrowed: &GreenTokenWithValueData = token.borrow();
-        assert_eq!(borrowed.kind(), SyntaxKind::TrueKeyword);
-        assert_eq!(borrowed.text(), b"true");
+        assert_eq!(borrowed.kind(), SyntaxKind::NameLiteralToken);
+        assert_eq!(borrowed.text(), b"abc");
     }
 }
 
@@ -336,7 +336,7 @@ mod green_token_data_tests {
 
     #[test]
     fn test_to_owned() {
-        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"123");
         let data: &GreenTokenWithValueData = &*token;
         let owned = data.to_owned();
         assert_eq!(token, owned);
@@ -344,8 +344,8 @@ mod green_token_data_tests {
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal() {
-        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"99");
+        let token2 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"99");
         let data1: &GreenTokenWithValueData = &*token1;
         let data2: &GreenTokenWithValueData = &*token2;
         assert_eq!(data1, data2);
@@ -353,8 +353,8 @@ mod green_token_data_tests {
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenTokenWithValue::new(SyntaxKind::FalseKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"42");
+        let token2 = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken, b"42");
         let data1: &GreenTokenWithValueData = &*token1;
         let data2: &GreenTokenWithValueData = &*token2;
         assert_ne!(data1, data2);
