@@ -66,6 +66,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
+name = "code-analysis"
+version = "0.1.0"
+dependencies = [
+ "countme",
+ "hashbrown",
+ "pretty_assertions",
+ "rustc-hash",
+]
+
+[[package]]
 name = "countme"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
