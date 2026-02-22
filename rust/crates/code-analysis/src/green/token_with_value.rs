@@ -21,25 +21,25 @@ use crate::SyntaxKind;
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
-struct GreenTokenHead {
-    kind: SyntaxKind,      // 2 bytes
-    flags: GreenFlags,     // 1 byte
-    _c: Count<GreenToken>, // 0 bytes
+struct GreenTokenWithValueHead {
+    kind: SyntaxKind,               // 2 bytes
+    flags: GreenFlags,              // 1 byte
+    _c: Count<GreenTokenWithValue>, // 0 bytes
 }
 
-type Repr = HeaderSlice<GreenTokenHead, [u8]>;
-type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
+type Repr = HeaderSlice<GreenTokenWithValueHead, [u8]>;
+type ReprThin = HeaderSlice<GreenTokenWithValueHead, [u8; 0]>;
 
+#[repr(transparent)]
 /// Borrowed token view for well-known text tokens.
 ///
 /// The underlying text is not stored in the node; it is derived from
 /// `SyntaxKind` at read time.
-#[repr(transparent)]
-pub(crate) struct GreenTokenData {
+pub(crate) struct GreenTokenWithValueData {
     data: ReprThin,
 }
 
-impl GreenTokenData {
+impl GreenTokenWithValueData {
     /// Kind of this token.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
@@ -49,13 +49,13 @@ impl GreenTokenData {
     /// Text of this token.
     #[inline]
     pub fn text(&self) -> &[u8] {
-        self.kind().get_text()
+        self.data.slice()
     }
 
     /// Returns the length of the text covered by this token.
     #[inline]
     pub fn width(&self) -> u8 {
-        self.kind().get_text().len() as u8
+        self.data.slice().len() as u8
     }
 
     /// Returns the flags of this token.
@@ -65,24 +65,24 @@ impl GreenTokenData {
     }
 }
 
-impl PartialEq for GreenTokenData {
+impl PartialEq for GreenTokenWithValueData {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.flags() == other.flags()
     }
 }
 
-impl ToOwned for GreenTokenData {
-    type Owned = GreenToken;
+impl ToOwned for GreenTokenWithValueData {
+    type Owned = GreenTokenWithValue;
 
     #[inline]
-    fn to_owned(&self) -> GreenToken {
-        let green = unsafe { GreenToken::from_raw(ptr::NonNull::from(self)) };
+    fn to_owned(&self) -> GreenTokenWithValue {
+        let green = unsafe { GreenTokenWithValue::from_raw(ptr::NonNull::from(self)) };
         let green = ManuallyDrop::new(green);
-        GreenToken::clone(&green)
+        GreenTokenWithValue::clone(&green)
     }
 }
 
-impl fmt::Display for GreenTokenData {
+impl fmt::Display for GreenTokenWithValueData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
             write!(f, "{}", byte as char)?;
@@ -91,12 +91,12 @@ impl fmt::Display for GreenTokenData {
     }
 }
 
-impl fmt::Debug for GreenTokenData {
+impl fmt::Debug for GreenTokenWithValueData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let text = self.text();
         let text_str = String::from_utf8_lossy(text);
 
-        f.debug_struct("GreenToken")
+        f.debug_struct("GreenTokenWithValue")
             .field("kind", &self.kind())
             .field("text", &text_str)
             .field("width", &self.width())
@@ -110,45 +110,45 @@ impl fmt::Debug for GreenTokenData {
 /// reconstructed without storing token bytes in the node payload.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
-pub(crate) struct GreenToken {
-    ptr: ThinArc<GreenTokenHead, u8>,
+pub(crate) struct GreenTokenWithValue {
+    ptr: ThinArc<GreenTokenWithValueHead, u8>,
 }
 
-impl Borrow<GreenTokenData> for GreenToken {
+impl Borrow<GreenTokenWithValueData> for GreenTokenWithValue {
     #[inline]
-    fn borrow(&self) -> &GreenTokenData {
+    fn borrow(&self) -> &GreenTokenWithValueData {
         self
     }
 }
 
-impl fmt::Display for GreenToken {
+impl fmt::Display for GreenTokenWithValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = self;
+        let data: &GreenTokenWithValueData = self;
         fmt::Display::fmt(data, f)
     }
 }
 
-impl fmt::Debug for GreenToken {
+impl fmt::Debug for GreenTokenWithValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = self;
+        let data: &GreenTokenWithValueData = self;
         fmt::Debug::fmt(data, f)
     }
 }
 
-impl GreenToken {
+impl GreenTokenWithValue {
     /// Creates new token.
     #[inline]
-    pub fn new(kind: SyntaxKind) -> GreenToken {
+    pub fn new(kind: SyntaxKind) -> GreenTokenWithValue {
         let flags = GreenFlags::IS_NOT_MISSING; // Tokens created via `new` are always not-missing
-        let head = GreenTokenHead { kind, flags, _c: Count::new() };
+        let head = GreenTokenWithValueHead { kind, flags, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
-        GreenToken { ptr }
+        GreenTokenWithValue { ptr }
     }
 
     #[inline]
-    pub(crate) fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {
+    pub(crate) fn into_raw(this: GreenTokenWithValue) -> ptr::NonNull<GreenTokenWithValueData> {
         let green = ManuallyDrop::new(this);
-        let green: &GreenTokenData = &green;
+        let green: &GreenTokenWithValueData = &green;
         ptr::NonNull::from(green)
     }
 
@@ -158,28 +158,28 @@ impl GreenToken {
     ///
     /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
     /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenHead, u8>`.
+    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenWithValueHead, u8>`.
     ///
     /// Failure to uphold these invariants can lead to undefined behavior.
     #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueData>) -> GreenTokenWithValue {
         let arc = unsafe {
             let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenHead, u8>>(arc)
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenWithValueHead, u8>>(arc)
         };
-        GreenToken { ptr: arc }
+        GreenTokenWithValue { ptr: arc }
     }
 }
 
-impl ops::Deref for GreenToken {
-    type Target = GreenTokenData;
+impl ops::Deref for GreenTokenWithValue {
+    type Target = GreenTokenWithValueData;
 
     #[inline]
-    fn deref(&self) -> &GreenTokenData {
+    fn deref(&self) -> &GreenTokenWithValueData {
         unsafe {
             let repr: &Repr = &*self.ptr;
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenTokenData>(repr)
+            mem::transmute::<&ReprThin, &GreenTokenWithValueData>(repr)
         }
     }
 }
@@ -190,44 +190,44 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_token_head_memory_layout() {
-        // GreenTokenHead: kind (2 bytes) + flags (1 byte) + _c (0 bytes)
+        // GreenTokenWithValueHead: kind (2 bytes) + flags (1 byte) + _c (0 bytes)
         // Expected: 2 + 1 + 1 padding for alignment = 4 bytes
-        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 4);
-        assert_eq!(std::mem::align_of::<GreenTokenHead>(), 2);
+        assert_eq!(std::mem::size_of::<GreenTokenWithValueHead>(), 4);
+        assert_eq!(std::mem::align_of::<GreenTokenWithValueHead>(), 2);
     }
 
     #[test]
     fn test_green_token_data_memory_layout() {
-        // GreenTokenData on 64-bit targets:
+        // GreenTokenWithValueData on 64-bit targets:
         // header (4 bytes) + padding (4 bytes) + length (8 bytes) = 16 bytes
         #[cfg(target_pointer_width = "64")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenData>(), 16);
-            assert_eq!(std::mem::align_of::<GreenTokenData>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueData>(), 16);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueData>(), 8);
         }
 
-        // GreenTokenData on 32-bit targets:
+        // GreenTokenWithValueData on 32-bit targets:
         // header (4 bytes) + length (4 bytes) = 8 bytes
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenData>(), 8);
-            assert_eq!(std::mem::align_of::<GreenTokenData>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueData>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueData>(), 4);
         }
     }
 
     #[test]
     fn test_green_token_memory_layout() {
-        // GreenToken wraps a ThinArc pointer.
+        // GreenTokenWithValue wraps a ThinArc pointer.
         #[cfg(target_pointer_width = "64")]
         {
-            assert_eq!(std::mem::size_of::<GreenToken>(), 8);
-            assert_eq!(std::mem::align_of::<GreenToken>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValue>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValue>(), 8);
         }
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenToken>(), 4);
-            assert_eq!(std::mem::align_of::<GreenToken>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValue>(), 4);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValue>(), 4);
         }
     }
 }
@@ -239,52 +239,52 @@ mod green_token_tests {
 
     #[test]
     fn test_new_token() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.kind(), SyntaxKind::TrueKeyword);
         assert_eq!(token.text(), b"true");
     }
 
     #[test]
     fn test_new_when_created_expect_is_not_missing_flag_set() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert!(token.flags().contains(GreenFlags::IS_NOT_MISSING));
     }
 
     #[test]
     fn test_kind() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.kind(), SyntaxKind::TrueKeyword);
     }
 
     #[test]
     fn test_text() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.text(), b"true");
     }
 
     #[test]
     fn test_width() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.width(), 4);
     }
 
     #[test]
     fn test_eq_when_same_kind_expect_equal() {
-        let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token2 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token1, token2);
     }
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token2 = GreenTokenWithValue::new(SyntaxKind::FalseKeyword);
         assert_ne!(token1, token2);
     }
 
     #[test]
     fn test_clone() {
-        let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         let token2 = token1.clone();
         assert_eq!(token1, token2);
         assert_eq!(token2.kind(), SyntaxKind::TrueKeyword);
@@ -293,37 +293,37 @@ mod green_token_tests {
 
     #[test]
     fn test_display() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.to_string(), "true");
     }
 
     #[test]
     fn test_debug() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
         let debug_str = format!("{:?}", token);
-        let expected = "GreenToken { kind: TrueKeyword, text: \"true\", width: 4 }";
+        let expected = "GreenTokenWithValue { kind: TrueKeyword, text: \"true\", width: 4 }";
         assert_eq!(debug_str, expected);
     }
 
     #[test]
     fn test_empty_text() {
-        let token = GreenToken::new(SyntaxKind::NameLiteralToken);
+        let token = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken);
         assert_eq!(token.text(), b"");
         assert_eq!(token.width(), 0);
     }
 
     #[test]
     fn test_into_raw_and_from_raw() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
-        let ptr = GreenToken::into_raw(token.clone());
-        let reconstructed = unsafe { GreenToken::from_raw(ptr) };
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let ptr = GreenTokenWithValue::into_raw(token.clone());
+        let reconstructed = unsafe { GreenTokenWithValue::from_raw(ptr) };
         assert_eq!(token, reconstructed);
     }
 
     #[test]
     fn test_borrow() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
-        let borrowed: &GreenTokenData = token.borrow();
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let borrowed: &GreenTokenWithValueData = token.borrow();
         assert_eq!(borrowed.kind(), SyntaxKind::TrueKeyword);
         assert_eq!(borrowed.text(), b"true");
     }
@@ -336,27 +336,27 @@ mod green_token_data_tests {
 
     #[test]
     fn test_to_owned() {
-        let token = GreenToken::new(SyntaxKind::TrueKeyword);
-        let data: &GreenTokenData = &*token;
+        let token = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let data: &GreenTokenWithValueData = &*token;
         let owned = data.to_owned();
         assert_eq!(token, owned);
     }
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal() {
-        let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let data1: &GreenTokenData = &*token1;
-        let data2: &GreenTokenData = &*token2;
+        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token2 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let data1: &GreenTokenWithValueData = &*token1;
+        let data2: &GreenTokenWithValueData = &*token2;
         assert_eq!(data1, data2);
     }
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
-        let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
-        let data1: &GreenTokenData = &*token1;
-        let data2: &GreenTokenData = &*token2;
+        let token1 = GreenTokenWithValue::new(SyntaxKind::TrueKeyword);
+        let token2 = GreenTokenWithValue::new(SyntaxKind::FalseKeyword);
+        let data1: &GreenTokenWithValueData = &*token1;
+        let data2: &GreenTokenWithValueData = &*token2;
         assert_ne!(data1, data2);
     }
 }
