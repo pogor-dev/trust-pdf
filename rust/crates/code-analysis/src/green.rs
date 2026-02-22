@@ -1,7 +1,8 @@
 mod flags;
-mod token_no_trivia;
+mod token;
+mod token_element;
 
 pub(crate) use self::{
     flags::GreenFlags,
-    token_no_trivia::{GreenTokenNoTrivia, GreenTokenNoTriviaData},
+    token::{GreenToken, GreenTokenData},
 };
