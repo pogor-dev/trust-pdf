@@ -16,13 +16,28 @@ env:
 
 jobs:
   build-and-test:
-    name: Build and Test Rust crates
+    name: Build and Test Rust crates (${{ matrix.os }}, ${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            arch: x86
+            target: i686-unknown-linux-gnu
+          - os: windows-latest
+            arch: x64
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            arch: x86
+            target: i686-pc-windows-msvc
+          - os: macos-latest
+            arch: x64
+            target: x86_64-apple-darwin
 
     steps:
       - name: Checkout repository
@@ -48,10 +63,21 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cargo-llvm-cov
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
         run: cargo +stable install cargo-llvm-cov --locked --force
 
       - name: Install cargo2junit
         run: cargo install cargo2junit --locked --force
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Install 32-bit Linux linker deps
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x86'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib libc6-dev-i386
 
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
@@ -60,7 +86,7 @@ jobs:
 
       - name: Run Clippy
         working-directory: rust
-        run: cargo clippy --all --all-features -- # -D warnings
+        run: cargo clippy --all --all-features --target ${{ matrix.target }} -- # -D warnings
 
       - name: Run Format Check
         working-directory: rust
@@ -68,18 +94,18 @@ jobs:
 
       - name: Compile (tests)
         working-directory: rust
-        run: cargo test --no-run --locked
+        run: cargo test --no-run --locked --target ${{ matrix.target }}
 
         # It's faster to `test` before `build` ¯\_(ツ)_/¯
       - name: Compile (pdf-analyzer)
         working-directory: rust
-        run: cargo build --quiet
+        run: cargo build --quiet --target ${{ matrix.target }}
 
       - name: Run tests and convert to JUnit format (Unix)
         if: runner.os != 'Windows'
         working-directory: rust
         
-        run: RUSTC_BOOTSTRAP=1 cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
+        run: RUSTC_BOOTSTRAP=1 cargo test --target ${{ matrix.target }} -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
 
       - name: Run tests and convert to JUnit format (Windows)
         if: runner.os == 'Windows'
@@ -87,7 +113,7 @@ jobs:
         # report-time option is not currently supported by cargo2junit: https://github.com/johnterickson/cargo2junit/issues/90
         run: |
           $env:RUSTC_BOOTSTRAP=1
-          cargo test -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
+          cargo test --target ${{ matrix.target }} -- -Z unstable-options --format=json --report-time --quiet | tee test-results.json
 
       - name: Convert test output to JUnit format
         working-directory: rust
@@ -104,6 +130,7 @@ jobs:
           reporter: java-junit # Format of test results
 
       - name: Generate coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
         working-directory: rust
         run: cargo llvm-cov --lcov --output-path coverage.lcov
 
