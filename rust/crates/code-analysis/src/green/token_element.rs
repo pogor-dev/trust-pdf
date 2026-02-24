@@ -1,9 +1,7 @@
-use super::token_with_value::{
-    GreenTokenWithFloatValue, GreenTokenWithFloatValueData, GreenTokenWithIntValue, GreenTokenWithIntValueData, GreenTokenWithStringValue,
-    GreenTokenWithStringValueData,
+use crate::{
+    GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueData, GreenTokenWithIntValue,
+    GreenTokenWithIntValueData, GreenTokenWithStringValue, GreenTokenWithStringValueData, SyntaxKind, green::TokenType,
 };
-
-use crate::{GreenFlags, GreenToken, GreenTokenData, SyntaxKind, green::TokenType};
 
 pub type GreenTokenElement = TokenType<GreenToken, GreenTokenWithIntValue, GreenTokenWithFloatValue, GreenTokenWithStringValue>;
 
@@ -61,19 +59,25 @@ impl GreenTokenElement {
         }
     }
 
-    // #[inline]
-    // pub fn leading_trivia(&self) -> Option<GreenNode> {
-    //     match self {
-    //         GreenTokenElement::Token(t) => None,
-    //     }
-    // }
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenTokenElement::Token(_t) => None,
+            GreenTokenElement::TokenWithIntValue(_t) => None,
+            GreenTokenElement::TokenWithFloatValue(_t) => None,
+            GreenTokenElement::TokenWithStringValue(_t) => None,
+        }
+    }
 
-    // #[inline]
-    // pub fn trailing_trivia(&self) -> Option<GreenNode> {
-    //     match self {
-    //         GreenTokenElement::Token(t) => None,
-    //     }
-    // }
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenTokenElement::Token(_t) => None,
+            GreenTokenElement::TokenWithIntValue(_t) => None,
+            GreenTokenElement::TokenWithFloatValue(_t) => None,
+            GreenTokenElement::TokenWithStringValue(_t) => None,
+        }
+    }
 
     #[inline]
     pub fn flags(&self) -> GreenFlags {

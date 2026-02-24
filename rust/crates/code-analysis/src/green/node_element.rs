@@ -1,10 +1,10 @@
 use crate::{
-    GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue,
+    GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue,
     GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia,
 };
 
 pub type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
-pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenElementRef<'a>, &'a GreenTriviaData>;
+pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, GreenTokenElementRef<'a>, &'a GreenTriviaData>;
 
 impl GreenNodeElement {
     #[inline]
