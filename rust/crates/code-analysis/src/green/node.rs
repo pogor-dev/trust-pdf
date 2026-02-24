@@ -139,7 +139,7 @@ impl GreenNodeData {
                         output.extend_from_slice(&trivia_data.text());
                     }
                     GreenNodeElementRef::Node(node_data) => {
-                        let slots = node_data.data.slice();
+                        let slots = node_data.slots();
                         if slots.is_empty() {
                             continue;
                         }
