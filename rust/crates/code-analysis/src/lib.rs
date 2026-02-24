@@ -8,5 +8,5 @@ pub use crate::syntax_kind::SyntaxKind;
 
 pub(crate) use crate::green::{
     GreenFlags, GreenNode, GreenNodeData, GreenNodeElement, GreenNodeElementRef, GreenToken, GreenTokenData, GreenTokenElement, GreenTokenElementRef,
-    GreenTokenWithValue, GreenTokenWithValueData, GreenTrivia, GreenTriviaData,
+    GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue, GreenTokenWithValue, GreenTokenWithValueData, GreenTrivia, GreenTriviaData,
 };

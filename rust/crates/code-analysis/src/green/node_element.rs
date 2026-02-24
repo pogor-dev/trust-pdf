@@ -1,4 +1,7 @@
-use crate::{GreenTokenElement, GreenTokenElementRef, GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia};
+use crate::{
+    GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue,
+    GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia,
+};
 
 pub type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
 pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenElementRef<'a>, &'a GreenTriviaData>;
@@ -18,7 +21,7 @@ impl GreenNodeElement {
         match self {
             GreenNodeElement::Node(n) => n.width(),
             GreenNodeElement::Token(t) => t.width(),
-            GreenNodeElement::Trivia(tr) => tr.width(),
+            GreenNodeElement::Trivia(tr) => tr.width().into(),
         }
     }
 
@@ -27,7 +30,7 @@ impl GreenNodeElement {
         match self {
             GreenNodeElement::Node(n) => n.full_width(),
             GreenNodeElement::Token(t) => t.full_width(),
-            GreenNodeElement::Trivia(tr) => tr.width(),
+            GreenNodeElement::Trivia(tr) => tr.width().into(),
         }
     }
 }
@@ -35,7 +38,28 @@ impl GreenNodeElement {
 impl From<GreenToken> for GreenNodeElement {
     #[inline]
     fn from(token: GreenToken) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(token)
+        NodeOrTokenOrTrivia::Token(GreenTokenElement::Token(token))
+    }
+}
+
+impl From<GreenTokenWithIntValue> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithIntValue) -> GreenNodeElement {
+        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithIntValue(token))
+    }
+}
+
+impl From<GreenTokenWithFloatValue> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithFloatValue) -> GreenNodeElement {
+        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithFloatValue(token))
+    }
+}
+
+impl From<GreenTokenWithStringValue> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithStringValue) -> GreenNodeElement {
+        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithStringValue(token))
     }
 }
 
