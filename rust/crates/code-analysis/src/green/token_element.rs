@@ -3,10 +3,7 @@ use super::token_with_value::{
     GreenTokenWithStringValueData,
 };
 
-use crate::{
-    GreenToken, GreenTokenData, SyntaxKind,
-    green::{GreenFlags, TokenType},
-};
+use crate::{GreenFlags, GreenToken, GreenTokenData, SyntaxKind, green::TokenType};
 
 pub type GreenTokenElement = TokenType<GreenToken, GreenTokenWithIntValue, GreenTokenWithFloatValue, GreenTokenWithStringValue>;
 

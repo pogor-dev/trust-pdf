@@ -1,57 +1,54 @@
-use crate::{
-    SyntaxKind,
-    green::{GreenTokenElement, GreenTokenElementRef, NodeOrTokenOrTrivia},
-};
+use crate::{GreenTokenElement, GreenTokenElementRef, GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia};
 
-pub type GreenElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
-pub(crate) type GreenElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenElementRef<'a>, &'a GreenTriviaData>;
+pub type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
+pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, &'a GreenTokenElementRef<'a>, &'a GreenTriviaData>;
 
-impl GreenElement {
+impl GreenNodeElement {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match self {
-            GreenElement::Node(n) => n.kind(),
-            GreenElement::Token(t) => t.kind(),
-            GreenElement::Trivia(tr) => tr.kind(),
+            GreenNodeElement::Node(n) => n.kind(),
+            GreenNodeElement::Token(t) => t.kind(),
+            GreenNodeElement::Trivia(tr) => tr.kind(),
         }
     }
 
     #[inline]
     pub fn width(&self) -> u32 {
         match self {
-            GreenElement::Node(n) => n.width(),
-            GreenElement::Token(t) => t.width(),
-            GreenElement::Trivia(tr) => tr.width(),
+            GreenNodeElement::Node(n) => n.width(),
+            GreenNodeElement::Token(t) => t.width(),
+            GreenNodeElement::Trivia(tr) => tr.width(),
         }
     }
 
     #[inline]
     pub fn full_width(&self) -> u32 {
         match self {
-            GreenElement::Node(n) => n.full_width(),
-            GreenElement::Token(t) => t.full_width(),
-            GreenElement::Trivia(tr) => tr.width(),
+            GreenNodeElement::Node(n) => n.full_width(),
+            GreenNodeElement::Token(t) => t.full_width(),
+            GreenNodeElement::Trivia(tr) => tr.width(),
         }
     }
 }
 
-impl From<GreenToken> for GreenElement {
+impl From<GreenToken> for GreenNodeElement {
     #[inline]
-    fn from(token: GreenToken) -> GreenElement {
+    fn from(token: GreenToken) -> GreenNodeElement {
         NodeOrTokenOrTrivia::Token(token)
     }
 }
 
-impl From<GreenNode> for GreenElement {
+impl From<GreenNode> for GreenNodeElement {
     #[inline]
-    fn from(node: GreenNode) -> GreenElement {
+    fn from(node: GreenNode) -> GreenNodeElement {
         NodeOrTokenOrTrivia::Node(node)
     }
 }
 
-impl From<GreenTrivia> for GreenElement {
+impl From<GreenTrivia> for GreenNodeElement {
     #[inline]
-    fn from(trivia: GreenTrivia) -> GreenElement {
+    fn from(trivia: GreenTrivia) -> GreenNodeElement {
         NodeOrTokenOrTrivia::Trivia(trivia)
     }
 }

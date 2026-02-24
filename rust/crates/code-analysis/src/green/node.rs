@@ -1,10 +1,6 @@
 use countme::Count;
 
-use crate::{
-    SyntaxKind,
-    arc::HeaderSlice,
-    green::{GreenElement, GreenFlags},
-};
+use crate::{GreenNodeElement, GreenFlags, SyntaxKind, arc::HeaderSlice};
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
@@ -15,8 +11,8 @@ struct GreenNodeHead {
     _c: Count<GreenNode>,
 }
 
-type Repr = HeaderSlice<GreenNodeHead, [GreenElement]>;
-type ReprThin = HeaderSlice<GreenNodeHead, [GreenElement; 0]>;
+type Repr = HeaderSlice<GreenNodeHead, [GreenNodeElement]>;
+type ReprThin = HeaderSlice<GreenNodeHead, [GreenNodeElement; 0]>;
 
 #[repr(transparent)]
 pub struct GreenNodeData {
