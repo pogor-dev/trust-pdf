@@ -6,11 +6,10 @@ use std::{
 };
 
 use countme::Count;
-use triomphe::Arc;
 
 use crate::{
     GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenData, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
-    arc::{HeaderSlice, ThinArc},
+    arc::{Arc, HeaderSlice, ThinArc},
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -126,18 +125,14 @@ impl GreenNodeData {
             while let Some((item, current_leading, current_trailing)) = stack.pop() {
                 match item {
                     GreenNodeElementRef::Token(token_data) => {
-                        if current_leading {
-                            if let Some(leading_trivia) = token_data.leading_trivia() {
-                                output.extend_from_slice(&leading_trivia.full_text());
-                            }
+                        if current_leading && let Some(leading_trivia) = token_data.leading_trivia() {
+                            output.extend_from_slice(&leading_trivia.full_text());
                         }
 
                         output.extend_from_slice(&token_data.text());
 
-                        if current_trailing {
-                            if let Some(trailing_trivia) = token_data.trailing_trivia() {
-                                output.extend_from_slice(&trailing_trivia.full_text());
-                            }
+                        if current_trailing && let Some(trailing_trivia) = token_data.trailing_trivia() {
+                            output.extend_from_slice(&trailing_trivia.full_text());
                         }
                     }
                     GreenNodeElementRef::Trivia(trivia_data) => {
@@ -298,16 +293,9 @@ impl GreenNode {
         I::IntoIter: ExactSizeIterator,
     {
         let mut full_width = 0u32;
-
         let slots = slots.into_iter().map(|el| {
-            let rel_offset = full_width;
             full_width += el.full_width();
-
-            match el {
-                GreenNodeElement::Node(node) => GreenNodeElement::Node { rel_offset, node },
-                GreenNodeElement::Token(token) => GreenNodeElement::Token { rel_offset, token },
-                GreenNodeElement::Trivia(trivia) => GreenNodeElement::Trivia { rel_offset, trivia },
-            }
+            el
         });
 
         let data = ThinArc::from_header_and_iter(

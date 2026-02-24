@@ -89,3 +89,75 @@ impl GreenTokenElement {
         }
     }
 }
+
+impl<'a> GreenTokenElementRef<'a> {
+    #[inline]
+    pub fn kind(&self) -> SyntaxKind {
+        match self {
+            GreenTokenElementRef::Token(t) => t.kind(),
+            GreenTokenElementRef::TokenWithIntValue(t) => t.kind(),
+            GreenTokenElementRef::TokenWithFloatValue(t) => t.kind(),
+            GreenTokenElementRef::TokenWithStringValue(t) => t.kind(),
+        }
+    }
+
+    #[inline]
+    pub fn text(&self) -> &'a [u8] {
+        match self {
+            GreenTokenElementRef::Token(t) => t.text(),
+            GreenTokenElementRef::TokenWithIntValue(t) => t.text(),
+            GreenTokenElementRef::TokenWithFloatValue(t) => t.text(),
+            GreenTokenElementRef::TokenWithStringValue(t) => t.text(),
+        }
+    }
+
+    #[inline]
+    pub fn full_text(&self) -> &'a [u8] {
+        self.text()
+    }
+
+    #[inline]
+    pub fn width(&self) -> u32 {
+        match self {
+            GreenTokenElementRef::Token(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithIntValue(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithFloatValue(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithStringValue(t) => t.width().into(),
+        }
+    }
+
+    #[inline]
+    pub fn full_width(&self) -> u32 {
+        self.width()
+    }
+
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenTokenElementRef::Token(_t) => None,
+            GreenTokenElementRef::TokenWithIntValue(_t) => None,
+            GreenTokenElementRef::TokenWithFloatValue(_t) => None,
+            GreenTokenElementRef::TokenWithStringValue(_t) => None,
+        }
+    }
+
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenTokenElementRef::Token(_t) => None,
+            GreenTokenElementRef::TokenWithIntValue(_t) => None,
+            GreenTokenElementRef::TokenWithFloatValue(_t) => None,
+            GreenTokenElementRef::TokenWithStringValue(_t) => None,
+        }
+    }
+
+    #[inline]
+    pub fn flags(&self) -> GreenFlags {
+        match self {
+            GreenTokenElementRef::Token(t) => t.flags(),
+            GreenTokenElementRef::TokenWithIntValue(t) => t.flags(),
+            GreenTokenElementRef::TokenWithFloatValue(t) => t.flags(),
+            GreenTokenElementRef::TokenWithStringValue(t) => t.flags(),
+        }
+    }
+}
