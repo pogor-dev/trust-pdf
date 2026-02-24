@@ -7,6 +7,7 @@
 use std::{
     borrow::Borrow,
     fmt,
+    hash::{Hash, Hasher},
     mem::{self, ManuallyDrop},
     ops, ptr,
 };
@@ -122,10 +123,26 @@ impl<T> fmt::Debug for GreenTokenWithValueData<T> {
 ///
 /// Represents a token whose text is well-known for its `SyntaxKind` and can be
 /// reconstructed without storing token bytes in the node payload.
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithValue<T> {
     ptr: ThinArc<GreenTokenWithValueHead<T>, u8>,
+}
+
+impl<T> PartialEq for GreenTokenWithValue<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind() == other.kind() && self.text() == other.text() && self.flags() == other.flags()
+    }
+}
+
+impl<T> Eq for GreenTokenWithValue<T> {}
+
+impl<T> Hash for GreenTokenWithValue<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind().hash(state);
+        self.text().hash(state);
+        self.flags().hash(state);
+    }
 }
 
 impl<T> Borrow<GreenTokenWithValueData<T>> for GreenTokenWithValue<T> {

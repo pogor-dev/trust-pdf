@@ -8,7 +8,7 @@ use std::{
 use countme::Count;
 
 use crate::{
-    GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenData, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
+    GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
 };
 
