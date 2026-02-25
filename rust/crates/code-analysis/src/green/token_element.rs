@@ -10,6 +10,7 @@ pub(crate) type GreenTokenElementRef<'a> =
     TokenType<&'a GreenTokenData, &'a GreenTokenWithIntValueData, &'a GreenTokenWithFloatValueData, &'a GreenTokenWithStringValueData>;
 
 impl GreenTokenElement {
+    #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match self {
             GreenTokenElement::Token(t) => t.kind(),
@@ -19,6 +20,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn text(&self) -> Vec<u8> {
         match self {
             GreenTokenElement::Token(t) => t.text().to_vec(),
@@ -28,6 +30,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn full_text(&self) -> Vec<u8> {
         match self {
             GreenTokenElement::Token(t) => t.text().to_vec(),
@@ -37,6 +40,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn width(&self) -> u32 {
         match self {
             GreenTokenElement::Token(t) => t.width().into(),
@@ -46,6 +50,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn full_width(&self) -> u32 {
         match self {
             GreenTokenElement::Token(t) => t.width().into(),
@@ -55,6 +60,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn leading_trivia(&self) -> Option<GreenNode> {
         match self {
             GreenTokenElement::Token(_t) => None,
@@ -64,6 +70,7 @@ impl GreenTokenElement {
         }
     }
 
+    #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
         match self {
             GreenTokenElement::Token(_t) => None,
@@ -72,8 +79,8 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithStringValue(_t) => None,
         }
     }
-
-    pub fn flags(&self) -> GreenFlags {
+    #[inline]
+    pub(crate) fn flags(&self) -> GreenFlags {
         match self {
             GreenTokenElement::Token(t) => t.flags(),
             GreenTokenElement::TokenWithIntValue(t) => t.flags(),
@@ -82,7 +89,8 @@ impl GreenTokenElement {
         }
     }
 
-    fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
+    #[inline]
+    pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
         match self {
             GreenTokenElement::Token(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
@@ -117,6 +125,7 @@ impl From<GreenTokenWithStringValue> for GreenTokenElement {
 }
 
 impl<'a> GreenTokenElementRef<'a> {
+    #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match self {
             GreenTokenElementRef::Token(t) => t.kind(),
@@ -126,6 +135,7 @@ impl<'a> GreenTokenElementRef<'a> {
         }
     }
 
+    #[inline]
     pub fn text(&self) -> &'a [u8] {
         match self {
             GreenTokenElementRef::Token(t) => t.text(),
@@ -135,10 +145,12 @@ impl<'a> GreenTokenElementRef<'a> {
         }
     }
 
+    #[inline]
     pub fn full_text(&self) -> &'a [u8] {
         self.text()
     }
 
+    #[inline]
     pub fn width(&self) -> u32 {
         match self {
             GreenTokenElementRef::Token(t) => t.width().into(),
@@ -148,10 +160,12 @@ impl<'a> GreenTokenElementRef<'a> {
         }
     }
 
+    #[inline]
     pub fn full_width(&self) -> u32 {
         self.width()
     }
 
+    #[inline]
     pub fn leading_trivia(&self) -> Option<GreenNode> {
         match self {
             GreenTokenElementRef::Token(_t) => None,
@@ -161,6 +175,7 @@ impl<'a> GreenTokenElementRef<'a> {
         }
     }
 
+    #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
         match self {
             GreenTokenElementRef::Token(_t) => None,
@@ -169,8 +184,8 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithStringValue(_t) => None,
         }
     }
-
-    pub fn flags(&self) -> GreenFlags {
+    #[inline]
+    pub(crate) fn flags(&self) -> GreenFlags {
         match self {
             GreenTokenElementRef::Token(t) => t.flags(),
             GreenTokenElementRef::TokenWithIntValue(t) => t.flags(),
@@ -179,7 +194,8 @@ impl<'a> GreenTokenElementRef<'a> {
         }
     }
 
-    pub fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
+    #[inline]
+    pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
         match self {
             GreenTokenElementRef::Token(t) => t.text().to_vec(),
             GreenTokenElementRef::TokenWithIntValue(t) => t.text().to_vec(),

@@ -60,7 +60,7 @@ impl GreenTokenData {
 
     /// Returns the flags of this token.
     #[inline]
-    pub fn flags(&self) -> GreenFlags {
+    pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
 }

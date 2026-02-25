@@ -65,7 +65,7 @@ impl GreenNodeData {
 
     /// Returns the flags of this node.
     #[inline]
-    pub fn flags(&self) -> GreenFlags {
+    pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
 

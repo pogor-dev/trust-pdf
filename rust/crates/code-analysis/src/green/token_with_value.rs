@@ -39,11 +39,11 @@ struct GreenTokenWithValueHead<T> {
 type Repr<T> = HeaderSlice<GreenTokenWithValueHead<T>, [u8]>;
 type ReprThin<T> = HeaderSlice<GreenTokenWithValueHead<T>, [u8; 0]>;
 
-#[repr(transparent)]
-/// Borrowed token view for well-known text tokens.
+/// Borrowed token view for tokens with inline text and typed values.
 ///
-/// The underlying text is not stored in the node; it is derived from
-/// `SyntaxKind` at read time.
+/// The underlying text is stored inline in the node tail with an associated
+/// typed value (int, float, or string).
+#[repr(transparent)]
 pub(crate) struct GreenTokenWithValueData<T> {
     data: ReprThin<T>,
 }
@@ -75,7 +75,7 @@ impl<T> GreenTokenWithValueData<T> {
 
     /// Returns the flags of this token.
     #[inline]
-    pub fn flags(&self) -> GreenFlags {
+    pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
 }
