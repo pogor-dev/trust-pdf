@@ -3,6 +3,7 @@ use crate::{
     GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia,
 };
 
+/// Concrete green tree child element used in node slot arrays.
 pub type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
 pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, GreenTokenElementRef<'a>, &'a GreenTriviaData>;
 
@@ -74,5 +75,51 @@ impl From<GreenTrivia> for GreenNodeElement {
     #[inline]
     fn from(trivia: GreenTrivia) -> GreenNodeElement {
         NodeOrTokenOrTrivia::Trivia(trivia)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_kind_when_node_token_trivia_variants_expect_inner_kinds() {
+        let node = GreenNode::new(SyntaxKind::List, vec![]);
+        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+
+        assert_eq!(GreenNodeElement::Node(node).kind(), SyntaxKind::List);
+        assert_eq!(GreenNodeElement::Token(GreenTokenElement::Token(token)).kind(), SyntaxKind::TrueKeyword);
+        assert_eq!(GreenNodeElement::Trivia(trivia).kind(), SyntaxKind::WhitespaceTrivia);
+    }
+
+    #[test]
+    fn test_width_and_full_width_when_mixed_variants_expect_expected_values() {
+        let node = GreenNode::new(SyntaxKind::List, vec![GreenToken::new(SyntaxKind::TrueKeyword).into()]);
+        let token = GreenToken::new(SyntaxKind::FalseKeyword);
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+
+        let node_element = GreenNodeElement::Node(node);
+        let token_element = GreenNodeElement::Token(GreenTokenElement::Token(token));
+        let trivia_element = GreenNodeElement::Trivia(trivia);
+
+        assert_eq!(node_element.width(), node_element.full_width());
+        assert_eq!(token_element.width(), token_element.full_width());
+        assert_eq!(trivia_element.width(), trivia_element.full_width());
+    }
+
+    #[test]
+    fn test_from_when_token_and_trivia_types_expect_matching_variant_construction() {
+        let plain = GreenNodeElement::from(GreenToken::new(SyntaxKind::NullKeyword));
+        let int_value = GreenNodeElement::from(GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42));
+        let float_value = GreenNodeElement::from(GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14));
+        let string_value = GreenNodeElement::from(GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string()));
+        let trivia = GreenNodeElement::from(GreenTrivia::new(SyntaxKind::CommentTrivia, b"%x"));
+
+        assert!(matches!(plain, GreenNodeElement::Token(GreenTokenElement::Token(_))));
+        assert!(matches!(int_value, GreenNodeElement::Token(GreenTokenElement::TokenWithIntValue(_))));
+        assert!(matches!(float_value, GreenNodeElement::Token(GreenTokenElement::TokenWithFloatValue(_))));
+        assert!(matches!(string_value, GreenNodeElement::Token(GreenTokenElement::TokenWithStringValue(_))));
+        assert!(matches!(trivia, GreenNodeElement::Trivia(_)));
     }
 }
