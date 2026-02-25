@@ -82,7 +82,7 @@ impl<T> GreenTokenWithValueData<T> {
 
 impl<T> PartialEq for GreenTokenWithValueData<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text() && self.flags() == other.flags()
+        self.kind() == other.kind() && self.text() == other.text()
     }
 }
 
@@ -131,7 +131,7 @@ pub(crate) struct GreenTokenWithValue<T> {
 
 impl<T> PartialEq for GreenTokenWithValue<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text() && self.flags() == other.flags()
+        self.kind() == other.kind() && self.text() == other.text()
     }
 }
 
@@ -141,7 +141,6 @@ impl<T> Hash for GreenTokenWithValue<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.kind().hash(state);
         self.text().hash(state);
-        self.flags().hash(state);
     }
 }
 

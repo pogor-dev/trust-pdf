@@ -2,7 +2,8 @@ use std::{
     borrow::Borrow,
     fmt,
     mem::{self, ManuallyDrop},
-    ops, ptr,
+    ops::{self, Deref},
+    ptr,
 };
 
 use countme::Count;
@@ -218,7 +219,9 @@ impl GreenNodeData {
         }
         None
     }
+}
 
+impl PartialEq for GreenNodeData {
     /// Determines if this node is structurally equivalent to another node.
     ///
     /// This performs a deep structural comparison that handles the special case where
@@ -230,7 +233,7 @@ impl GreenNodeData {
     /// - Their full widths are equal
     /// - Their slot counts match
     /// - All corresponding children are recursively equivalent
-    pub fn is_equivalent_to(&self, other: &GreenNodeData) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         let (mut kind1, mut node1) = (self.kind(), self);
         let (mut kind2, mut node2) = (other.kind(), other);
 
@@ -273,12 +276,12 @@ impl GreenNodeData {
 
             match (child1, child2) {
                 (Some(GreenNodeElement::Node(n1)), Some(GreenNodeElement::Node(n2))) => {
-                    if !n1.is_equivalent_to(n2) {
+                    if n1 != n2 {
                         return false;
                     }
                 }
                 (Some(GreenNodeElement::Token(t1)), Some(GreenNodeElement::Token(t2))) => {
-                    if t1.as_deref().kind() != t2.as_deref().kind() {
+                    if t1 != t2 {
                         return false;
                     }
                 }
@@ -292,12 +295,6 @@ impl GreenNodeData {
         }
 
         true
-    }
-}
-
-impl PartialEq for GreenNodeData {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text()
     }
 }
 
@@ -490,7 +487,6 @@ mod memory_layout_tests {
 mod tests {
     use super::*;
     use crate::GreenToken;
-    use crate::green::TokenType;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -504,9 +500,8 @@ mod tests {
 
     #[test]
     fn test_new_when_single_token_expect_width_from_token() {
-        use crate::green::TokenType;
         let token = GreenToken::new(SyntaxKind::OpenBracketToken);
-        let token_elem = TokenType::Token(token);
+        let token_elem: GreenTokenElement = token.into();
         let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem)]);
         assert_eq!(node.kind(), SyntaxKind::ArrayExpression);
         assert_eq!(node.full_width(), 1);
@@ -518,8 +513,8 @@ mod tests {
     fn test_new_when_multiple_tokens_expect_total_width() {
         let token1 = GreenToken::new(SyntaxKind::OpenBracketToken);
         let token2 = GreenToken::new(SyntaxKind::CloseBracketToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node = GreenNode::new(
             SyntaxKind::ArrayExpression,
             vec![GreenNodeElement::Token(token_elem1), GreenNodeElement::Token(token_elem2)],
@@ -538,8 +533,8 @@ mod tests {
     fn test_full_width_when_node_with_children_expect_sum_of_widths() {
         let token1 = GreenToken::new(SyntaxKind::OpenDictToken);
         let token2 = GreenToken::new(SyntaxKind::CloseDictToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node = GreenNode::new(
             SyntaxKind::DictionaryExpression,
             vec![GreenNodeElement::Token(token_elem1), GreenNodeElement::Token(token_elem2)],
@@ -551,8 +546,8 @@ mod tests {
     fn test_text_when_node_with_tokens_expect_concatenated_text() {
         let token1 = GreenToken::new(SyntaxKind::OpenBracketToken);
         let token2 = GreenToken::new(SyntaxKind::CloseBracketToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node = GreenNode::new(
             SyntaxKind::ArrayExpression,
             vec![GreenNodeElement::Token(token_elem1), GreenNodeElement::Token(token_elem2)],
@@ -571,9 +566,9 @@ mod tests {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
         let token3 = GreenToken::new(SyntaxKind::NullKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
-        let token_elem3 = TokenType::Token(token3);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
+        let token_elem3 = token3.into();
         let node = GreenNode::new(
             SyntaxKind::List,
             vec![
@@ -594,7 +589,7 @@ mod tests {
     #[test]
     fn test_clone_when_node_expect_equal_kind_and_width() {
         let token = GreenToken::new(SyntaxKind::IndirectObjectKeyword);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node1 = GreenNode::new(SyntaxKind::IndirectObjectExpression, vec![GreenNodeElement::Token(token_elem)]);
         let node2 = node1.clone();
         assert_eq!(node1.kind(), node2.kind());
@@ -605,8 +600,8 @@ mod tests {
     fn test_equality_when_same_kind_and_text_expect_equal() {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node1 = GreenNode::new(SyntaxKind::List, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(SyntaxKind::List, vec![GreenNodeElement::Token(token_elem2)]);
         assert_eq!(node1, node2);
@@ -623,7 +618,7 @@ mod tests {
     #[test]
     fn test_display_when_node_with_token_expect_token_text() {
         let token = GreenToken::new(SyntaxKind::NullKeyword);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node = GreenNode::new(SyntaxKind::NullLiteralExpression, vec![GreenNodeElement::Token(token_elem)]);
         let display_str = format!("{}", node);
         assert_eq!(display_str, "null");
@@ -633,8 +628,8 @@ mod tests {
     fn test_first_token_when_node_with_tokens_expect_first_token() {
         let token1 = GreenToken::new(SyntaxKind::IndirectObjectKeyword);
         let token2 = GreenToken::new(SyntaxKind::IndirectEndObjectKeyword);
-        let token_elem1 = TokenType::Token(token1.clone());
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.clone().into();
+        let token_elem2 = token2.into();
         let node = GreenNode::new(
             SyntaxKind::IndirectObjectExpression,
             vec![GreenNodeElement::Token(token_elem1), GreenNodeElement::Token(token_elem2)],
@@ -646,7 +641,7 @@ mod tests {
     #[test]
     fn test_nested_nodes_when_parent_child_expect_correct_widths() {
         let token1 = GreenToken::new(SyntaxKind::OpenDictToken);
-        let token_elem1 = TokenType::Token(token1);
+        let token_elem1 = token1.into();
         let child = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let parent = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenNodeElement::Node(child)]);
         assert_eq!(parent.full_width(), 2);
@@ -659,7 +654,7 @@ mod tests {
         use std::hash::{Hash, Hasher};
 
         let token = GreenToken::new(SyntaxKind::FalseKeyword);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node = GreenNode::new(SyntaxKind::FalseLiteralExpression, vec![GreenNodeElement::Token(token_elem)]);
 
         let mut hasher1 = DefaultHasher::new();
@@ -676,7 +671,7 @@ mod tests {
     #[test]
     fn test_trivia_when_no_trivia_expect_none() {
         let token = GreenToken::new(SyntaxKind::StreamKeyword);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node = GreenNode::new(SyntaxKind::StreamExpression, vec![GreenNodeElement::Token(token_elem)]);
         assert!(node.leading_trivia().is_none());
         assert!(node.trailing_trivia().is_none());
@@ -686,8 +681,8 @@ mod tests {
     fn test_slot_access_when_index_within_bounds_expect_some() {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node = GreenNode::new(
             SyntaxKind::List,
             vec![GreenNodeElement::Token(token_elem1), GreenNodeElement::Token(token_elem2)],
@@ -702,7 +697,7 @@ mod tests {
     #[test]
     fn test_slot_access_with_nested_node_expect_node_element() {
         let inner_token = GreenToken::new(SyntaxKind::NumericLiteralToken);
-        let inner_token_elem = TokenType::Token(inner_token);
+        let inner_token_elem = inner_token.into();
         let inner_node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(inner_token_elem)]);
         let outer_node = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Node(inner_node.clone())]);
 
@@ -727,7 +722,7 @@ mod tests {
     #[test]
     fn test_to_owned_when_data_expect_new_node() {
         let token = GreenToken::new(SyntaxKind::IndirectObjectKeyword);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node1 = GreenNode::new(SyntaxKind::IndirectObjectExpression, vec![GreenNodeElement::Token(token_elem)]);
         let data: &GreenNodeData = &*node1;
         let node2 = data.to_owned();
@@ -740,7 +735,7 @@ mod tests {
     #[test]
     fn test_into_raw_and_from_raw_expect_roundtrip() {
         let token = GreenToken::new(SyntaxKind::OpenBracketToken);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem)]);
         let ptr = GreenNode::into_raw(node1.clone());
         let node2 = unsafe { GreenNode::from_raw(ptr) };
@@ -753,7 +748,7 @@ mod tests {
     #[test]
     fn test_width_without_trivia_expect_token_width_only() {
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken);
-        let token_elem = TokenType::Token(token);
+        let token_elem = token.into();
         let node = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem)]);
 
         // GreenToken without explicit text has width derived from SyntaxKind
@@ -779,23 +774,23 @@ mod tests {
     fn test_is_equivalent_to_when_identical_nodes_expect_true() {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem2)]);
 
-        assert!(node1.is_equivalent_to(&*node2));
-        assert!(node2.is_equivalent_to(&*node1));
+        assert_eq!(node1, node2);
+        assert_eq!(node2, node1);
     }
 
     #[test]
     fn test_is_equivalent_to_when_different_kinds_expect_false() {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
-        let token_elem1 = TokenType::Token(token1);
+        let token_elem1 = token1.into();
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(SyntaxKind::DictionaryExpression, vec![]);
 
-        assert!(!node1.is_equivalent_to(&*node2));
+        assert_ne!(node1, node2);
     }
 
     #[test]
@@ -803,9 +798,9 @@ mod tests {
         let token1 = GreenToken::new(SyntaxKind::OpenBracketToken);
         let token2 = GreenToken::new(SyntaxKind::OpenBracketToken);
         let token3 = GreenToken::new(SyntaxKind::CloseBracketToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
-        let token_elem3 = TokenType::Token(token3);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
+        let token_elem3 = token3.into();
 
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(
@@ -813,7 +808,7 @@ mod tests {
             vec![GreenNodeElement::Token(token_elem2), GreenNodeElement::Token(token_elem3)],
         );
 
-        assert!(!node1.is_equivalent_to(&*node2));
+        assert_ne!(node1, node2);
     }
 
     #[test]
@@ -821,9 +816,9 @@ mod tests {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token3 = GreenToken::new(SyntaxKind::FalseKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
-        let token_elem3 = TokenType::Token(token3);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
+        let token_elem3 = token3.into();
 
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(
@@ -831,26 +826,26 @@ mod tests {
             vec![GreenNodeElement::Token(token_elem2), GreenNodeElement::Token(token_elem3)],
         );
 
-        assert!(!node1.is_equivalent_to(&*node2));
+        assert_ne!(node1, node2);
     }
 
     #[test]
     fn test_is_equivalent_to_when_different_token_kinds_expect_false() {
         let token1 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem2)]);
 
-        assert!(!node1.is_equivalent_to(&*node2));
+        assert_ne!(node1, node2);
     }
 
     #[test]
     fn test_is_equivalent_to_when_single_element_list_expect_equivalent() {
         // A single-element list should be equivalent to its child node
         let token = GreenToken::new(SyntaxKind::OpenBracketToken);
-        let token_elem = TokenType::Token(token);
+        let token_elem: GreenTokenElement = token.into();
 
         // Create a child node
         let child = GreenNode::new(SyntaxKind::ArrayExpression, vec![GreenNodeElement::Token(token_elem.clone())]);
@@ -859,16 +854,16 @@ mod tests {
         let list = GreenNode::new(SyntaxKind::List, vec![GreenNodeElement::Node(child.clone())]);
 
         // List and child should be equivalent due to normalization
-        assert!(list.is_equivalent_to(&*child));
-        assert!(child.is_equivalent_to(&*list));
+        assert_eq!(&*list, &*child);
+        assert_eq!(&*child, &*list);
     }
 
     #[test]
     fn test_is_equivalent_to_when_nested_nodes_expect_equivalent() {
         let token1 = GreenToken::new(SyntaxKind::OpenDictToken);
         let token2 = GreenToken::new(SyntaxKind::OpenDictToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
 
         let child1 = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let child2 = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Token(token_elem2)]);
@@ -876,15 +871,15 @@ mod tests {
         let parent1 = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenNodeElement::Node(child1)]);
         let parent2 = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenNodeElement::Node(child2)]);
 
-        assert!(parent1.is_equivalent_to(&*parent2));
+        assert_eq!(parent1, parent2);
     }
 
     #[test]
     fn test_is_equivalent_to_when_nested_nodes_with_different_children_expect_not_equivalent() {
         let token1 = GreenToken::new(SyntaxKind::OpenDictToken);
         let token2 = GreenToken::new(SyntaxKind::CloseDictToken);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
 
         let child1 = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Token(token_elem1)]);
         let child2 = GreenNode::new(SyntaxKind::DictionaryExpression, vec![GreenNodeElement::Token(token_elem2)]);
@@ -892,7 +887,7 @@ mod tests {
         let parent1 = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenNodeElement::Node(child1)]);
         let parent2 = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenNodeElement::Node(child2)]);
 
-        assert!(!parent1.is_equivalent_to(&*parent2));
+        assert_ne!(parent1, parent2);
     }
 
     #[test]
@@ -901,10 +896,10 @@ mod tests {
         let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
         let token3 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token4 = GreenToken::new(SyntaxKind::FalseKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
-        let token_elem3 = TokenType::Token(token3);
-        let token_elem4 = TokenType::Token(token4);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
+        let token_elem3 = token3.into();
+        let token_elem4 = token4.into();
 
         let node1 = GreenNode::new(
             SyntaxKind::ArrayExpression,
@@ -915,7 +910,7 @@ mod tests {
             vec![GreenNodeElement::Token(token_elem3), GreenNodeElement::Token(token_elem4)],
         );
 
-        assert!(node1.is_equivalent_to(&*node2));
+        assert_eq!(node1, node2);
     }
 
     #[test]
@@ -924,10 +919,10 @@ mod tests {
         let token2 = GreenToken::new(SyntaxKind::FalseKeyword);
         let token3 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token4 = GreenToken::new(SyntaxKind::NullKeyword);
-        let token_elem1 = TokenType::Token(token1);
-        let token_elem2 = TokenType::Token(token2);
-        let token_elem3 = TokenType::Token(token3);
-        let token_elem4 = TokenType::Token(token4);
+        let token_elem1 = token1.into();
+        let token_elem2 = token2.into();
+        let token_elem3 = token3.into();
+        let token_elem4 = token4.into();
 
         let node1 = GreenNode::new(
             SyntaxKind::ArrayExpression,
@@ -938,7 +933,7 @@ mod tests {
             vec![GreenNodeElement::Token(token_elem3), GreenNodeElement::Token(token_elem4)],
         );
 
-        assert!(!node1.is_equivalent_to(&*node2));
+        assert_ne!(node1, node2);
     }
 
     #[test]
@@ -946,6 +941,6 @@ mod tests {
         let node1 = GreenNode::new(SyntaxKind::List, vec![]);
         let node2 = GreenNode::new(SyntaxKind::List, vec![]);
 
-        assert!(node1.is_equivalent_to(&*node2));
+        assert_eq!(node1, node2);
     }
 }

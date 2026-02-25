@@ -78,6 +78,13 @@ impl From<GreenTrivia> for GreenNodeElement {
     }
 }
 
+impl From<GreenTokenElement> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenElement) -> GreenNodeElement {
+        NodeOrTokenOrTrivia::Token(token)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,5 +128,12 @@ mod tests {
         assert!(matches!(float_value, GreenNodeElement::Token(GreenTokenElement::TokenWithFloatValue(_))));
         assert!(matches!(string_value, GreenNodeElement::Token(GreenTokenElement::TokenWithStringValue(_))));
         assert!(matches!(trivia, GreenNodeElement::Trivia(_)));
+    }
+
+    #[test]
+    fn test_from_when_green_token_element_expect_token_variant_preserved() {
+        let token_element = GreenTokenElement::Token(GreenToken::new(SyntaxKind::TrueKeyword));
+        let node_element: GreenNodeElement = token_element.into();
+        assert!(matches!(node_element, GreenNodeElement::Token(GreenTokenElement::Token(_))));
     }
 }

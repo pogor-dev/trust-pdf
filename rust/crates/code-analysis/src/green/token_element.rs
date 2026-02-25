@@ -91,6 +91,34 @@ impl GreenTokenElement {
     }
 }
 
+impl From<GreenToken> for GreenTokenElement {
+    #[inline]
+    fn from(token: GreenToken) -> GreenTokenElement {
+        GreenTokenElement::Token(token)
+    }
+}
+
+impl From<GreenTokenWithIntValue> for GreenTokenElement {
+    #[inline]
+    fn from(token: GreenTokenWithIntValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithIntValue(token)
+    }
+}
+
+impl From<GreenTokenWithFloatValue> for GreenTokenElement {
+    #[inline]
+    fn from(token: GreenTokenWithFloatValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithFloatValue(token)
+    }
+}
+
+impl From<GreenTokenWithStringValue> for GreenTokenElement {
+    #[inline]
+    fn from(token: GreenTokenWithStringValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithStringValue(token)
+    }
+}
+
 impl<'a> GreenTokenElementRef<'a> {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
@@ -224,5 +252,18 @@ mod tests {
             assert_eq!(reference.trailing_trivia(), None);
             assert_eq!(reference.flags(), owned.flags());
         }
+    }
+
+    #[test]
+    fn test_from_when_concrete_tokens_expect_matching_variants() {
+        let plain: GreenTokenElement = GreenToken::new(SyntaxKind::TrueKeyword).into();
+        let int_value: GreenTokenElement = GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42).into();
+        let float_value: GreenTokenElement = GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5).into();
+        let string_value: GreenTokenElement = GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string()).into();
+
+        assert!(matches!(plain, GreenTokenElement::Token(_)));
+        assert!(matches!(int_value, GreenTokenElement::TokenWithIntValue(_)));
+        assert!(matches!(float_value, GreenTokenElement::TokenWithFloatValue(_)));
+        assert!(matches!(string_value, GreenTokenElement::TokenWithStringValue(_)));
     }
 }

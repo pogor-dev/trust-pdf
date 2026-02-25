@@ -63,7 +63,7 @@ impl GreenTriviaData {
 
 impl PartialEq for GreenTriviaData {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text() && self.flags() == other.flags()
+        self.kind() == other.kind() && self.text() == other.text()
     }
 }
 

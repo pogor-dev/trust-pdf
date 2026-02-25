@@ -67,7 +67,7 @@ impl GreenTokenData {
 
 impl PartialEq for GreenTokenData {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.flags() == other.flags()
+        self.kind() == other.kind()
     }
 }
 
