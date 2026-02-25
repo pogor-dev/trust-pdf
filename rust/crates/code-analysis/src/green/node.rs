@@ -2,7 +2,7 @@ use std::{
     borrow::Borrow,
     fmt,
     mem::{self, ManuallyDrop},
-    ops::{self, Deref},
+    ops::{self},
     ptr,
 };
 
