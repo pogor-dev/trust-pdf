@@ -39,49 +39,53 @@ impl GreenNodeElement {
 impl From<GreenToken> for GreenNodeElement {
     #[inline]
     fn from(token: GreenToken) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(GreenTokenElement::Token(token))
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
     }
 }
 
 impl From<GreenTokenWithIntValue> for GreenNodeElement {
     #[inline]
     fn from(token: GreenTokenWithIntValue) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithIntValue(token))
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
     }
 }
 
 impl From<GreenTokenWithFloatValue> for GreenNodeElement {
     #[inline]
     fn from(token: GreenTokenWithFloatValue) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithFloatValue(token))
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
     }
 }
 
 impl From<GreenTokenWithStringValue> for GreenNodeElement {
     #[inline]
     fn from(token: GreenTokenWithStringValue) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(GreenTokenElement::TokenWithStringValue(token))
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
     }
 }
 
 impl From<GreenNode> for GreenNodeElement {
     #[inline]
     fn from(node: GreenNode) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Node(node)
+        GreenNodeElement::Node(node)
     }
 }
 
 impl From<GreenTrivia> for GreenNodeElement {
     #[inline]
     fn from(trivia: GreenTrivia) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Trivia(trivia)
+        GreenNodeElement::Trivia(trivia)
     }
 }
 
 impl From<GreenTokenElement> for GreenNodeElement {
     #[inline]
     fn from(token: GreenTokenElement) -> GreenNodeElement {
-        NodeOrTokenOrTrivia::Token(token)
+        GreenNodeElement::Token(token)
     }
 }
 
