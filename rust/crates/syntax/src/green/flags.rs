@@ -3,8 +3,8 @@
 /// Typed as `u8` providing 8 bits for flag storage. These flags are attached to
 /// green nodes to track metadata without additional memory allocation.
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub(super) struct GreenFlags(u8);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct GreenFlags(u8);
 
 impl GreenFlags {
     pub const NONE: Self = Self(0);
@@ -252,12 +252,6 @@ mod tests {
         let flags = GreenFlags::from_bits(0b0101);
         let result = !flags;
         assert_eq!(result.bits(), !0b0101);
-    }
-
-    #[test]
-    fn test_default() {
-        let flags = GreenFlags::default();
-        assert_eq!(flags.bits(), 0);
     }
 
     #[test]
