@@ -126,15 +126,7 @@ impl GreenNodeData {
             while let Some((item, current_leading, current_trailing)) = stack.pop() {
                 match item {
                     GreenNodeElementRef::Token(token_data) => {
-                        if current_leading && let Some(leading_trivia) = token_data.leading_trivia() {
-                            output.extend_from_slice(&leading_trivia.full_text());
-                        }
-
-                        output.extend_from_slice(&token_data.text());
-
-                        if current_trailing && let Some(trailing_trivia) = token_data.trailing_trivia() {
-                            output.extend_from_slice(&trailing_trivia.full_text());
-                        }
+                        output.extend_from_slice(&token_data.write_to(current_leading, current_trailing));
                     }
                     GreenNodeElementRef::Trivia(trivia_data) => {
                         output.extend_from_slice(&trivia_data.text());
@@ -755,10 +747,7 @@ mod tests {
         let token2 = GreenToken::new(SyntaxKind::OpenBracketToken);
         let token3 = GreenToken::new(SyntaxKind::CloseBracketToken);
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![token1.into()]);
-        let node2 = GreenNode::new(
-            SyntaxKind::ArrayExpression,
-            vec![token2.into(), token3.into()],
-        );
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![token2.into(), token3.into()]);
 
         assert_ne!(node1, node2);
     }
@@ -769,10 +758,7 @@ mod tests {
         let token2 = GreenToken::new(SyntaxKind::TrueKeyword);
         let token3 = GreenToken::new(SyntaxKind::FalseKeyword);
         let node1 = GreenNode::new(SyntaxKind::ArrayExpression, vec![token1.into()]);
-        let node2 = GreenNode::new(
-            SyntaxKind::ArrayExpression,
-            vec![token2.into(), token3.into()],
-        );
+        let node2 = GreenNode::new(SyntaxKind::ArrayExpression, vec![token2.into(), token3.into()]);
 
         assert_ne!(node1, node2);
     }
