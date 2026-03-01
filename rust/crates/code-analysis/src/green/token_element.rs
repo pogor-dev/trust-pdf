@@ -31,302 +31,105 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
 impl GreenTokenElement {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
-        match self {
-            GreenTokenElement::Token(t) => t.kind(),
-            GreenTokenElement::TokenWithTrivia(t) => t.kind(),
-            GreenTokenElement::TokenWithIntValue(t) => t.kind(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.kind(),
-            GreenTokenElement::TokenWithStringValue(t) => t.kind(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.kind(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.kind(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.kind(),
-        }
+        match_token_type!(self, t => t.kind())
     }
 
     #[inline]
     pub fn text(&self) -> Vec<u8> {
-        match self {
-            GreenTokenElement::Token(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithTrivia(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.text().to_vec(),
-        }
+        match_token_type!(self, t => t.text().to_vec())
     }
 
     #[inline]
     pub fn full_text(&self) -> Vec<u8> {
-        match self {
-            GreenTokenElement::Token(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithTrivia(t) => t.full_text(),
-            GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.full_text(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.full_text(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.full_text(),
-        }
+        match_token_type!(self, t => t.full_text())
     }
 
     #[inline]
     pub fn width(&self) -> u32 {
-        match self {
-            GreenTokenElement::Token(t) => t.width().into(),
-            GreenTokenElement::TokenWithTrivia(t) => t.width().into(),
-            GreenTokenElement::TokenWithIntValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithStringValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.width().into(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.width().into(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.width().into(),
-        }
+        match_token_type!(self, t => t.width().into())
     }
 
     #[inline]
     pub fn full_width(&self) -> u32 {
-        match self {
-            GreenTokenElement::Token(t) => t.width().into(),
-            GreenTokenElement::TokenWithTrivia(t) => t.full_width().into(),
-            GreenTokenElement::TokenWithIntValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithStringValue(t) => t.width().into(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
-        }
+        match_token_type!(self, t => t.full_width().into())
     }
 
     #[inline]
     pub fn leading_trivia(&self) -> Option<GreenNode> {
-        match self {
-            GreenTokenElement::Token(_t) => None,
-            GreenTokenElement::TokenWithTrivia(t) => t.leading_trivia(),
-            GreenTokenElement::TokenWithIntValue(_t) => None,
-            GreenTokenElement::TokenWithFloatValue(_t) => None,
-            GreenTokenElement::TokenWithStringValue(_t) => None,
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
-        }
+        match_token_type!(self, t => t.leading_trivia())
     }
 
     #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
-        match self {
-            GreenTokenElement::Token(_t) => None,
-            GreenTokenElement::TokenWithTrivia(t) => t.trailing_trivia(),
-            GreenTokenElement::TokenWithIntValue(_t) => None,
-            GreenTokenElement::TokenWithFloatValue(_t) => None,
-            GreenTokenElement::TokenWithStringValue(_t) => None,
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
-        }
+        match_token_type!(self, t => t.trailing_trivia())
     }
+
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
-        match self {
-            GreenTokenElement::Token(t) => t.flags(),
-            GreenTokenElement::TokenWithTrivia(t) => t.flags(),
-            GreenTokenElement::TokenWithIntValue(t) => t.flags(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.flags(),
-            GreenTokenElement::TokenWithStringValue(t) => t.flags(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.flags(),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.flags(),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.flags(),
-        }
+        match_token_type!(self, t => t.flags())
     }
 
     #[inline]
     pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
-        match self {
-            GreenTokenElement::Token(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
-            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
-        }
+        match_token_type!(self, t => t.write_to(leading, trailing))
     }
 }
 
-impl From<GreenToken> for GreenTokenElement {
-    fn from(token: GreenToken) -> GreenTokenElement {
-        GreenTokenElement::Token(token)
-    }
-}
-
-impl From<GreenTokenWithIntValue> for GreenTokenElement {
-    fn from(token: GreenTokenWithIntValue) -> GreenTokenElement {
-        GreenTokenElement::TokenWithIntValue(token)
-    }
-}
-
-impl From<GreenTokenWithTrivia> for GreenTokenElement {
-    fn from(token: GreenTokenWithTrivia) -> GreenTokenElement {
-        GreenTokenElement::TokenWithTrivia(token)
-    }
-}
-
-impl From<GreenTokenWithFloatValue> for GreenTokenElement {
-    fn from(token: GreenTokenWithFloatValue) -> GreenTokenElement {
-        GreenTokenElement::TokenWithFloatValue(token)
-    }
-}
-
-impl From<GreenTokenWithStringValue> for GreenTokenElement {
-    fn from(token: GreenTokenWithStringValue) -> GreenTokenElement {
-        GreenTokenElement::TokenWithStringValue(token)
-    }
-}
-
-impl From<GreenTokenWithIntValueAndTrivia> for GreenTokenElement {
-    fn from(token: GreenTokenWithIntValueAndTrivia) -> GreenTokenElement {
-        GreenTokenElement::TokenWithIntValueAndTrivia(token)
-    }
-}
-
-impl From<GreenTokenWithFloatValueAndTrivia> for GreenTokenElement {
-    fn from(token: GreenTokenWithFloatValueAndTrivia) -> GreenTokenElement {
-        GreenTokenElement::TokenWithFloatValueAndTrivia(token)
-    }
-}
-
-impl From<GreenTokenWithStringValueAndTrivia> for GreenTokenElement {
-    fn from(token: GreenTokenWithStringValueAndTrivia) -> GreenTokenElement {
-        GreenTokenElement::TokenWithStringValueAndTrivia(token)
-    }
-}
+impl_from_token_variant!(
+    GreenToken => Token,
+    GreenTokenWithTrivia => TokenWithTrivia,
+    GreenTokenWithIntValue => TokenWithIntValue,
+    GreenTokenWithFloatValue => TokenWithFloatValue,
+    GreenTokenWithStringValue => TokenWithStringValue,
+    GreenTokenWithIntValueAndTrivia => TokenWithIntValueAndTrivia,
+    GreenTokenWithFloatValueAndTrivia => TokenWithFloatValueAndTrivia,
+    GreenTokenWithStringValueAndTrivia => TokenWithStringValueAndTrivia,
+);
 
 impl<'a> GreenTokenElementRef<'a> {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
-        match self {
-            GreenTokenElementRef::Token(t) => t.kind(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.kind(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.kind(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.kind(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.kind(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.kind(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.kind(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.kind(),
-        }
+        match_token_type!(self, t => t.kind())
     }
 
     #[inline]
     pub fn text(&self) -> &'a [u8] {
-        match self {
-            GreenTokenElementRef::Token(t) => t.text(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.text(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.text(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.text(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.text(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.text(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.text(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.text(),
-        }
+        match_token_type!(self, t => t.text())
     }
 
     #[inline]
     pub fn full_text(&self) -> Vec<u8> {
-        match self {
-            GreenTokenElementRef::Token(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.full_text(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.full_text(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.full_text(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.full_text(),
-        }
+        match_token_type!(self, t => t.full_text())
     }
 
     #[inline]
     pub fn width(&self) -> u32 {
-        match self {
-            GreenTokenElementRef::Token(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.width().into(),
-        }
+        match_token_type!(self, t => t.width().into())
     }
 
     #[inline]
     pub fn full_width(&self) -> u32 {
-        match self {
-            GreenTokenElementRef::Token(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.full_width().into(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.width().into(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
-        }
+        match_token_type!(self, t => t.full_width().into())
     }
 
     #[inline]
     pub fn leading_trivia(&self) -> Option<GreenNode> {
-        match self {
-            GreenTokenElementRef::Token(_t) => None,
-            GreenTokenElementRef::TokenWithTrivia(t) => t.leading_trivia(),
-            GreenTokenElementRef::TokenWithIntValue(_t) => None,
-            GreenTokenElementRef::TokenWithFloatValue(_t) => None,
-            GreenTokenElementRef::TokenWithStringValue(_t) => None,
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
-        }
+        match_token_type!(self, t => t.leading_trivia())
     }
 
     #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
-        match self {
-            GreenTokenElementRef::Token(_t) => None,
-            GreenTokenElementRef::TokenWithTrivia(t) => t.trailing_trivia(),
-            GreenTokenElementRef::TokenWithIntValue(_t) => None,
-            GreenTokenElementRef::TokenWithFloatValue(_t) => None,
-            GreenTokenElementRef::TokenWithStringValue(_t) => None,
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
-        }
+        match_token_type!(self, t => t.trailing_trivia())
     }
+
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
-        match self {
-            GreenTokenElementRef::Token(t) => t.flags(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.flags(),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.flags(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.flags(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.flags(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.flags(),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.flags(),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.flags(),
-        }
+        match_token_type!(self, t => t.flags())
     }
 
     #[inline]
     pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
-        match self {
-            GreenTokenElementRef::Token(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElementRef::TokenWithIntValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithFloatValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithStringValue(t) => t.text().to_vec(),
-            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
-            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
-        }
+        match_token_type!(self, t => t.write_to(leading, trailing))
     }
 }
 

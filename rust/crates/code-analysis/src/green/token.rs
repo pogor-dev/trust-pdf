@@ -12,6 +12,7 @@ use std::{
 };
 
 use crate::{
+    GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
     green::flags::GreenFlags,
 };
@@ -53,6 +54,31 @@ impl GreenTokenData {
     #[inline]
     pub fn width(&self) -> u8 {
         self.kind().get_text().len() as u8
+    }
+
+    #[inline]
+    pub fn full_text(&self) -> Vec<u8> {
+        self.text().to_vec()
+    }
+
+    #[inline]
+    pub fn full_width(&self) -> u8 {
+        self.width()
+    }
+
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<GreenNode> {
+        None
+    }
+
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+        None
+    }
+
+    #[inline]
+    pub(crate) fn write_to(&self, _leading: bool, _trailing: bool) -> Vec<u8> {
+        self.text().to_vec()
     }
 
     /// Returns the flags of this token.
@@ -208,6 +234,27 @@ mod green_token_tests {
     fn test_width() {
         let token = GreenToken::new(SyntaxKind::TrueKeyword);
         assert_eq!(token.width(), 4);
+    }
+
+    #[test]
+    fn test_full_text_and_full_width_when_plain_token_expect_text_equivalence() {
+        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        assert_eq!(token.full_text(), token.text());
+        assert_eq!(token.full_width(), token.width());
+    }
+
+    #[test]
+    fn test_trivia_accessors_when_plain_token_expect_none() {
+        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        assert_eq!(token.leading_trivia(), None);
+        assert_eq!(token.trailing_trivia(), None);
+    }
+
+    #[test]
+    fn test_write_to_when_plain_token_expect_text_ignoring_flags() {
+        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        assert_eq!(token.write_to(false, false), token.text());
+        assert_eq!(token.write_to(true, true), token.text());
     }
 
     #[test]

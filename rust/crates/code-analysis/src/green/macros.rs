@@ -164,3 +164,59 @@ macro_rules! impl_green_boilerplate {
         }
     };
 }
+
+/// Dispatches over all eight `TokenType` variants.
+///
+/// All variants evaluate the same expression:
+/// `match_token_type!(self, t => t.kind())`
+macro_rules! match_token_type {
+    // Uniform: every variant uses the same expression.
+    ($self:expr, $t:ident => $expr:expr) => {
+        match $self {
+            Self::Token($t) => $expr,
+            Self::TokenWithTrivia($t) => $expr,
+            Self::TokenWithIntValue($t) => $expr,
+            Self::TokenWithFloatValue($t) => $expr,
+            Self::TokenWithStringValue($t) => $expr,
+            Self::TokenWithIntValueAndTrivia($t) => $expr,
+            Self::TokenWithFloatValueAndTrivia($t) => $expr,
+            Self::TokenWithStringValueAndTrivia($t) => $expr,
+        }
+    };
+}
+
+/// Generates `into_*` / `as_*` accessor pairs for `TokenType` variants.
+///
+/// Each pair extracts one variant and returns `None` for all others.
+macro_rules! impl_token_type_accessors {
+    ($( ($into_fn:ident, $as_fn:ident, $variant:ident, $T:ident) ),* $(,)?) => {
+        $(
+            pub fn $into_fn(self) -> Option<$T> {
+                match self {
+                    Self::$variant(v) => Some(v),
+                    _ => None,
+                }
+            }
+
+            pub fn $as_fn(&self) -> Option<&$T> {
+                match self {
+                    Self::$variant(v) => Some(v),
+                    _ => None,
+                }
+            }
+        )*
+    };
+}
+
+/// Generates `From<ConcreteToken> for GreenTokenElement` impls for all variants.
+macro_rules! impl_from_token_variant {
+    ($( $concrete:ty => $variant:ident ),* $(,)?) => {
+        $(
+            impl From<$concrete> for GreenTokenElement {
+                fn from(token: $concrete) -> GreenTokenElement {
+                    GreenTokenElement::$variant(token)
+                }
+            }
+        )*
+    };
+}

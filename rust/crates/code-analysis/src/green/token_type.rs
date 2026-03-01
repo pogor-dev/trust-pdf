@@ -14,213 +14,31 @@ pub enum TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
 }
 
 impl<T1, T2, T3, T4, T5, T6, T7, T8> TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
-    pub fn into_token(self) -> Option<T1> {
-        match self {
-            TokenType::Token(token) => Some(token),
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token(&self) -> Option<&T1> {
-        match self {
-            TokenType::Token(token) => Some(token),
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_trivia(self) -> Option<T2> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(token) => Some(token),
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_trivia(&self) -> Option<&T2> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(token) => Some(token),
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_int_value(self) -> Option<T3> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(token) => Some(token),
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_int_value(&self) -> Option<&T3> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(token) => Some(token),
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_float_value(self) -> Option<T4> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(token) => Some(token),
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_float_value(&self) -> Option<&T4> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(token) => Some(token),
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_string_value(self) -> Option<T5> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(token) => Some(token),
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_string_value(&self) -> Option<&T5> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(token) => Some(token),
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_int_value_and_trivia(self) -> Option<T6> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(token) => Some(token),
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_int_value_and_trivia(&self) -> Option<&T6> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(token) => Some(token),
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_float_value_and_trivia(self) -> Option<T7> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(token) => Some(token),
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn as_token_with_float_value_and_trivia(&self) -> Option<&T7> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(token) => Some(token),
-            TokenType::TokenWithStringValueAndTrivia(_) => None,
-        }
-    }
-
-    pub fn into_token_with_string_value_and_trivia(self) -> Option<T8> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(token) => Some(token),
-        }
-    }
-
-    pub fn as_token_with_string_value_and_trivia(&self) -> Option<&T8> {
-        match self {
-            TokenType::Token(_) => None,
-            TokenType::TokenWithTrivia(_) => None,
-            TokenType::TokenWithIntValue(_) => None,
-            TokenType::TokenWithFloatValue(_) => None,
-            TokenType::TokenWithStringValue(_) => None,
-            TokenType::TokenWithIntValueAndTrivia(_) => None,
-            TokenType::TokenWithFloatValueAndTrivia(_) => None,
-            TokenType::TokenWithStringValueAndTrivia(token) => Some(token),
-        }
-    }
+    impl_token_type_accessors!(
+        (into_token, as_token, Token, T1),
+        (into_token_with_trivia, as_token_with_trivia, TokenWithTrivia, T2),
+        (into_token_with_int_value, as_token_with_int_value, TokenWithIntValue, T3),
+        (into_token_with_float_value, as_token_with_float_value, TokenWithFloatValue, T4),
+        (into_token_with_string_value, as_token_with_string_value, TokenWithStringValue, T5),
+        (
+            into_token_with_int_value_and_trivia,
+            as_token_with_int_value_and_trivia,
+            TokenWithIntValueAndTrivia,
+            T6
+        ),
+        (
+            into_token_with_float_value_and_trivia,
+            as_token_with_float_value_and_trivia,
+            TokenWithFloatValueAndTrivia,
+            T7
+        ),
+        (
+            into_token_with_string_value_and_trivia,
+            as_token_with_string_value_and_trivia,
+            TokenWithStringValueAndTrivia,
+            T8
+        ),
+    );
 }
 
 impl<T1: Deref, T2: Deref, T3: Deref, T4: Deref, T5: Deref, T6: Deref, T7: Deref, T8: Deref> TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
@@ -242,16 +60,7 @@ impl<T1: fmt::Display, T2: fmt::Display, T3: fmt::Display, T4: fmt::Display, T5:
     fmt::Display for TokenType<T1, T2, T3, T4, T5, T6, T7, T8>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TokenType::Token(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithTrivia(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithIntValue(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithFloatValue(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithStringValue(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithIntValueAndTrivia(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithFloatValueAndTrivia(token) => fmt::Display::fmt(token, f),
-            TokenType::TokenWithStringValueAndTrivia(token) => fmt::Display::fmt(token, f),
-        }
+        match_token_type!(self, t => fmt::Display::fmt(t, f))
     }
 }
 
