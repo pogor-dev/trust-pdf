@@ -1,6 +1,7 @@
 use crate::{
     GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue,
-    GreenTrivia, GreenTriviaData, SyntaxKind, green::NodeOrTokenOrTrivia,
+    GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValueAndTrivia, GreenTrivia, GreenTriviaData, SyntaxKind,
+    green::NodeOrTokenOrTrivia,
 };
 
 /// Concrete green tree child element used in node slot arrays.
@@ -68,6 +69,30 @@ impl From<GreenTokenWithStringValue> for GreenNodeElement {
     }
 }
 
+impl From<GreenTokenWithIntValueAndTrivia> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithIntValueAndTrivia) -> GreenNodeElement {
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
+    }
+}
+
+impl From<GreenTokenWithFloatValueAndTrivia> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithFloatValueAndTrivia) -> GreenNodeElement {
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
+    }
+}
+
+impl From<GreenTokenWithStringValueAndTrivia> for GreenNodeElement {
+    #[inline]
+    fn from(token: GreenTokenWithStringValueAndTrivia) -> GreenNodeElement {
+        let token_element: GreenTokenElement = token.into();
+        token_element.into()
+    }
+}
+
 impl From<GreenNode> for GreenNodeElement {
     #[inline]
     fn from(node: GreenNode) -> GreenNodeElement {
@@ -125,12 +150,30 @@ mod tests {
         let int_value = GreenNodeElement::from(GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42));
         let float_value = GreenNodeElement::from(GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14));
         let string_value = GreenNodeElement::from(GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string()));
+        let int_value_trivia =
+            GreenNodeElement::from(GreenTokenWithIntValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, None, None));
+        let float_value_trivia =
+            GreenNodeElement::from(GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14, None, None));
+        let string_value_trivia =
+            GreenNodeElement::from(GreenTokenWithStringValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), None, None));
         let trivia = GreenNodeElement::from(GreenTrivia::new(SyntaxKind::CommentTrivia, b"%x"));
 
         assert!(matches!(plain, GreenNodeElement::Token(GreenTokenElement::Token(_))));
         assert!(matches!(int_value, GreenNodeElement::Token(GreenTokenElement::TokenWithIntValue(_))));
         assert!(matches!(float_value, GreenNodeElement::Token(GreenTokenElement::TokenWithFloatValue(_))));
         assert!(matches!(string_value, GreenNodeElement::Token(GreenTokenElement::TokenWithStringValue(_))));
+        assert!(matches!(
+            int_value_trivia,
+            GreenNodeElement::Token(GreenTokenElement::TokenWithIntValueAndTrivia(_))
+        ));
+        assert!(matches!(
+            float_value_trivia,
+            GreenNodeElement::Token(GreenTokenElement::TokenWithFloatValueAndTrivia(_))
+        ));
+        assert!(matches!(
+            string_value_trivia,
+            GreenNodeElement::Token(GreenTokenElement::TokenWithStringValueAndTrivia(_))
+        ));
         assert!(matches!(trivia, GreenNodeElement::Trivia(_)));
     }
 

@@ -7,6 +7,7 @@ mod token_element;
 mod token_type;
 mod token_with_trivia;
 mod token_with_value;
+mod token_with_value_and_trivia;
 mod trivia;
 
 pub(crate) use self::{
@@ -21,6 +22,10 @@ pub(crate) use self::{
     token_with_value::{
         GreenTokenWithFloatValue, GreenTokenWithFloatValueData, GreenTokenWithIntValue, GreenTokenWithIntValueData, GreenTokenWithStringValue,
         GreenTokenWithStringValueData, GreenTokenWithValue, GreenTokenWithValueData,
+    },
+    token_with_value_and_trivia::{
+        GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData, GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData,
+        GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData, GreenTokenWithValueAndTrivia, GreenTokenWithValueAndTriviaData,
     },
     trivia::{GreenTrivia, GreenTriviaData},
 };

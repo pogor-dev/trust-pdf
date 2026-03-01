@@ -1,11 +1,21 @@
 use crate::{
-    GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueData, GreenTokenWithIntValue,
-    GreenTokenWithIntValueData, GreenTokenWithStringValue, GreenTokenWithStringValueData, GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind,
-    green::TokenType,
+    GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData,
+    GreenTokenWithFloatValueData, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData,
+    GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData, GreenTokenWithTrivia,
+    GreenTokenWithTriviaData, SyntaxKind, green::TokenType,
 };
 
 /// Concrete token element used in node slots.
-pub type GreenTokenElement = TokenType<GreenToken, GreenTokenWithTrivia, GreenTokenWithIntValue, GreenTokenWithFloatValue, GreenTokenWithStringValue>;
+pub type GreenTokenElement = TokenType<
+    GreenToken,
+    GreenTokenWithTrivia,
+    GreenTokenWithIntValue,
+    GreenTokenWithFloatValue,
+    GreenTokenWithStringValue,
+    GreenTokenWithIntValueAndTrivia,
+    GreenTokenWithFloatValueAndTrivia,
+    GreenTokenWithStringValueAndTrivia,
+>;
 
 pub(crate) type GreenTokenElementRef<'a> = TokenType<
     &'a GreenTokenData,
@@ -13,6 +23,9 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
     &'a GreenTokenWithIntValueData,
     &'a GreenTokenWithFloatValueData,
     &'a GreenTokenWithStringValueData,
+    &'a GreenTokenWithIntValueAndTriviaData,
+    &'a GreenTokenWithFloatValueAndTriviaData,
+    &'a GreenTokenWithStringValueAndTriviaData,
 >;
 
 impl GreenTokenElement {
@@ -24,6 +37,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.kind(),
             GreenTokenElement::TokenWithFloatValue(t) => t.kind(),
             GreenTokenElement::TokenWithStringValue(t) => t.kind(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.kind(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.kind(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.kind(),
         }
     }
 
@@ -35,6 +51,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.text().to_vec(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.text().to_vec(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.text().to_vec(),
         }
     }
 
@@ -46,6 +65,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.full_text(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.full_text(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.full_text(),
         }
     }
 
@@ -57,6 +79,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.width().into(),
             GreenTokenElement::TokenWithFloatValue(t) => t.width().into(),
             GreenTokenElement::TokenWithStringValue(t) => t.width().into(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.width().into(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.width().into(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.width().into(),
         }
     }
 
@@ -68,6 +93,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.width().into(),
             GreenTokenElement::TokenWithFloatValue(t) => t.width().into(),
             GreenTokenElement::TokenWithStringValue(t) => t.width().into(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
         }
     }
 
@@ -79,6 +107,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(_t) => None,
             GreenTokenElement::TokenWithFloatValue(_t) => None,
             GreenTokenElement::TokenWithStringValue(_t) => None,
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
         }
     }
 
@@ -90,6 +121,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(_t) => None,
             GreenTokenElement::TokenWithFloatValue(_t) => None,
             GreenTokenElement::TokenWithStringValue(_t) => None,
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
         }
     }
     #[inline]
@@ -100,6 +134,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.flags(),
             GreenTokenElement::TokenWithFloatValue(t) => t.flags(),
             GreenTokenElement::TokenWithStringValue(t) => t.flags(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.flags(),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.flags(),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.flags(),
         }
     }
 
@@ -111,6 +148,9 @@ impl GreenTokenElement {
             GreenTokenElement::TokenWithIntValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithFloatValue(t) => t.text().to_vec(),
             GreenTokenElement::TokenWithStringValue(t) => t.text().to_vec(),
+            GreenTokenElement::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
+            GreenTokenElement::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
         }
     }
 }
@@ -145,6 +185,24 @@ impl From<GreenTokenWithStringValue> for GreenTokenElement {
     }
 }
 
+impl From<GreenTokenWithIntValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithIntValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithIntValueAndTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithFloatValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithFloatValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithFloatValueAndTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithStringValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithStringValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithStringValueAndTrivia(token)
+    }
+}
+
 impl<'a> GreenTokenElementRef<'a> {
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
@@ -154,6 +212,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.kind(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.kind(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.kind(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.kind(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.kind(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.kind(),
         }
     }
 
@@ -165,6 +226,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.text(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.text(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.text(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.text(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.text(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.text(),
         }
     }
 
@@ -176,6 +240,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.text().to_vec(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.text().to_vec(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.text().to_vec(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.full_text(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.full_text(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.full_text(),
         }
     }
 
@@ -187,6 +254,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.width().into(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.width().into(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.width().into(),
         }
     }
 
@@ -198,6 +268,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.width().into(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.width().into(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.width().into(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
         }
     }
 
@@ -209,6 +282,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(_t) => None,
             GreenTokenElementRef::TokenWithFloatValue(_t) => None,
             GreenTokenElementRef::TokenWithStringValue(_t) => None,
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
         }
     }
 
@@ -220,6 +296,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(_t) => None,
             GreenTokenElementRef::TokenWithFloatValue(_t) => None,
             GreenTokenElementRef::TokenWithStringValue(_t) => None,
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
         }
     }
     #[inline]
@@ -230,6 +309,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.flags(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.flags(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.flags(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.flags(),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.flags(),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.flags(),
         }
     }
 
@@ -241,6 +323,9 @@ impl<'a> GreenTokenElementRef<'a> {
             GreenTokenElementRef::TokenWithIntValue(t) => t.text().to_vec(),
             GreenTokenElementRef::TokenWithFloatValue(t) => t.text().to_vec(),
             GreenTokenElementRef::TokenWithStringValue(t) => t.text().to_vec(),
+            GreenTokenElementRef::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
+            GreenTokenElementRef::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
+            GreenTokenElementRef::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
         }
     }
 }
@@ -264,13 +349,34 @@ mod tests {
         ))
     }
 
-    fn create_owned_variants() -> [GreenTokenElement; 5] {
+    fn create_owned_variants() -> [GreenTokenElement; 8] {
         [
             GreenTokenElement::Token(GreenToken::new(SyntaxKind::TrueKeyword)),
             GreenTokenElement::TokenWithTrivia(GreenTokenWithTrivia::new(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia())),
             GreenTokenElement::TokenWithIntValue(GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42)),
             GreenTokenElement::TokenWithFloatValue(GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5)),
             GreenTokenElement::TokenWithStringValue(GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string())),
+            GreenTokenElement::TokenWithIntValueAndTrivia(GreenTokenWithIntValueAndTrivia::new(
+                SyntaxKind::NumericLiteralToken,
+                b"42",
+                42,
+                leading_trivia(),
+                trailing_trivia(),
+            )),
+            GreenTokenElement::TokenWithFloatValueAndTrivia(GreenTokenWithFloatValueAndTrivia::new(
+                SyntaxKind::NumericLiteralToken,
+                b"3.5",
+                3.5,
+                leading_trivia(),
+                trailing_trivia(),
+            )),
+            GreenTokenElement::TokenWithStringValueAndTrivia(GreenTokenWithStringValueAndTrivia::new(
+                SyntaxKind::NameLiteralToken,
+                b"Type",
+                "Type".to_string(),
+                leading_trivia(),
+                trailing_trivia(),
+            )),
         ]
     }
 
@@ -282,6 +388,9 @@ mod tests {
         assert_eq!(variants[2].kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(variants[3].kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(variants[4].kind(), SyntaxKind::NameLiteralToken);
+        assert_eq!(variants[5].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[6].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[7].kind(), SyntaxKind::NameLiteralToken);
     }
 
     #[test]
@@ -290,9 +399,15 @@ mod tests {
             let text = variant.text();
             assert_eq!(variant.width(), text.len() as u32);
 
-            if let GreenTokenElement::TokenWithTrivia(_) = variant {
-                assert_eq!(variant.full_width(), b" true\n".len() as u32);
-                assert_eq!(variant.full_text(), b" true\n");
+            if matches!(
+                variant,
+                GreenTokenElement::TokenWithTrivia(_)
+                    | GreenTokenElement::TokenWithIntValueAndTrivia(_)
+                    | GreenTokenElement::TokenWithFloatValueAndTrivia(_)
+                    | GreenTokenElement::TokenWithStringValueAndTrivia(_)
+            ) {
+                assert_eq!(variant.full_width(), variant.full_text().len() as u32);
+                assert_eq!(variant.full_text(), variant.write_to(true, true));
             } else {
                 assert_eq!(variant.full_width(), text.len() as u32);
                 assert_eq!(variant.full_text(), text);
@@ -310,6 +425,12 @@ mod tests {
 
         assert!(variants[1].leading_trivia().is_some());
         assert!(variants[1].trailing_trivia().is_some());
+        assert!(variants[5].leading_trivia().is_some());
+        assert!(variants[5].trailing_trivia().is_some());
+        assert!(variants[6].leading_trivia().is_some());
+        assert!(variants[6].trailing_trivia().is_some());
+        assert!(variants[7].leading_trivia().is_some());
+        assert!(variants[7].trailing_trivia().is_some());
     }
 
     #[test]
@@ -329,7 +450,13 @@ mod tests {
             assert_eq!(reference.width(), owned.width());
             assert_eq!(reference.full_width(), owned.full_width());
 
-            if let GreenTokenElement::TokenWithTrivia(_) = owned {
+            if matches!(
+                owned,
+                GreenTokenElement::TokenWithTrivia(_)
+                    | GreenTokenElement::TokenWithIntValueAndTrivia(_)
+                    | GreenTokenElement::TokenWithFloatValueAndTrivia(_)
+                    | GreenTokenElement::TokenWithStringValueAndTrivia(_)
+            ) {
                 assert_eq!(reference.full_text(), owned.full_text());
                 assert!(reference.leading_trivia().is_some());
                 assert!(reference.trailing_trivia().is_some());
@@ -350,11 +477,20 @@ mod tests {
         let int_value: GreenTokenElement = GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42).into();
         let float_value: GreenTokenElement = GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5).into();
         let string_value: GreenTokenElement = GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string()).into();
+        let int_value_trivia: GreenTokenElement =
+            GreenTokenWithIntValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, leading_trivia(), trailing_trivia()).into();
+        let float_value_trivia: GreenTokenElement =
+            GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, leading_trivia(), trailing_trivia()).into();
+        let string_value_trivia: GreenTokenElement =
+            GreenTokenWithStringValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), leading_trivia(), trailing_trivia()).into();
 
         assert!(matches!(plain, GreenTokenElement::Token(_)));
         assert!(matches!(with_trivia, GreenTokenElement::TokenWithTrivia(_)));
         assert!(matches!(int_value, GreenTokenElement::TokenWithIntValue(_)));
         assert!(matches!(float_value, GreenTokenElement::TokenWithFloatValue(_)));
         assert!(matches!(string_value, GreenTokenElement::TokenWithStringValue(_)));
+        assert!(matches!(int_value_trivia, GreenTokenElement::TokenWithIntValueAndTrivia(_)));
+        assert!(matches!(float_value_trivia, GreenTokenElement::TokenWithFloatValueAndTrivia(_)));
+        assert!(matches!(string_value_trivia, GreenTokenElement::TokenWithStringValueAndTrivia(_)));
     }
 }
