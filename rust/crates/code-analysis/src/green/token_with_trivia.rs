@@ -179,11 +179,23 @@ impl fmt::Debug for GreenTokenWithTrivia {
 }
 
 impl GreenTokenWithTrivia {
-    /// Creates new token.
+    /// Creates a present (non-missing) token with optional trivia.
     #[inline]
     pub fn new(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
-        let flags = GreenFlags::IS_NOT_MISSING; // Tokens created via `new` are always not-missing
+        Self::create(kind, GreenFlags::IS_NOT_MISSING, leading_trivia, trailing_trivia)
+    }
 
+    /// Creates a missing (synthetic) token for error recovery.
+    ///
+    /// Missing tokens are parser-inserted placeholders when expected syntax is
+    /// absent. They do **not** set `GreenFlags::IS_NOT_MISSING`.
+    #[inline]
+    pub fn new_missing(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
+        Self::create(kind, GreenFlags::NONE, leading_trivia, trailing_trivia)
+    }
+
+    #[inline]
+    fn create(kind: SyntaxKind, flags: GreenFlags, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
         let first_leading_width = leading_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let last_trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let full_width = kind.get_text().len() as u16 + first_leading_width + last_trailing_width;
@@ -459,5 +471,58 @@ mod green_token_data_tests {
         let data1: &GreenTokenWithTriviaData = &*token1;
         let data2: &GreenTokenWithTriviaData = &*token2;
         assert_ne!(data1, data2);
+    }
+}
+
+#[cfg(test)]
+mod green_missing_token_tests {
+    use super::*;
+    use crate::GreenTrivia;
+    use pretty_assertions::assert_eq;
+
+    fn leading_trivia() -> Option<GreenNode> {
+        Some(GreenNode::new(
+            SyntaxKind::List,
+            vec![GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ").into()],
+        ))
+    }
+
+    fn trailing_trivia() -> Option<GreenNode> {
+        Some(GreenNode::new(
+            SyntaxKind::List,
+            vec![GreenTrivia::new(SyntaxKind::EndOfLineTrivia, b"\n").into()],
+        ))
+    }
+
+    #[test]
+    fn test_new_missing_when_created_expect_missing_flag_state() {
+        let token = GreenTokenWithTrivia::new_missing(SyntaxKind::TrueKeyword, None, None);
+        assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert_eq!(token.flags(), GreenFlags::NONE);
+    }
+
+    #[test]
+    fn test_new_missing_full_text_when_trivia_present_expect_includes_trivia_and_text() {
+        let token = GreenTokenWithTrivia::new_missing(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia());
+        assert_eq!(token.full_text(), b" true\n");
+        assert_eq!(token.width(), 4);
+        assert_eq!(token.full_width(), 6);
+    }
+
+    #[test]
+    fn test_new_missing_write_to_when_flags_vary_expect_expected_bytes() {
+        let token = GreenTokenWithTrivia::new_missing(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia());
+        assert_eq!(token.write_to(false, false), b"true");
+        assert_eq!(token.write_to(true, false), b" true");
+        assert_eq!(token.write_to(false, true), b"true\n");
+        assert_eq!(token.write_to(true, true), b" true\n");
+    }
+
+    #[test]
+    fn test_new_missing_into_raw_and_from_raw_when_roundtrip_expect_equal() {
+        let token = GreenTokenWithTrivia::new_missing(SyntaxKind::TrueKeyword, None, None);
+        let ptr = GreenTokenWithTrivia::into_raw(token.clone());
+        let reconstructed = unsafe { GreenTokenWithTrivia::from_raw(ptr) };
+        assert_eq!(token, reconstructed);
     }
 }

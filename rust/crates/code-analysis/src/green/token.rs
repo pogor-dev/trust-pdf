@@ -136,10 +136,23 @@ impl fmt::Debug for GreenToken {
 }
 
 impl GreenToken {
-    /// Creates new token.
+    /// Creates a present (non-missing) token.
     #[inline]
     pub fn new(kind: SyntaxKind) -> GreenToken {
-        let flags = GreenFlags::IS_NOT_MISSING; // Tokens created via `new` are always not-missing
+        Self::create(kind, GreenFlags::IS_NOT_MISSING)
+    }
+
+    /// Creates a missing (synthetic) token for error recovery.
+    ///
+    /// Missing tokens are parser-inserted placeholders when expected syntax is
+    /// absent. They do **not** set `GreenFlags::IS_NOT_MISSING`.
+    #[inline]
+    pub fn new_missing(kind: SyntaxKind) -> GreenToken {
+        Self::create(kind, GreenFlags::NONE)
+    }
+
+    #[inline]
+    fn create(kind: SyntaxKind, flags: GreenFlags) -> GreenToken {
         let head = GreenTokenHead { kind, flags, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
         GreenToken { ptr }
@@ -358,5 +371,34 @@ mod green_token_data_tests {
         let data1: &GreenTokenData = &*token1;
         let data2: &GreenTokenData = &*token2;
         assert_ne!(data1, data2);
+    }
+}
+
+#[cfg(test)]
+mod green_missing_token_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_new_missing_when_created_expect_missing_flag_state() {
+        let token = GreenToken::new_missing(SyntaxKind::TrueKeyword);
+        assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert_eq!(token.flags(), GreenFlags::NONE);
+    }
+
+    #[test]
+    fn test_new_missing_when_created_expect_same_text_and_width() {
+        let token = GreenToken::new_missing(SyntaxKind::TrueKeyword);
+        assert_eq!(token.kind(), SyntaxKind::TrueKeyword);
+        assert_eq!(token.text(), b"true");
+        assert_eq!(token.width(), 4);
+    }
+
+    #[test]
+    fn test_new_missing_into_raw_and_from_raw_when_roundtrip_expect_equal() {
+        let token = GreenToken::new_missing(SyntaxKind::TrueKeyword);
+        let ptr = GreenToken::into_raw(token.clone());
+        let reconstructed = unsafe { GreenToken::from_raw(ptr) };
+        assert_eq!(token, reconstructed);
     }
 }

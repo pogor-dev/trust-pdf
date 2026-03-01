@@ -4,7 +4,6 @@ mod node_element;
 mod node_type;
 mod token;
 mod token_element;
-mod token_missing;
 mod token_type;
 mod token_with_trivia;
 mod token_with_value;
@@ -18,7 +17,6 @@ pub(crate) use self::{
     node_type::NodeOrTokenOrTrivia,
     token::{GreenToken, GreenTokenData},
     token_element::{GreenTokenElement, GreenTokenElementRef},
-    token_missing::{GreenMissingToken, GreenMissingTokenData},
     token_type::TokenType,
     token_with_trivia::{GreenTokenWithTrivia, GreenTokenWithTriviaData},
     token_with_value::{
