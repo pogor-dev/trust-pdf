@@ -31,9 +31,6 @@ struct GreenTokenWithTriviaHead {
     _c: Count<GreenTokenWithTrivia>,    // 0 bytes
 }
 
-type Repr = HeaderSlice<GreenTokenWithTriviaHead, [u8]>;
-type ReprThin = HeaderSlice<GreenTokenWithTriviaHead, [u8; 0]>;
-
 /// Borrowed token view for well-known text tokens.
 ///
 /// The underlying text is not stored in the node; it is derived from
@@ -114,17 +111,6 @@ impl PartialEq for GreenTokenWithTriviaData {
     }
 }
 
-impl ToOwned for GreenTokenWithTriviaData {
-    type Owned = GreenTokenWithTrivia;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTokenWithTrivia {
-        let green = unsafe { GreenTokenWithTrivia::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTokenWithTrivia::clone(&green)
-    }
-}
-
 impl fmt::Display for GreenTokenWithTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
@@ -155,27 +141,6 @@ impl fmt::Debug for GreenTokenWithTriviaData {
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithTrivia {
     ptr: ThinArc<GreenTokenWithTriviaHead, u8>,
-}
-
-impl Borrow<GreenTokenWithTriviaData> for GreenTokenWithTrivia {
-    #[inline]
-    fn borrow(&self) -> &GreenTokenWithTriviaData {
-        self
-    }
-}
-
-impl fmt::Display for GreenTokenWithTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithTriviaData = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl fmt::Debug for GreenTokenWithTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithTriviaData = self;
-        fmt::Debug::fmt(data, f)
-    }
 }
 
 impl GreenTokenWithTrivia {
@@ -212,45 +177,9 @@ impl GreenTokenWithTrivia {
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
         GreenTokenWithTrivia { ptr }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenTokenWithTrivia) -> ptr::NonNull<GreenTokenWithTriviaData> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTokenWithTriviaData = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenWithTriviaHead, u8>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithTriviaData>) -> GreenTokenWithTrivia {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenWithTriviaHead, u8>>(arc)
-        };
-        GreenTokenWithTrivia { ptr: arc }
-    }
 }
 
-impl ops::Deref for GreenTokenWithTrivia {
-    type Target = GreenTokenWithTriviaData;
-
-    #[inline]
-    fn deref(&self) -> &GreenTokenWithTriviaData {
-        unsafe {
-            let repr: &Repr = &*self.ptr;
-            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenTokenWithTriviaData>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(GreenTokenWithTriviaHead, GreenTokenWithTriviaData, GreenTokenWithTrivia, u8);
 
 #[cfg(test)]
 mod memory_layout_tests {

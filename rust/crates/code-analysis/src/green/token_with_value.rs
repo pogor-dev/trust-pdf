@@ -36,9 +36,6 @@ struct GreenTokenWithValueHead<T> {
     _c: Count<GreenTokenWithValue<()>>, // 0 bytes
 }
 
-type Repr<T> = HeaderSlice<GreenTokenWithValueHead<T>, [u8]>;
-type ReprThin<T> = HeaderSlice<GreenTokenWithValueHead<T>, [u8; 0]>;
-
 /// Borrowed token view for tokens with inline text and typed values.
 ///
 /// The underlying text is stored inline in the node tail with an associated
@@ -83,17 +80,6 @@ impl<T> GreenTokenWithValueData<T> {
 impl<T> PartialEq for GreenTokenWithValueData<T> {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.text() == other.text()
-    }
-}
-
-impl<T: Clone> ToOwned for GreenTokenWithValueData<T> {
-    type Owned = GreenTokenWithValue<T>;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTokenWithValue<T> {
-        let green = unsafe { GreenTokenWithValue::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTokenWithValue::<T>::clone(&green)
     }
 }
 
@@ -144,27 +130,6 @@ impl<T> Hash for GreenTokenWithValue<T> {
     }
 }
 
-impl<T> Borrow<GreenTokenWithValueData<T>> for GreenTokenWithValue<T> {
-    #[inline]
-    fn borrow(&self) -> &GreenTokenWithValueData<T> {
-        self
-    }
-}
-
-impl<T> fmt::Display for GreenTokenWithValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithValueData<T> = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl<T> fmt::Debug for GreenTokenWithValue<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithValueData<T> = self;
-        fmt::Debug::fmt(data, f)
-    }
-}
-
 impl<T> GreenTokenWithValue<T> {
     /// Creates new token.
     #[inline]
@@ -179,45 +144,9 @@ impl<T> GreenTokenWithValue<T> {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTokenWithValue { ptr }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenTokenWithValue<T>) -> ptr::NonNull<GreenTokenWithValueData<T>> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTokenWithValueData<T> = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenWithValueHead, u8>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueData<T>>) -> GreenTokenWithValue<T> {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin<T>);
-            mem::transmute::<Arc<ReprThin<T>>, ThinArc<GreenTokenWithValueHead<T>, u8>>(arc)
-        };
-        GreenTokenWithValue { ptr: arc }
-    }
 }
 
-impl<T> ops::Deref for GreenTokenWithValue<T> {
-    type Target = GreenTokenWithValueData<T>;
-
-    #[inline]
-    fn deref(&self) -> &GreenTokenWithValueData<T> {
-        unsafe {
-            let repr: &Repr<T> = &*self.ptr;
-            let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
-            mem::transmute::<&ReprThin<T>, &GreenTokenWithValueData<T>>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(generic GreenTokenWithValueHead, GreenTokenWithValueData, GreenTokenWithValue, u8);
 
 #[cfg(test)]
 mod memory_layout_tests {

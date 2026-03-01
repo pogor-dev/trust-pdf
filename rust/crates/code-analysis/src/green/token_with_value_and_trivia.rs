@@ -39,9 +39,6 @@ struct GreenTokenWithValueAndTriviaHead<T> {
     _c: Count<GreenTokenWithValueAndTrivia<()>>,
 }
 
-type Repr<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8]>;
-type ReprThin<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>;
-
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithValueAndTriviaData<T> {
     data: ReprThin<T>,
@@ -121,17 +118,6 @@ impl<T> PartialEq for GreenTokenWithValueAndTriviaData<T> {
     }
 }
 
-impl<T: Clone> ToOwned for GreenTokenWithValueAndTriviaData<T> {
-    type Owned = GreenTokenWithValueAndTrivia<T>;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTokenWithValueAndTrivia<T> {
-        let green = unsafe { GreenTokenWithValueAndTrivia::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTokenWithValueAndTrivia::<T>::clone(&green)
-    }
-}
-
 impl<T> fmt::Display for GreenTokenWithValueAndTriviaData<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
@@ -175,27 +161,6 @@ impl<T> Hash for GreenTokenWithValueAndTrivia<T> {
     }
 }
 
-impl<T> Borrow<GreenTokenWithValueAndTriviaData<T>> for GreenTokenWithValueAndTrivia<T> {
-    #[inline]
-    fn borrow(&self) -> &GreenTokenWithValueAndTriviaData<T> {
-        self
-    }
-}
-
-impl<T> fmt::Display for GreenTokenWithValueAndTrivia<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithValueAndTriviaData<T> = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl<T> fmt::Debug for GreenTokenWithValueAndTrivia<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenWithValueAndTriviaData<T> = self;
-        fmt::Debug::fmt(data, f)
-    }
-}
-
 impl<T> GreenTokenWithValueAndTrivia<T> {
     #[inline]
     pub fn new(
@@ -222,36 +187,9 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTokenWithValueAndTrivia { ptr }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenTokenWithValueAndTrivia<T>) -> ptr::NonNull<GreenTokenWithValueAndTriviaData<T>> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTokenWithValueAndTriviaData<T> = &green;
-        ptr::NonNull::from(green)
-    }
-
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueAndTriviaData<T>>) -> GreenTokenWithValueAndTrivia<T> {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin<T>);
-            mem::transmute::<Arc<ReprThin<T>>, ThinArc<GreenTokenWithValueAndTriviaHead<T>, u8>>(arc)
-        };
-        GreenTokenWithValueAndTrivia { ptr: arc }
-    }
 }
 
-impl<T> ops::Deref for GreenTokenWithValueAndTrivia<T> {
-    type Target = GreenTokenWithValueAndTriviaData<T>;
-
-    #[inline]
-    fn deref(&self) -> &GreenTokenWithValueAndTriviaData<T> {
-        unsafe {
-            let repr: &Repr<T> = &*self.ptr;
-            let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
-            mem::transmute::<&ReprThin<T>, &GreenTokenWithValueAndTriviaData<T>>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(generic GreenTokenWithValueAndTriviaHead, GreenTokenWithValueAndTriviaData, GreenTokenWithValueAndTrivia, u8);
 
 #[cfg(test)]
 mod tests {
@@ -287,13 +225,8 @@ mod tests {
 
     #[test]
     fn test_write_to_when_trivia_flags_vary_expect_expected_output() {
-        let token: GreenTokenWithStringValueAndTrivia = GreenTokenWithValueAndTrivia::new(
-            SyntaxKind::NameLiteralToken,
-            b"Type",
-            "Type".to_string(),
-            leading_trivia(),
-            trailing_trivia(),
-        );
+        let token: GreenTokenWithStringValueAndTrivia =
+            GreenTokenWithValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), leading_trivia(), trailing_trivia());
 
         assert_eq!(token.write_to(false, false), b"Type");
         assert_eq!(token.write_to(true, false), b" Type");
@@ -303,17 +236,14 @@ mod tests {
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal_ignoring_value() {
-        let token1: GreenTokenWithIntValueAndTrivia =
-            GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 1, None, None);
-        let token2: GreenTokenWithIntValueAndTrivia =
-            GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 2, None, None);
+        let token1: GreenTokenWithIntValueAndTrivia = GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 1, None, None);
+        let token2: GreenTokenWithIntValueAndTrivia = GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 2, None, None);
         assert_eq!(token1, token2);
     }
 
     #[test]
     fn test_into_raw_and_from_raw_when_roundtrip_expect_equal() {
-        let token: GreenTokenWithFloatValueAndTrivia =
-            GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, None, None);
+        let token: GreenTokenWithFloatValueAndTrivia = GreenTokenWithValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, None, None);
         let ptr = GreenTokenWithValueAndTrivia::into_raw(token.clone());
         let reconstructed = unsafe { GreenTokenWithValueAndTrivia::from_raw(ptr) };
         assert_eq!(token, reconstructed);

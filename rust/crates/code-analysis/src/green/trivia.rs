@@ -26,9 +26,6 @@ struct GreenTriviaHead {
     _c: Count<GreenTrivia>, // 0 bytes
 }
 
-type Repr = HeaderSlice<GreenTriviaHead, [u8]>;
-type ReprThin = HeaderSlice<GreenTriviaHead, [u8; 0]>;
-
 /// Borrowed trivia view with inline trivia text.
 #[repr(transparent)]
 pub(crate) struct GreenTriviaData {
@@ -67,17 +64,6 @@ impl PartialEq for GreenTriviaData {
     }
 }
 
-impl ToOwned for GreenTriviaData {
-    type Owned = GreenTrivia;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTrivia {
-        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTrivia::clone(&green)
-    }
-}
-
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
@@ -109,27 +95,6 @@ pub(crate) struct GreenTrivia {
     ptr: ThinArc<GreenTriviaHead, u8>,
 }
 
-impl Borrow<GreenTriviaData> for GreenTrivia {
-    #[inline]
-    fn borrow(&self) -> &GreenTriviaData {
-        self
-    }
-}
-
-impl fmt::Display for GreenTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTriviaData = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl fmt::Debug for GreenTrivia {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTriviaData = self;
-        fmt::Debug::fmt(data, f)
-    }
-}
-
 impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
@@ -139,45 +104,9 @@ impl GreenTrivia {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTrivia { ptr }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenTrivia) -> ptr::NonNull<GreenTriviaData> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTriviaData = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTriviaHead, u8>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaHead, u8>>(arc)
-        };
-        GreenTrivia { ptr: arc }
-    }
 }
 
-impl ops::Deref for GreenTrivia {
-    type Target = GreenTriviaData;
-
-    #[inline]
-    fn deref(&self) -> &GreenTriviaData {
-        unsafe {
-            let repr: &Repr = &*self.ptr;
-            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(GreenTriviaHead, GreenTriviaData, GreenTrivia, u8);
 
 #[cfg(test)]
 mod memory_layout_tests {

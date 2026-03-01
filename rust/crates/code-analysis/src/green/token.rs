@@ -27,9 +27,6 @@ struct GreenTokenHead {
     _c: Count<GreenToken>, // 0 bytes
 }
 
-type Repr = HeaderSlice<GreenTokenHead, [u8]>;
-type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
-
 /// Borrowed token view for well-known text tokens.
 ///
 /// The underlying text is not stored in the node; it is derived from
@@ -71,17 +68,6 @@ impl PartialEq for GreenTokenData {
     }
 }
 
-impl ToOwned for GreenTokenData {
-    type Owned = GreenToken;
-
-    #[inline]
-    fn to_owned(&self) -> GreenToken {
-        let green = unsafe { GreenToken::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenToken::clone(&green)
-    }
-}
-
 impl fmt::Display for GreenTokenData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
@@ -114,27 +100,6 @@ pub(crate) struct GreenToken {
     ptr: ThinArc<GreenTokenHead, u8>,
 }
 
-impl Borrow<GreenTokenData> for GreenToken {
-    #[inline]
-    fn borrow(&self) -> &GreenTokenData {
-        self
-    }
-}
-
-impl fmt::Display for GreenToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl fmt::Debug for GreenToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenTokenData = self;
-        fmt::Debug::fmt(data, f)
-    }
-}
-
 impl GreenToken {
     /// Creates a present (non-missing) token.
     #[inline]
@@ -157,45 +122,9 @@ impl GreenToken {
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
         GreenToken { ptr }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTokenData = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenTokenHead, u8>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenHead, u8>>(arc)
-        };
-        GreenToken { ptr: arc }
-    }
 }
 
-impl ops::Deref for GreenToken {
-    type Target = GreenTokenData;
-
-    #[inline]
-    fn deref(&self) -> &GreenTokenData {
-        unsafe {
-            let repr: &Repr = &*self.ptr;
-            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenTokenData>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(GreenTokenHead, GreenTokenData, GreenToken, u8);
 
 #[cfg(test)]
 mod memory_layout_tests {

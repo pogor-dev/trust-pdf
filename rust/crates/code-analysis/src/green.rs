@@ -1,3 +1,5 @@
+#[macro_use]
+mod macros;
 mod flags;
 mod node;
 mod node_element;

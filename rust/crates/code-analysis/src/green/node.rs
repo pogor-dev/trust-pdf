@@ -22,9 +22,6 @@ struct GreenNodeHead {
     _c: Count<GreenNode>,
 }
 
-type Repr = HeaderSlice<GreenNodeHead, [GreenNodeElement]>;
-type ReprThin = HeaderSlice<GreenNodeHead, [GreenNodeElement; 0]>;
-
 #[repr(transparent)]
 pub struct GreenNodeData {
     data: ReprThin,
@@ -290,17 +287,6 @@ impl PartialEq for GreenNodeData {
     }
 }
 
-impl ToOwned for GreenNodeData {
-    type Owned = GreenNode;
-
-    #[inline]
-    fn to_owned(&self) -> GreenNode {
-        let green = unsafe { GreenNode::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenNode::clone(&green)
-    }
-}
-
 impl fmt::Display for GreenNodeData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in &self.full_text() {
@@ -325,27 +311,6 @@ impl fmt::Debug for GreenNodeData {
 #[repr(transparent)]
 pub struct GreenNode {
     ptr: ThinArc<GreenNodeHead, GreenNodeElement>,
-}
-
-impl Borrow<GreenNodeData> for GreenNode {
-    #[inline]
-    fn borrow(&self) -> &GreenNodeData {
-        self
-    }
-}
-
-impl fmt::Display for GreenNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenNodeData = self;
-        fmt::Display::fmt(data, f)
-    }
-}
-
-impl fmt::Debug for GreenNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data: &GreenNodeData = self;
-        fmt::Debug::fmt(data, f)
-    }
 }
 
 impl GreenNode {
@@ -385,45 +350,9 @@ impl GreenNode {
 
         GreenNode { ptr: data }
     }
-
-    #[inline]
-    pub(crate) fn into_raw(this: GreenNode) -> ptr::NonNull<GreenNodeData> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenNodeData = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// # Safety
-    ///
-    /// This function uses `unsafe` code to create an `Arc` from a raw pointer and then transmutes it into a `ThinArc`.
-    ///
-    /// - The raw pointer must be valid and correctly aligned for the type `ReprThin`.
-    /// - The lifetime of the raw pointer must outlive the lifetime of the `Arc` created from it.
-    /// - The transmute operation must be safe, meaning that the memory layout of `Arc<ReprThin>` must be compatible with `ThinArc<GreenNodeHead, Slot>`.
-    ///
-    /// Failure to uphold these invariants can lead to undefined behavior.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenNodeData>) -> GreenNode {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenNodeHead, GreenNodeElement>>(arc)
-        };
-        GreenNode { ptr: arc }
-    }
 }
 
-impl ops::Deref for GreenNode {
-    type Target = GreenNodeData;
-
-    #[inline]
-    fn deref(&self) -> &GreenNodeData {
-        unsafe {
-            let repr: &Repr = &*self.ptr;
-            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
-            mem::transmute::<&ReprThin, &GreenNodeData>(repr)
-        }
-    }
-}
+impl_green_boilerplate!(GreenNodeHead, GreenNodeData, GreenNode, GreenNodeElement);
 
 #[cfg(test)]
 mod memory_layout_tests {
