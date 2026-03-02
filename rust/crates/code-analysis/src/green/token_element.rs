@@ -1,11 +1,10 @@
 use crate::{
-    GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData,
-    GreenTokenWithFloatValueAndTrailingTrivia, GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueData, GreenTokenWithIntValue,
-    GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrailingTriviaData, GreenTokenWithIntValueAndTrivia,
+    GreenDiagnostic, GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrailingTrivia,
+    GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData, GreenTokenWithFloatValueData,
+    GreenTokenWithIntValue, GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrailingTriviaData, GreenTokenWithIntValueAndTrivia,
     GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
-    GreenTokenWithStringValueAndTrailingTriviaData, GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData,
-    GreenTokenWithStringValueData, GreenTokenWithTrailingTrivia, GreenTokenWithTrailingTriviaData, GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind,
-    green::TokenType,
+    GreenTokenWithStringValueAndTrailingTriviaData, GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData,
+    GreenTokenWithTrailingTrivia, GreenTokenWithTrailingTriviaData, GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind, green::TokenType,
 };
 
 /// Concrete token element used in node slots.
@@ -73,6 +72,11 @@ impl GreenTokenElement {
     #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.trailing_trivia())
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
+        match_token_type!(self, t => t.diagnostics())
     }
 
     #[inline]

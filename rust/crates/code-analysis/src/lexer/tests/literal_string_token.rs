@@ -1,9 +1,8 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::{
+use crate::{
     DiagnosticKind,
     DiagnosticSeverity::{Error, Warning},
-    SyntaxKind, tree,
+    Lexer, SyntaxKind, tree,
 };
 
 #[test]

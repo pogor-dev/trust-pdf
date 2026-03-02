@@ -1,6 +1,9 @@
 use std::ops::Range;
 
-use syntax::{DiagnosticKind, DiagnosticSeverity, GreenElement, GreenNode, GreenToken, GreenTrivia, NodeCache, SyntaxKind};
+use crate::{
+    DiagnosticKind, DiagnosticSeverity, GreenDiagnostic, GreenNode, GreenNodeElement, GreenToken, GreenTokenElement, GreenTokenWithIntValue,
+    GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithTrailingTrivia, GreenTokenWithTrivia, GreenTrivia, SyntaxKind,
+};
 
 // TODO: add normal & stream lexer modes
 // TODO: add skip_trivia option
@@ -13,14 +16,13 @@ pub struct Lexer<'source> {
     pub(super) position: usize,
     pub(super) lexeme: Option<Range<usize>>, // start=position, end=start+width
     is_raw_stream: bool,
-    cache: NodeCache,
 }
 
 #[derive(Debug)]
 struct TokenInfo<'a> {
     kind: SyntaxKind,
     bytes: &'a [u8],
-    diagnostics: Vec<(DiagnosticSeverity, u16, &'static str)>,
+    diagnostics: Vec<(DiagnosticSeverity, DiagnosticKind, &'static str)>,
 }
 
 impl<'a> Default for TokenInfo<'a> {
@@ -40,7 +42,6 @@ impl<'source> Lexer<'source> {
             position: 0,
             lexeme: None,
             is_raw_stream: false,
-            cache: NodeCache::default(),
         }
     }
 
@@ -66,7 +67,7 @@ impl<'source> Lexer<'source> {
     /// Token: kind=NumericLiteralToken, text="123"
     ///        leading="  ", trailing=" % comment\n"
     /// ```
-    pub fn next_token(&mut self) -> GreenToken {
+    pub fn next_token(&mut self) -> GreenTokenElement {
         let mut token_info: TokenInfo<'source> = TokenInfo::default();
         let leading_trivia = self.scan_trivia(&token_info);
         self.scan_token(&mut token_info);
@@ -78,8 +79,7 @@ impl<'source> Lexer<'source> {
         } else {
             Some(GreenNode::new(
                 SyntaxKind::List,
-                leading_trivia.into_iter().map(GreenElement::Trivia).collect::<Vec<_>>(),
-                None,
+                leading_trivia.into_iter().map(GreenNodeElement::Trivia).collect::<Vec<_>>(),
             ))
         };
 
@@ -88,25 +88,52 @@ impl<'source> Lexer<'source> {
         } else {
             Some(GreenNode::new(
                 SyntaxKind::List,
-                trailing_trivia.into_iter().map(GreenElement::Trivia).collect::<Vec<_>>(),
-                None,
+                trailing_trivia.into_iter().map(GreenNodeElement::Trivia).collect::<Vec<_>>(),
             ))
         };
 
-        // Build diagnostics if any
-        let diagnostics = if token_info.diagnostics.is_empty() {
-            None
-        } else {
-            let diag_list = token_info
-                .diagnostics
-                .iter()
-                .map(|(severity, code, message)| self.cache.diagnostic(*code, *severity, message).1)
-                .collect::<Vec<_>>();
-            Some(syntax::GreenDiagnostics::new(&diag_list))
-        };
+        let diagnostics = token_info
+            .diagnostics
+            .iter()
+            .map(|(severity, kind, message)| GreenDiagnostic::new(*kind, *severity, message))
+            .collect::<Vec<_>>();
 
-        // Create the token using cache for deduplication
-        self.cache.token(token_info.kind, token_info.bytes, leading, trailing, diagnostics).1
+        self.create_token_element(token_info.kind, token_info.bytes, leading, trailing, diagnostics)
+    }
+
+    fn create_token_element(
+        &self,
+        kind: SyntaxKind,
+        text: &[u8],
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenElement {
+        let has_leading = leading_trivia.is_some();
+        let has_trailing = trailing_trivia.is_some();
+        let has_diagnostics = !diagnostics.is_empty();
+        let is_known_token_kind = kind == SyntaxKind::EndOfFileToken || !kind.get_text().is_empty();
+
+        if is_known_token_kind {
+            return match (has_leading, has_trailing, has_diagnostics) {
+                (false, false, false) => GreenToken::new(kind).into(),
+                (false, false, true) => GreenToken::new_with_diagnostic(kind, diagnostics).into(),
+                (false, true, false) => GreenTokenWithTrailingTrivia::new(kind, trailing_trivia).into(),
+                (false, true, true) => GreenTokenWithTrailingTrivia::new_with_diagnostic(kind, trailing_trivia, diagnostics).into(),
+                (_, _, false) => GreenTokenWithTrivia::new(kind, leading_trivia, trailing_trivia).into(),
+                (_, _, true) => GreenTokenWithTrivia::new_with_diagnostic(kind, leading_trivia, trailing_trivia, diagnostics).into(),
+            };
+        }
+
+        let value = 0u32;
+        match (has_leading, has_trailing, has_diagnostics) {
+            (false, false, false) => GreenTokenWithIntValue::new(kind, text, value).into(),
+            (false, false, true) => GreenTokenWithIntValue::new_with_diagnostic(kind, text, value, diagnostics).into(),
+            (false, true, false) => GreenTokenWithIntValueAndTrailingTrivia::new(kind, text, value, trailing_trivia).into(),
+            (false, true, true) => GreenTokenWithIntValueAndTrailingTrivia::new_with_diagnostic(kind, text, value, trailing_trivia, diagnostics).into(),
+            (_, _, false) => GreenTokenWithIntValueAndTrivia::new(kind, text, value, leading_trivia, trailing_trivia).into(),
+            (_, _, true) => GreenTokenWithIntValueAndTrivia::new_with_diagnostic(kind, text, value, leading_trivia, trailing_trivia, diagnostics).into(),
+        }
     }
 
     /// Returns the full width of the source text being lexed.
@@ -257,7 +284,7 @@ impl<'source> Lexer<'source> {
         }
 
         let spaces = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::WhitespaceTrivia, spaces).1
+        GreenTrivia::new(SyntaxKind::WhitespaceTrivia, spaces)
     }
 
     /// Scans a single end-of-line sequence and returns a trivia element.
@@ -284,7 +311,7 @@ impl<'source> Lexer<'source> {
         }
 
         let eol_bytes = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::EndOfLineTrivia, eol_bytes).1
+        GreenTrivia::new(SyntaxKind::EndOfLineTrivia, eol_bytes)
     }
 
     /// Checks if the current position starts a valid PDF version token like `%PDF-1.7`.
@@ -387,7 +414,7 @@ impl<'source> Lexer<'source> {
         }
 
         let comment_bytes = &self.source[pos..self.position];
-        self.cache.trivia(SyntaxKind::CommentTrivia, comment_bytes).1
+        GreenTrivia::new(SyntaxKind::CommentTrivia, comment_bytes)
     }
 
     /// Scans a numeric literal (integer or real number) and populates token_info.
@@ -445,7 +472,7 @@ impl<'source> Lexer<'source> {
         if matches!(self.peek(), Some(b'a'..=b'z' | b'A'..=b'Z')) {
             // TODO: move in parser phase
             let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
     }
 
@@ -510,7 +537,7 @@ impl<'source> Lexer<'source> {
                 b'\\' if matches!(self.peek_by(1), Some(_)) => {
                     // Unknown escape: emit warning, consume backslash only; next char handled normally
                     let kind = DiagnosticKind::InvalidEscapeInStringLiteral;
-                    token_info.diagnostics.push((DiagnosticSeverity::Warning, kind.into(), kind.as_str()));
+                    token_info.diagnostics.push((DiagnosticSeverity::Warning, kind, kind.as_str()));
                     self.advance();
                 }
                 b'\\' if matches!(self.peek_by(1), None) => {
@@ -540,7 +567,7 @@ impl<'source> Lexer<'source> {
         // If nesting is not zero, the string is unbalanced
         if nesting != 0 {
             let kind = DiagnosticKind::UnbalancedStringLiteral;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
     }
 
@@ -588,12 +615,12 @@ impl<'source> Lexer<'source> {
         // Emit diagnostics after scanning
         if has_invalid_character {
             let kind = DiagnosticKind::InvalidCharacterInHexString;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
 
         if !closed {
             let kind = DiagnosticKind::UnbalancedHexString;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
     }
 
@@ -643,12 +670,12 @@ impl<'source> Lexer<'source> {
 
         if has_invalid_hex_escape {
             let kind = DiagnosticKind::InvalidHexEscapeInName;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
 
         if has_non_regular_character {
             let kind = DiagnosticKind::InvalidNonRegularCharacterInName;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
     }
 
@@ -710,7 +737,7 @@ impl<'source> Lexer<'source> {
         if token_info.kind != SyntaxKind::BadToken && matches!(self.peek(), Some(b'0'..=b'9' | b'.' | b'+' | b'-')) {
             // TODO: move in parser phase
             let kind = DiagnosticKind::MissingWhitespaceBeforeToken;
-            token_info.diagnostics.push((DiagnosticSeverity::Error, kind.into(), kind.as_str()));
+            token_info.diagnostics.push((DiagnosticSeverity::Error, kind, kind.as_str()));
         }
     }
 

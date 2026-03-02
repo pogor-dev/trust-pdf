@@ -1,6 +1,5 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use crate::{DiagnosticKind, DiagnosticSeverity::Error, Lexer, SyntaxKind, tree};
 
 /// Tests for SafeDocs PDF Compacted Syntax Matrix whitespace rules.
 ///
@@ -22,7 +21,7 @@ fn test_scan_keyword_when_true_immediately_followed_by_zero_expect_error_diagnos
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::TrueKeyword, b"true"),
             (SyntaxKind::NumericLiteralToken, b"0")
         }
@@ -39,7 +38,7 @@ fn test_scan_keyword_when_false_immediately_followed_by_digit_expect_error_diagn
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::FalseKeyword, b"false"),
             (SyntaxKind::NumericLiteralToken, b"9")
         }
@@ -56,7 +55,7 @@ fn test_scan_keyword_when_null_immediately_followed_by_digit_expect_error_diagno
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NullKeyword, b"null"),
             (SyntaxKind::NumericLiteralToken, b"1")
         }
@@ -73,7 +72,7 @@ fn test_scan_keyword_when_false_immediately_followed_by_decimal_expect_error_dia
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::FalseKeyword, b"false"),
             (SyntaxKind::NumericLiteralToken, b"3.14")
         }
@@ -90,7 +89,7 @@ fn test_scan_keyword_when_null_immediately_followed_by_negative_number_expect_er
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NullKeyword, b"null"),
             (SyntaxKind::NumericLiteralToken, b"-5")
         }
@@ -107,7 +106,7 @@ fn test_scan_keyword_when_true_followed_by_decimal_point_expect_error_diagnostic
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::TrueKeyword, b"true"),
             (SyntaxKind::NumericLiteralToken, b".25")
         }
@@ -128,7 +127,7 @@ fn test_scan_numeric_when_123_immediately_followed_by_true_expect_error_diagnost
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NumericLiteralToken, b"123"),
             (SyntaxKind::TrueKeyword, b"true")
         }
@@ -145,7 +144,7 @@ fn test_scan_numeric_when_456_immediately_followed_by_false_expect_error_diagnos
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NumericLiteralToken, b"456"),
             (SyntaxKind::FalseKeyword, b"false")
         }
@@ -162,7 +161,7 @@ fn test_scan_numeric_when_789_immediately_followed_by_null_expect_error_diagnost
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NumericLiteralToken, b"789"),
             (SyntaxKind::NullKeyword, b"null")
         }
@@ -179,7 +178,7 @@ fn test_scan_numeric_when_decimal_immediately_followed_by_true_expect_error_diag
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NumericLiteralToken, b"3.14"),
             (SyntaxKind::TrueKeyword, b"true")
         }
@@ -196,7 +195,7 @@ fn test_scan_numeric_when_negative_followed_by_null_expect_error_diagnostic() {
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Whitespace required before this token (SafeDocs PDF Compacted Syntax Matrix violation)"),
+            @diagnostic(Error, DiagnosticKind::MissingWhitespaceBeforeToken.into(), "Missing whitespace before token"),
             (SyntaxKind::NumericLiteralToken, b"-5"),
             (SyntaxKind::NullKeyword, b"null")
         }

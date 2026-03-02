@@ -1,6 +1,5 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use crate::{DiagnosticKind, DiagnosticSeverity::Error, Lexer, SyntaxKind, tree};
 
 #[test]
 fn test_scan_hex_string_when_simple_hex_string_expect_hex_string_literal_token() {

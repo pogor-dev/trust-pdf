@@ -1,6 +1,5 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::{DiagnosticKind, DiagnosticSeverity::Error, SyntaxKind, tree};
+use crate::{DiagnosticKind, DiagnosticSeverity::Error, Lexer, SyntaxKind, tree};
 
 #[test]
 fn test_scan_name_when_simple_name_expect_name_literal_token() {
@@ -179,7 +178,7 @@ fn test_scan_name_when_non_regular_ascii_expect_invalid_non_regular_character_di
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
+            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name (needs hex escape)"),
             (SyntaxKind::NameLiteralToken, input)
         }
     };
@@ -195,7 +194,7 @@ fn test_scan_name_when_high_byte_expect_invalid_non_regular_character_diagnostic
 
     let expected_node = tree! {
         SyntaxKind::None => {
-            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name. Non-regular characters must be hex-escaped using #xx notation"),
+            @diagnostic(Error, DiagnosticKind::InvalidNonRegularCharacterInName.into(), "Invalid character in name (needs hex escape)"),
             (SyntaxKind::NameLiteralToken, input)
         }
     };

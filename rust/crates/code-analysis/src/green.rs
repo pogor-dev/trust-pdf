@@ -14,6 +14,8 @@ mod token_with_trivia;
 mod token_with_value;
 mod token_with_value_and_trailing_trivia;
 mod token_with_value_and_trivia;
+#[cfg(test)]
+pub(crate) mod tree;
 mod trivia;
 
 pub(crate) use self::{

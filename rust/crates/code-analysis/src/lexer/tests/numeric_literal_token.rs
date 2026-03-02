@@ -1,6 +1,5 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::{SyntaxKind, tree};
+use crate::{Lexer, SyntaxKind, tree};
 
 #[test]
 fn test_scan_numeric_literal_when_integer_123_expect_numeric_literal_token() {

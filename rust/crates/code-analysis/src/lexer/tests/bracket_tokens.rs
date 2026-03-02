@@ -1,7 +1,5 @@
 use super::utils::{assert_nodes_equal, generate_node_from_lexer};
-use crate::Lexer;
-use syntax::SyntaxKind;
-use syntax::tree;
+use crate::{Lexer, SyntaxKind, tree};
 
 #[test]
 fn test_scan_array_open_bracket_expect_open_bracket_token() {
