@@ -30,13 +30,13 @@ pub(crate) type GreenTokenWithStringValueAndTriviaData = GreenTokenWithValueAndT
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenWithValueAndTriviaHead<T> {
-    leading_trivia: Option<GreenNode>,
-    trailing_trivia: Option<GreenNode>,
-    full_width: u16,
-    kind: SyntaxKind,
-    flags: GreenFlags,
-    value: T,
-    _c: Count<GreenTokenWithValueAndTrivia<()>>,
+    leading_trivia: Option<GreenNode>,           // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
+    trailing_trivia: Option<GreenNode>,          // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
+    full_width: u16,                             // 2 bytes
+    kind: SyntaxKind,                            // 2 bytes (`repr(u16)`)
+    flags: GreenFlags,                           // 1 byte
+    value: T,                                    // size depends on T
+    _c: Count<GreenTokenWithValueAndTrivia<()>>, // 0 bytes
 }
 
 #[repr(transparent)]
@@ -190,6 +190,64 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
 }
 
 impl_green_boilerplate!(generic GreenTokenWithValueAndTriviaHead, GreenTokenWithValueAndTriviaData, GreenTokenWithValueAndTrivia, u8);
+
+#[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+
+    #[test]
+    fn test_green_token_memory_layout() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 32);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 40);
+            assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTriviaData>(), 8);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 32);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 40);
+            assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTriviaData>(), 8);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<String>>(), 48);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<String>>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTriviaData>(), 56);
+            assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTriviaData>(), 8);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTrivia>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTrivia>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTrivia>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTrivia>(), 8);
+            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTrivia>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTrivia>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 20);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 24);
+            assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTriviaData>(), 4);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 20);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 24);
+            assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTriviaData>(), 4);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<String>>(), 28);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<String>>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTriviaData>(), 32);
+            assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTriviaData>(), 4);
+
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTrivia>(), 4);
+            assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTrivia>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTrivia>(), 4);
+            assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTrivia>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTrivia>(), 4);
+            assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTrivia>(), 4);
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

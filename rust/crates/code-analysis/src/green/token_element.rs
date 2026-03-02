@@ -1,8 +1,11 @@
 use crate::{
     GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData,
-    GreenTokenWithFloatValueData, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData,
-    GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData, GreenTokenWithTrivia,
-    GreenTokenWithTriviaData, SyntaxKind, green::TokenType,
+    GreenTokenWithFloatValueAndTrailingTrivia, GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueData, GreenTokenWithIntValue,
+    GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrailingTriviaData, GreenTokenWithIntValueAndTrivia,
+    GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
+    GreenTokenWithStringValueAndTrailingTriviaData, GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData,
+    GreenTokenWithStringValueData, GreenTokenWithTrailingTrivia, GreenTokenWithTrailingTriviaData, GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind,
+    green::TokenType,
 };
 
 /// Concrete token element used in node slots.
@@ -12,9 +15,13 @@ pub type GreenTokenElement = TokenType<
     GreenTokenWithIntValue,
     GreenTokenWithFloatValue,
     GreenTokenWithStringValue,
+    GreenTokenWithTrailingTrivia,
     GreenTokenWithIntValueAndTrivia,
     GreenTokenWithFloatValueAndTrivia,
     GreenTokenWithStringValueAndTrivia,
+    GreenTokenWithIntValueAndTrailingTrivia,
+    GreenTokenWithFloatValueAndTrailingTrivia,
+    GreenTokenWithStringValueAndTrailingTrivia,
 >;
 
 pub(crate) type GreenTokenElementRef<'a> = TokenType<
@@ -23,9 +30,13 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
     &'a GreenTokenWithIntValueData,
     &'a GreenTokenWithFloatValueData,
     &'a GreenTokenWithStringValueData,
+    &'a GreenTokenWithTrailingTriviaData,
     &'a GreenTokenWithIntValueAndTriviaData,
     &'a GreenTokenWithFloatValueAndTriviaData,
     &'a GreenTokenWithStringValueAndTriviaData,
+    &'a GreenTokenWithIntValueAndTrailingTriviaData,
+    &'a GreenTokenWithFloatValueAndTrailingTriviaData,
+    &'a GreenTokenWithStringValueAndTrailingTriviaData,
 >;
 
 impl GreenTokenElement {
@@ -81,9 +92,13 @@ impl_from_token_variant!(
     GreenTokenWithIntValue => TokenWithIntValue,
     GreenTokenWithFloatValue => TokenWithFloatValue,
     GreenTokenWithStringValue => TokenWithStringValue,
+    GreenTokenWithTrailingTrivia => TokenWithTrailingTrivia,
     GreenTokenWithIntValueAndTrivia => TokenWithIntValueAndTrivia,
     GreenTokenWithFloatValueAndTrivia => TokenWithFloatValueAndTrivia,
     GreenTokenWithStringValueAndTrivia => TokenWithStringValueAndTrivia,
+    GreenTokenWithIntValueAndTrailingTrivia => TokenWithIntValueAndTrailingTrivia,
+    GreenTokenWithFloatValueAndTrailingTrivia => TokenWithFloatValueAndTrailingTrivia,
+    GreenTokenWithStringValueAndTrailingTrivia => TokenWithStringValueAndTrailingTrivia,
 );
 
 impl<'a> GreenTokenElementRef<'a> {
@@ -152,13 +167,14 @@ mod tests {
         ))
     }
 
-    fn create_owned_variants() -> [GreenTokenElement; 8] {
+    fn create_owned_variants() -> [GreenTokenElement; 12] {
         [
             GreenTokenElement::Token(GreenToken::new(SyntaxKind::TrueKeyword)),
             GreenTokenElement::TokenWithTrivia(GreenTokenWithTrivia::new(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia())),
             GreenTokenElement::TokenWithIntValue(GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42)),
             GreenTokenElement::TokenWithFloatValue(GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5)),
             GreenTokenElement::TokenWithStringValue(GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string())),
+            GreenTokenElement::TokenWithTrailingTrivia(GreenTokenWithTrailingTrivia::new(SyntaxKind::TrueKeyword, trailing_trivia())),
             GreenTokenElement::TokenWithIntValueAndTrivia(GreenTokenWithIntValueAndTrivia::new(
                 SyntaxKind::NumericLiteralToken,
                 b"42",
@@ -180,6 +196,24 @@ mod tests {
                 leading_trivia(),
                 trailing_trivia(),
             )),
+            GreenTokenElement::TokenWithIntValueAndTrailingTrivia(GreenTokenWithIntValueAndTrailingTrivia::new(
+                SyntaxKind::NumericLiteralToken,
+                b"42",
+                42,
+                trailing_trivia(),
+            )),
+            GreenTokenElement::TokenWithFloatValueAndTrailingTrivia(GreenTokenWithFloatValueAndTrailingTrivia::new(
+                SyntaxKind::NumericLiteralToken,
+                b"3.5",
+                3.5,
+                trailing_trivia(),
+            )),
+            GreenTokenElement::TokenWithStringValueAndTrailingTrivia(GreenTokenWithStringValueAndTrailingTrivia::new(
+                SyntaxKind::NameLiteralToken,
+                b"Type",
+                "Type".to_string(),
+                trailing_trivia(),
+            )),
         ]
     }
 
@@ -191,9 +225,13 @@ mod tests {
         assert_eq!(variants[2].kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(variants[3].kind(), SyntaxKind::NumericLiteralToken);
         assert_eq!(variants[4].kind(), SyntaxKind::NameLiteralToken);
-        assert_eq!(variants[5].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[5].kind(), SyntaxKind::TrueKeyword);
         assert_eq!(variants[6].kind(), SyntaxKind::NumericLiteralToken);
-        assert_eq!(variants[7].kind(), SyntaxKind::NameLiteralToken);
+        assert_eq!(variants[7].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[8].kind(), SyntaxKind::NameLiteralToken);
+        assert_eq!(variants[9].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[10].kind(), SyntaxKind::NumericLiteralToken);
+        assert_eq!(variants[11].kind(), SyntaxKind::NameLiteralToken);
     }
 
     #[test]
@@ -208,6 +246,10 @@ mod tests {
                     | GreenTokenElement::TokenWithIntValueAndTrivia(_)
                     | GreenTokenElement::TokenWithFloatValueAndTrivia(_)
                     | GreenTokenElement::TokenWithStringValueAndTrivia(_)
+                    | GreenTokenElement::TokenWithTrailingTrivia(_)
+                    | GreenTokenElement::TokenWithIntValueAndTrailingTrivia(_)
+                    | GreenTokenElement::TokenWithFloatValueAndTrailingTrivia(_)
+                    | GreenTokenElement::TokenWithStringValueAndTrailingTrivia(_)
             ) {
                 assert_eq!(variant.full_width(), variant.full_text().len() as u32);
                 assert_eq!(variant.full_text(), variant.write_to(true, true));
@@ -228,12 +270,20 @@ mod tests {
 
         assert!(variants[1].leading_trivia().is_some());
         assert!(variants[1].trailing_trivia().is_some());
-        assert!(variants[5].leading_trivia().is_some());
+        assert_eq!(variants[5].leading_trivia(), None);
         assert!(variants[5].trailing_trivia().is_some());
         assert!(variants[6].leading_trivia().is_some());
         assert!(variants[6].trailing_trivia().is_some());
         assert!(variants[7].leading_trivia().is_some());
         assert!(variants[7].trailing_trivia().is_some());
+        assert!(variants[8].leading_trivia().is_some());
+        assert!(variants[8].trailing_trivia().is_some());
+        assert_eq!(variants[9].leading_trivia(), None);
+        assert!(variants[9].trailing_trivia().is_some());
+        assert_eq!(variants[10].leading_trivia(), None);
+        assert!(variants[10].trailing_trivia().is_some());
+        assert_eq!(variants[11].leading_trivia(), None);
+        assert!(variants[11].trailing_trivia().is_some());
     }
 
     #[test]
@@ -253,21 +303,9 @@ mod tests {
             assert_eq!(reference.width(), owned.width());
             assert_eq!(reference.full_width(), owned.full_width());
 
-            if matches!(
-                owned,
-                GreenTokenElement::TokenWithTrivia(_)
-                    | GreenTokenElement::TokenWithIntValueAndTrivia(_)
-                    | GreenTokenElement::TokenWithFloatValueAndTrivia(_)
-                    | GreenTokenElement::TokenWithStringValueAndTrivia(_)
-            ) {
-                assert_eq!(reference.full_text(), owned.full_text());
-                assert!(reference.leading_trivia().is_some());
-                assert!(reference.trailing_trivia().is_some());
-            } else {
-                assert_eq!(reference.full_text(), owned.full_text());
-                assert_eq!(reference.leading_trivia(), None);
-                assert_eq!(reference.trailing_trivia(), None);
-            }
+            assert_eq!(reference.full_text(), owned.full_text());
+            assert_eq!(reference.leading_trivia(), owned.leading_trivia());
+            assert_eq!(reference.trailing_trivia(), owned.trailing_trivia());
 
             assert_eq!(reference.flags(), owned.flags());
         }
@@ -286,14 +324,25 @@ mod tests {
             GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, leading_trivia(), trailing_trivia()).into();
         let string_value_trivia: GreenTokenElement =
             GreenTokenWithStringValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), leading_trivia(), trailing_trivia()).into();
+        let trailing_only: GreenTokenElement = GreenTokenWithTrailingTrivia::new(SyntaxKind::TrueKeyword, trailing_trivia()).into();
+        let int_value_trailing: GreenTokenElement =
+            GreenTokenWithIntValueAndTrailingTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, trailing_trivia()).into();
+        let float_value_trailing: GreenTokenElement =
+            GreenTokenWithFloatValueAndTrailingTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, trailing_trivia()).into();
+        let string_value_trailing: GreenTokenElement =
+            GreenTokenWithStringValueAndTrailingTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), trailing_trivia()).into();
 
         assert!(matches!(plain, GreenTokenElement::Token(_)));
         assert!(matches!(with_trivia, GreenTokenElement::TokenWithTrivia(_)));
         assert!(matches!(int_value, GreenTokenElement::TokenWithIntValue(_)));
         assert!(matches!(float_value, GreenTokenElement::TokenWithFloatValue(_)));
         assert!(matches!(string_value, GreenTokenElement::TokenWithStringValue(_)));
+        assert!(matches!(trailing_only, GreenTokenElement::TokenWithTrailingTrivia(_)));
         assert!(matches!(int_value_trivia, GreenTokenElement::TokenWithIntValueAndTrivia(_)));
         assert!(matches!(float_value_trivia, GreenTokenElement::TokenWithFloatValueAndTrivia(_)));
         assert!(matches!(string_value_trivia, GreenTokenElement::TokenWithStringValueAndTrivia(_)));
+        assert!(matches!(int_value_trailing, GreenTokenElement::TokenWithIntValueAndTrailingTrivia(_)));
+        assert!(matches!(float_value_trailing, GreenTokenElement::TokenWithFloatValueAndTrailingTrivia(_)));
+        assert!(matches!(string_value_trailing, GreenTokenElement::TokenWithStringValueAndTrailingTrivia(_)));
     }
 }

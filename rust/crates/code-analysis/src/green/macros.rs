@@ -165,7 +165,7 @@ macro_rules! impl_green_boilerplate {
     };
 }
 
-/// Dispatches over all eight `TokenType` variants.
+/// Dispatches over all `TokenType` variants.
 ///
 /// All variants evaluate the same expression:
 /// `match_token_type!(self, t => t.kind())`
@@ -178,9 +178,13 @@ macro_rules! match_token_type {
             Self::TokenWithIntValue($t) => $expr,
             Self::TokenWithFloatValue($t) => $expr,
             Self::TokenWithStringValue($t) => $expr,
+            Self::TokenWithTrailingTrivia($t) => $expr,
             Self::TokenWithIntValueAndTrivia($t) => $expr,
             Self::TokenWithFloatValueAndTrivia($t) => $expr,
             Self::TokenWithStringValueAndTrivia($t) => $expr,
+            Self::TokenWithIntValueAndTrailingTrivia($t) => $expr,
+            Self::TokenWithFloatValueAndTrailingTrivia($t) => $expr,
+            Self::TokenWithStringValueAndTrailingTrivia($t) => $expr,
         }
     };
 }

@@ -2,18 +2,22 @@ use std::{fmt, ops::Deref};
 
 /// Generic token discriminated union for plain and valued token variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
+pub enum TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
     Token(T1),
     TokenWithTrivia(T2),
     TokenWithIntValue(T3),
     TokenWithFloatValue(T4),
     TokenWithStringValue(T5),
-    TokenWithIntValueAndTrivia(T6),
-    TokenWithFloatValueAndTrivia(T7),
-    TokenWithStringValueAndTrivia(T8),
+    TokenWithTrailingTrivia(T6),
+    TokenWithIntValueAndTrivia(T7),
+    TokenWithFloatValueAndTrivia(T8),
+    TokenWithStringValueAndTrivia(T9),
+    TokenWithIntValueAndTrailingTrivia(T10),
+    TokenWithFloatValueAndTrailingTrivia(T11),
+    TokenWithStringValueAndTrailingTrivia(T12),
 }
 
-impl<T1, T2, T3, T4, T5, T6, T7, T8> TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
+impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
     impl_token_type_accessors!(
         (into_token, as_token, Token, T1),
         (into_token_with_trivia, as_token_with_trivia, TokenWithTrivia, T2),
@@ -21,43 +25,100 @@ impl<T1, T2, T3, T4, T5, T6, T7, T8> TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
         (into_token_with_float_value, as_token_with_float_value, TokenWithFloatValue, T4),
         (into_token_with_string_value, as_token_with_string_value, TokenWithStringValue, T5),
         (
+            into_token_with_trailing_trivia,
+            as_token_with_trailing_trivia,
+            TokenWithTrailingTrivia,
+            T6
+        ),
+        (
             into_token_with_int_value_and_trivia,
             as_token_with_int_value_and_trivia,
             TokenWithIntValueAndTrivia,
-            T6
+            T7
         ),
         (
             into_token_with_float_value_and_trivia,
             as_token_with_float_value_and_trivia,
             TokenWithFloatValueAndTrivia,
-            T7
+            T8
         ),
         (
             into_token_with_string_value_and_trivia,
             as_token_with_string_value_and_trivia,
             TokenWithStringValueAndTrivia,
-            T8
+            T9
+        ),
+        (
+            into_token_with_int_value_and_trailing_trivia,
+            as_token_with_int_value_and_trailing_trivia,
+            TokenWithIntValueAndTrailingTrivia,
+            T10
+        ),
+        (
+            into_token_with_float_value_and_trailing_trivia,
+            as_token_with_float_value_and_trailing_trivia,
+            TokenWithFloatValueAndTrailingTrivia,
+            T11
+        ),
+        (
+            into_token_with_string_value_and_trailing_trivia,
+            as_token_with_string_value_and_trailing_trivia,
+            TokenWithStringValueAndTrailingTrivia,
+            T12
         ),
     );
 }
 
-impl<T1: Deref, T2: Deref, T3: Deref, T4: Deref, T5: Deref, T6: Deref, T7: Deref, T8: Deref> TokenType<T1, T2, T3, T4, T5, T6, T7, T8> {
-    pub(crate) fn as_deref(&self) -> TokenType<&T1::Target, &T2::Target, &T3::Target, &T4::Target, &T5::Target, &T6::Target, &T7::Target, &T8::Target> {
+impl<T1: Deref, T2: Deref, T3: Deref, T4: Deref, T5: Deref, T6: Deref, T7: Deref, T8: Deref, T9: Deref, T10: Deref, T11: Deref, T12: Deref>
+    TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
+{
+    pub(crate) fn as_deref(
+        &self,
+    ) -> TokenType<
+        &T1::Target,
+        &T2::Target,
+        &T3::Target,
+        &T4::Target,
+        &T5::Target,
+        &T6::Target,
+        &T7::Target,
+        &T8::Target,
+        &T9::Target,
+        &T10::Target,
+        &T11::Target,
+        &T12::Target,
+    > {
         match self {
             TokenType::Token(token) => TokenType::Token(token),
             TokenType::TokenWithTrivia(token) => TokenType::TokenWithTrivia(token),
             TokenType::TokenWithIntValue(token) => TokenType::TokenWithIntValue(token),
             TokenType::TokenWithFloatValue(token) => TokenType::TokenWithFloatValue(token),
             TokenType::TokenWithStringValue(token) => TokenType::TokenWithStringValue(token),
+            TokenType::TokenWithTrailingTrivia(token) => TokenType::TokenWithTrailingTrivia(token),
             TokenType::TokenWithIntValueAndTrivia(token) => TokenType::TokenWithIntValueAndTrivia(token),
             TokenType::TokenWithFloatValueAndTrivia(token) => TokenType::TokenWithFloatValueAndTrivia(token),
             TokenType::TokenWithStringValueAndTrivia(token) => TokenType::TokenWithStringValueAndTrivia(token),
+            TokenType::TokenWithIntValueAndTrailingTrivia(token) => TokenType::TokenWithIntValueAndTrailingTrivia(token),
+            TokenType::TokenWithFloatValueAndTrailingTrivia(token) => TokenType::TokenWithFloatValueAndTrailingTrivia(token),
+            TokenType::TokenWithStringValueAndTrailingTrivia(token) => TokenType::TokenWithStringValueAndTrailingTrivia(token),
         }
     }
 }
 
-impl<T1: fmt::Display, T2: fmt::Display, T3: fmt::Display, T4: fmt::Display, T5: fmt::Display, T6: fmt::Display, T7: fmt::Display, T8: fmt::Display>
-    fmt::Display for TokenType<T1, T2, T3, T4, T5, T6, T7, T8>
+impl<
+    T1: fmt::Display,
+    T2: fmt::Display,
+    T3: fmt::Display,
+    T4: fmt::Display,
+    T5: fmt::Display,
+    T6: fmt::Display,
+    T7: fmt::Display,
+    T8: fmt::Display,
+    T9: fmt::Display,
+    T10: fmt::Display,
+    T11: fmt::Display,
+    T12: fmt::Display,
+> fmt::Display for TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match_token_type!(self, t => fmt::Display::fmt(t, f))
@@ -68,8 +129,10 @@ impl<T1: fmt::Display, T2: fmt::Display, T3: fmt::Display, T4: fmt::Display, T5:
 mod tests {
     use super::TokenType;
     use crate::{
+        GreenTokenWithFloatValueAndTrailingTrivia,
         GreenToken, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia,
-        GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTokenWithTrivia, SyntaxKind,
+        GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
+        GreenTokenWithStringValueAndTrivia, GreenTokenWithTrailingTrivia, GreenTokenWithTrivia, SyntaxKind,
     };
 
     type TestTokenType = TokenType<
@@ -78,89 +141,55 @@ mod tests {
         GreenTokenWithIntValue,
         GreenTokenWithFloatValue,
         GreenTokenWithStringValue,
+        GreenTokenWithTrailingTrivia,
         GreenTokenWithIntValueAndTrivia,
         GreenTokenWithFloatValueAndTrivia,
         GreenTokenWithStringValueAndTrivia,
+        GreenTokenWithIntValueAndTrailingTrivia,
+        GreenTokenWithFloatValueAndTrailingTrivia,
+        GreenTokenWithStringValueAndTrailingTrivia,
     >;
 
     #[test]
     fn test_into_token_when_token_variant_expect_some() {
         let token = GreenToken::new(SyntaxKind::OpenBracketToken);
-        let element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::Token(token.clone());
+        let element: TestTokenType = TokenType::Token(token.clone());
         assert_eq!(element.into_token().map(|t| t.kind()), Some(SyntaxKind::OpenBracketToken));
     }
 
     #[test]
     fn test_into_token_with_trivia_when_variant_expect_some() {
         let token = GreenTokenWithTrivia::new(SyntaxKind::TrueKeyword, None, None);
-        let element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithTrivia(token.clone());
+        let element: TestTokenType = TokenType::TokenWithTrivia(token.clone());
         assert_eq!(element.into_token_with_trivia().map(|t| t.kind()), Some(SyntaxKind::TrueKeyword));
     }
 
     #[test]
     fn test_into_token_with_int_value_when_variant_expect_some() {
         let token = GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42);
-        let element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithIntValue(token.clone());
+        let element: TestTokenType = TokenType::TokenWithIntValue(token.clone());
         assert_eq!(element.into_token_with_int_value().map(|t| t.kind()), Some(SyntaxKind::NumericLiteralToken));
     }
 
     #[test]
     fn test_into_token_with_float_value_when_variant_expect_some() {
         let token = GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14);
-        let element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithFloatValue(token.clone());
+        let element: TestTokenType = TokenType::TokenWithFloatValue(token.clone());
         assert_eq!(element.into_token_with_float_value().map(|t| t.kind()), Some(SyntaxKind::NumericLiteralToken));
     }
 
     #[test]
     fn test_into_token_with_string_value_when_variant_expect_some() {
         let token = GreenTokenWithStringValue::new(SyntaxKind::StringLiteralToken, b"hello", "world".to_string());
-        let element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithStringValue(token.clone());
+        let element: TestTokenType = TokenType::TokenWithStringValue(token.clone());
         assert_eq!(element.into_token_with_string_value().map(|t| t.kind()), Some(SyntaxKind::StringLiteralToken));
+    }
+
+    #[test]
+    fn test_into_token_with_trailing_trivia_when_variant_expect_some() {
+        let token = GreenTokenWithTrailingTrivia::new(SyntaxKind::TrueKeyword, None);
+        let element: TestTokenType = TokenType::TokenWithTrailingTrivia(token);
+        assert_eq!(element.into_token_with_trailing_trivia().map(|t| t.kind()), Some(SyntaxKind::TrueKeyword));
     }
 
     #[test]
@@ -169,42 +198,28 @@ mod tests {
         let float_token = GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, None, None);
         let string_token = GreenTokenWithStringValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), None, None);
 
-        let int_element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithIntValueAndTrivia(int_token);
-
-        let float_element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithFloatValueAndTrivia(float_token);
-
-        let string_element: TokenType<
-            GreenToken,
-            GreenTokenWithTrivia,
-            GreenTokenWithIntValue,
-            GreenTokenWithFloatValue,
-            GreenTokenWithStringValue,
-            GreenTokenWithIntValueAndTrivia,
-            GreenTokenWithFloatValueAndTrivia,
-            GreenTokenWithStringValueAndTrivia,
-        > = TokenType::TokenWithStringValueAndTrivia(string_token);
+        let int_element: TestTokenType = TokenType::TokenWithIntValueAndTrivia(int_token);
+        let float_element: TestTokenType = TokenType::TokenWithFloatValueAndTrivia(float_token);
+        let string_element: TestTokenType = TokenType::TokenWithStringValueAndTrivia(string_token);
 
         assert!(int_element.into_token_with_int_value_and_trivia().is_some());
         assert!(float_element.into_token_with_float_value_and_trivia().is_some());
         assert!(string_element.into_token_with_string_value_and_trivia().is_some());
+    }
+
+    #[test]
+    fn test_into_token_with_value_and_trailing_trivia_when_variant_expect_some() {
+        let int_token = GreenTokenWithIntValueAndTrailingTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, None);
+        let float_token = GreenTokenWithFloatValueAndTrailingTrivia::new(SyntaxKind::NumericLiteralToken, b"3.5", 3.5, None);
+        let string_token = GreenTokenWithStringValueAndTrailingTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), None);
+
+        let int_element: TestTokenType = TokenType::TokenWithIntValueAndTrailingTrivia(int_token);
+        let float_element: TestTokenType = TokenType::TokenWithFloatValueAndTrailingTrivia(float_token);
+        let string_element: TestTokenType = TokenType::TokenWithStringValueAndTrailingTrivia(string_token);
+
+        assert!(int_element.into_token_with_int_value_and_trailing_trivia().is_some());
+        assert!(float_element.into_token_with_float_value_and_trailing_trivia().is_some());
+        assert!(string_element.into_token_with_string_value_and_trailing_trivia().is_some());
     }
 
     #[test]
@@ -214,18 +229,21 @@ mod tests {
         let int_token = GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42);
         let float_token = GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14);
         let string_token = GreenTokenWithStringValue::new(SyntaxKind::StringLiteralToken, b"hello", "world".to_string());
+        let trailing_token = GreenTokenWithTrailingTrivia::new(SyntaxKind::TrueKeyword, None);
 
         let element1: TestTokenType = TokenType::Token(token);
         let element2: TestTokenType = TokenType::TokenWithTrivia(trivia_token);
         let element3: TestTokenType = TokenType::TokenWithIntValue(int_token);
         let element4: TestTokenType = TokenType::TokenWithFloatValue(float_token);
         let element5: TestTokenType = TokenType::TokenWithStringValue(string_token);
+        let element6: TestTokenType = TokenType::TokenWithTrailingTrivia(trailing_token);
 
         assert!(element1.as_token().is_some());
         assert!(element2.as_token_with_trivia().is_some());
         assert!(element3.as_token_with_int_value().is_some());
         assert!(element4.as_token_with_float_value().is_some());
         assert!(element5.as_token_with_string_value().is_some());
+        assert!(element6.as_token_with_trailing_trivia().is_some());
     }
 
     #[test]

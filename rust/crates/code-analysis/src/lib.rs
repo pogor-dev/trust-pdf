@@ -8,8 +8,11 @@ pub use crate::syntax_kind::SyntaxKind;
 
 pub(crate) use crate::green::{
     GreenFlags, GreenNode, GreenNodeData, GreenNodeElement, GreenNodeElementRef, GreenToken, GreenTokenData, GreenTokenElement, GreenTokenElementRef,
-    GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData, GreenTokenWithFloatValueData, GreenTokenWithIntValue,
-    GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData, GreenTokenWithStringValue,
-    GreenTokenWithStringValueAndTrivia, GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData, GreenTokenWithTrivia, GreenTokenWithTriviaData,
-    GreenTokenWithValue, GreenTokenWithValueAndTrivia, GreenTokenWithValueAndTriviaData, GreenTokenWithValueData, GreenTrivia, GreenTriviaData,
+    GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrailingTrivia, GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueAndTrivia,
+    GreenTokenWithFloatValueAndTriviaData, GreenTokenWithFloatValueData, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrailingTrivia,
+    GreenTokenWithIntValueAndTrailingTriviaData, GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData,
+    GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia, GreenTokenWithStringValueAndTrailingTriviaData, GreenTokenWithStringValueAndTrivia,
+    GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData, GreenTokenWithTrailingTrivia, GreenTokenWithTrailingTriviaData,
+    GreenTokenWithTrivia, GreenTokenWithTriviaData, GreenTokenWithValue, GreenTokenWithValueAndTrailingTrivia, GreenTokenWithValueAndTrailingTriviaData,
+    GreenTokenWithValueAndTrivia, GreenTokenWithValueAndTriviaData, GreenTokenWithValueData, GreenTrivia, GreenTriviaData,
 };
