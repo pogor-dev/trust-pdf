@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod diagnostic;
 mod flags;
 mod node;
 mod node_element;
@@ -15,6 +16,7 @@ mod token_with_value_and_trivia;
 mod trivia;
 
 pub(crate) use self::{
+    diagnostic::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnosticData},
     flags::GreenFlags,
     node::{GreenNode, GreenNodeData},
     node_element::{GreenNodeElement, GreenNodeElementRef},
