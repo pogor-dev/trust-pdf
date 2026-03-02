@@ -14,10 +14,11 @@ use std::{
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -133,6 +134,18 @@ impl GreenToken {
         Self::create(kind, GreenFlags::IS_NOT_MISSING)
     }
 
+    #[inline]
+    pub fn new_with_diagnostic(kind: SyntaxKind, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
+        if diagnostics.is_empty() {
+            return Self::new(kind);
+        }
+
+        let token = Self::create(kind, GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC);
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
+    }
+
     /// Creates a missing (synthetic) token for error recovery.
     ///
     /// Missing tokens are parser-inserted placeholders when expected syntax is
@@ -140,6 +153,18 @@ impl GreenToken {
     #[inline]
     pub fn new_missing(kind: SyntaxKind) -> GreenToken {
         Self::create(kind, GreenFlags::NONE)
+    }
+
+    #[inline]
+    pub fn new_missing_with_diagnostic(kind: SyntaxKind, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
+        if diagnostics.is_empty() {
+            return Self::new_missing(kind);
+        }
+
+        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC);
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
     }
 
     #[inline]
@@ -203,6 +228,8 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod green_token_tests {
     use super::*;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -316,6 +343,32 @@ mod green_token_tests {
         assert_eq!(borrowed.kind(), SyntaxKind::TrueKeyword);
         assert_eq!(borrowed.text(), b"true");
     }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token diag");
+        let key;
+
+        {
+            let token = GreenToken::new_with_diagnostic(SyntaxKind::TrueKeyword, vec![diagnostic.clone()]);
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_empty_expect_same_as_new_without_diagnostic_flag() {
+        let token = GreenToken::new_with_diagnostic(SyntaxKind::TrueKeyword, vec![]);
+        assert!(token.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert!(!token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+        assert!(token.diagnostics().is_none());
+    }
 }
 
 #[cfg(test)]
@@ -353,6 +406,8 @@ mod green_token_data_tests {
 #[cfg(test)]
 mod green_missing_token_tests {
     use super::*;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -376,5 +431,32 @@ mod green_missing_token_tests {
         let ptr = GreenToken::into_raw(token.clone());
         let reconstructed = unsafe { GreenToken::from_raw(ptr) };
         assert_eq!(token, reconstructed);
+    }
+
+    #[test]
+    fn test_new_missing_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token missing diag");
+        let key;
+
+        {
+            let token = GreenToken::new_missing_with_diagnostic(SyntaxKind::TrueKeyword, vec![diagnostic.clone()]);
+            assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_missing_with_diagnostic_when_empty_expect_same_as_new_missing_without_diagnostic_flag() {
+        let token = GreenToken::new_missing_with_diagnostic(SyntaxKind::TrueKeyword, vec![]);
+        assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert!(!token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+        assert!(token.diagnostics().is_none());
     }
 }

@@ -14,10 +14,11 @@ use std::{
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -150,6 +151,28 @@ impl GreenTokenWithTrivia {
         Self::create(kind, GreenFlags::IS_NOT_MISSING, leading_trivia, trailing_trivia)
     }
 
+    #[inline]
+    pub fn new_with_diagnostic(
+        kind: SyntaxKind,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
+        if diagnostics.is_empty() {
+            return Self::new(kind, leading_trivia, trailing_trivia);
+        }
+
+        let token = Self::create(
+            kind,
+            GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
+            leading_trivia,
+            trailing_trivia,
+        );
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
+    }
+
     /// Creates a missing (synthetic) token for error recovery.
     ///
     /// Missing tokens are parser-inserted placeholders when expected syntax is
@@ -157,6 +180,23 @@ impl GreenTokenWithTrivia {
     #[inline]
     pub fn new_missing(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
         Self::create(kind, GreenFlags::NONE, leading_trivia, trailing_trivia)
+    }
+
+    #[inline]
+    pub fn new_missing_with_diagnostic(
+        kind: SyntaxKind,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
+        if diagnostics.is_empty() {
+            return Self::new_missing(kind, leading_trivia, trailing_trivia);
+        }
+
+        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC, leading_trivia, trailing_trivia);
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
     }
 
     #[inline]
@@ -236,6 +276,8 @@ mod memory_layout_tests {
 mod green_token_tests {
     use super::*;
     use crate::GreenTrivia;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     fn leading_trivia() -> Option<GreenNode> {
@@ -369,6 +411,24 @@ mod green_token_tests {
         assert_eq!(borrowed.kind(), SyntaxKind::TrueKeyword);
         assert_eq!(borrowed.text(), b"true");
     }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token trivia diag");
+        let key;
+
+        {
+            let token = GreenTokenWithTrivia::new_with_diagnostic(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia(), vec![diagnostic.clone()]);
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
 }
 
 #[cfg(test)]
@@ -407,6 +467,8 @@ mod green_token_data_tests {
 mod green_missing_token_tests {
     use super::*;
     use crate::GreenTrivia;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     fn leading_trivia() -> Option<GreenNode> {
@@ -453,5 +515,25 @@ mod green_missing_token_tests {
         let ptr = GreenTokenWithTrivia::into_raw(token.clone());
         let reconstructed = unsafe { GreenTokenWithTrivia::from_raw(ptr) };
         assert_eq!(token, reconstructed);
+    }
+
+    #[test]
+    fn test_new_missing_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token trivia missing diag");
+        let key;
+
+        {
+            let token =
+                GreenTokenWithTrivia::new_missing_with_diagnostic(SyntaxKind::TrueKeyword, leading_trivia(), trailing_trivia(), vec![diagnostic.clone()]);
+            assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
     }
 }

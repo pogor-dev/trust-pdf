@@ -8,8 +8,9 @@ use std::{
 
 use countme::Count;
 
+use crate::green::diagnostics;
 use crate::{
-    GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
+    GreenDiagnostic, GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
 };
 
@@ -321,6 +322,31 @@ impl GreenNode {
         I: IntoIterator<Item = GreenNodeElement>,
         I::IntoIter: ExactSizeIterator,
     {
+        Self::create_with_flags(kind, slots, GreenFlags::NONE)
+    }
+
+    #[inline]
+    pub fn new_with_diagnostic<I>(kind: SyntaxKind, slots: I, diagnostics: Vec<GreenDiagnostic>) -> GreenNode
+    where
+        I: IntoIterator<Item = GreenNodeElement>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        if diagnostics.is_empty() {
+            return Self::new(kind, slots);
+        }
+
+        let node = Self::create_with_flags(kind, slots, GreenFlags::CONTAINS_DIAGNOSTIC);
+        let key = node.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        node
+    }
+
+    #[inline]
+    fn create_with_flags<I>(kind: SyntaxKind, slots: I, flags: GreenFlags) -> GreenNode
+    where
+        I: IntoIterator<Item = GreenNodeElement>,
+        I::IntoIter: ExactSizeIterator,
+    {
         let mut full_width = 0u32;
         let slots = slots.into_iter().map(|el| {
             full_width += el.full_width();
@@ -331,7 +357,7 @@ impl GreenNode {
             GreenNodeHead {
                 kind,
                 full_width: 0,
-                flags: GreenFlags::NONE,
+                flags,
                 _c: Count::new(),
             },
             slots,
@@ -407,7 +433,8 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::GreenToken;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity, GreenToken};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -775,5 +802,31 @@ mod tests {
         let node2 = GreenNode::new(SyntaxKind::List, vec![]);
 
         assert_eq!(node1, node2);
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "node diag");
+        let key;
+
+        {
+            let node = GreenNode::new_with_diagnostic(SyntaxKind::List, vec![], vec![diagnostic.clone()]);
+            assert!(node.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = node.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*node as *const GreenNodeData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_empty_expect_same_as_new_without_diagnostic_flag() {
+        let node = GreenNode::new_with_diagnostic(SyntaxKind::List, vec![], vec![]);
+        assert_eq!(node.flags(), GreenFlags::NONE);
+        assert!(!node.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+        assert!(node.diagnostics().is_none());
     }
 }

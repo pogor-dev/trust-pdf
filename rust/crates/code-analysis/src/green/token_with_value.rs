@@ -15,10 +15,11 @@ use std::{
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 pub(crate) type GreenTokenWithIntValue = GreenTokenWithValue<u32>;
@@ -170,6 +171,26 @@ impl<T> GreenTokenWithValue<T> {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTokenWithValue { ptr }
     }
+
+    #[inline]
+    pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], value: T, diagnostics: Vec<GreenDiagnostic>) -> GreenTokenWithValue<T> {
+        if diagnostics.is_empty() {
+            return Self::new(kind, text, value);
+        }
+
+        let head = GreenTokenWithValueHead::<T> {
+            kind,
+            flags: GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
+            value,
+            _c: Count::new(),
+        };
+        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
+        let token = GreenTokenWithValue { ptr };
+
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
+    }
 }
 
 impl_green_boilerplate!(generic GreenTokenWithValueHead, GreenTokenWithValueData, GreenTokenWithValue, u8);
@@ -237,6 +258,8 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod green_token_tests {
     use super::*;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -359,6 +382,29 @@ mod green_token_tests {
     fn test_value_when_pdf_hexstring_expect_decoded_payload_value() {
         let token: GreenTokenWithStringValue = GreenTokenWithValue::new(SyntaxKind::HexStringLiteralToken, b"<48656C6C6F>", "Hello".to_string());
         assert_eq!(token.value(), "Hello");
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token value diag");
+        let key;
+
+        {
+            let token: GreenTokenWithIntValue = GreenTokenWithValue::new_with_diagnostic(
+                SyntaxKind::NumericLiteralToken,
+                b"42",
+                42,
+                vec![diagnostic.clone()],
+            );
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithValueData<u32>) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
     }
 }
 

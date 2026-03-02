@@ -14,10 +14,11 @@ use std::{
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -130,8 +131,32 @@ impl GreenTokenWithTrailingTrivia {
     }
 
     #[inline]
+    pub fn new_with_diagnostic(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, diagnostics: Vec<GreenDiagnostic>) -> Self {
+        if diagnostics.is_empty() {
+            return Self::new(kind, trailing_trivia);
+        }
+
+        let token = Self::create(kind, GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC, trailing_trivia);
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
+    }
+
+    #[inline]
     pub fn new_missing(kind: SyntaxKind, trailing_trivia: Option<GreenNode>) -> Self {
         Self::create(kind, GreenFlags::NONE, trailing_trivia)
+    }
+
+    #[inline]
+    pub fn new_missing_with_diagnostic(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, diagnostics: Vec<GreenDiagnostic>) -> Self {
+        if diagnostics.is_empty() {
+            return Self::new_missing(kind, trailing_trivia);
+        }
+
+        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC, trailing_trivia);
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
     }
 
     #[inline]
@@ -195,6 +220,8 @@ mod memory_layout_tests {
 mod tests {
     use super::*;
     use crate::GreenTrivia;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     fn trailing_trivia() -> Option<GreenNode> {
@@ -257,5 +284,42 @@ mod tests {
         assert_eq!(borrowed.text(), b"null");
         assert_eq!(borrowed.leading_trivia(), None);
         assert!(borrowed.trailing_trivia().is_some());
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token trailing diag");
+        let key;
+
+        {
+            let token = GreenTokenWithTrailingTrivia::new_with_diagnostic(SyntaxKind::TrueKeyword, trailing_trivia(), vec![diagnostic.clone()]);
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithTrailingTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_missing_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token trailing missing diag");
+        let key;
+
+        {
+            let token = GreenTokenWithTrailingTrivia::new_missing_with_diagnostic(SyntaxKind::TrueKeyword, trailing_trivia(), vec![diagnostic.clone()]);
+            assert!(!token.flags().contains(GreenFlags::IS_NOT_MISSING));
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithTrailingTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
     }
 }

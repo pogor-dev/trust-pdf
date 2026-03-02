@@ -12,10 +12,11 @@ use std::{
 
 use crate::{
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 #[derive(PartialEq, Eq, Hash)]
@@ -104,6 +105,22 @@ impl GreenTrivia {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTrivia { ptr }
     }
+
+    #[inline]
+    pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
+        if diagnostics.is_empty() {
+            return Self::new(kind, text);
+        }
+
+        let flags = GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC;
+        let head = GreenTriviaHead { kind, flags, _c: Count::new() };
+        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
+        let trivia = GreenTrivia { ptr };
+
+        let key = trivia.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        trivia
+    }
 }
 
 impl_green_boilerplate!(GreenTriviaHead, GreenTriviaData, GreenTrivia, u8);
@@ -159,6 +176,8 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod green_trivia_tests {
     use super::*;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -273,6 +292,32 @@ mod green_trivia_tests {
         let borrowed: &GreenTriviaData = trivia.borrow();
         assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
         assert_eq!(borrowed.text(), b" ");
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "trivia diag");
+        let key;
+
+        {
+            let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![diagnostic.clone()]);
+            assert!(trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = trivia.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*trivia as *const GreenTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_empty_expect_same_as_new_without_diagnostic_flag() {
+        let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![]);
+        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert!(!trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+        assert!(trivia.diagnostics().is_none());
     }
 }
 

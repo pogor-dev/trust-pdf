@@ -75,22 +75,16 @@ macro_rules! impl_green_boilerplate {
 
             #[inline]
             pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
-                let key = self.diagnostics_key();
-                let guard = match crate::green::diagnostics::green_diagnostics_table().lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-                guard.get(&key).map(|v| v.clone())
+                use crate::green::diagnostics;
+
+                diagnostics::get_diagnostics(self.diagnostics_key())
             }
 
             #[inline]
             fn clear_diagnostics(&self) {
-                let key = self.diagnostics_key();
-                let mut guard = match crate::green::diagnostics::green_diagnostics_table().lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-                guard.remove(&key);
+                use crate::green::diagnostics;
+
+                diagnostics::remove_diagnostics(self.diagnostics_key());
             }
 
             #[inline]
@@ -103,6 +97,9 @@ macro_rules! impl_green_boilerplate {
         impl Drop for $owned {
             #[inline]
             fn drop(&mut self) {
+                // Clear side-table diagnostics only for the final owner.
+                // This avoids duplicate removals while cloned green handles are
+                // still alive and keeps diagnostics lifetime tied to green data.
                 let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
                 if should_clear {
                     self.clear_diagnostics();
@@ -183,6 +180,38 @@ macro_rules! impl_green_boilerplate {
                     mem::transmute::<Arc<ReprThin<T>>, ThinArc<$head<T>, $tail>>(arc)
                 };
                 $owned { ptr: arc }
+            }
+
+            #[inline]
+            pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+                use crate::green::diagnostics;
+
+                diagnostics::get_diagnostics(self.diagnostics_key())
+            }
+
+            #[inline]
+            fn clear_diagnostics(&self) {
+                use crate::green::diagnostics;
+
+                diagnostics::remove_diagnostics(self.diagnostics_key());
+            }
+
+            #[inline]
+            fn diagnostics_key(&self) -> usize {
+                let data: &$data<T> = self;
+                data as *const $data<T> as usize
+            }
+        }
+
+        impl<T> Drop for $owned<T> {
+            #[inline]
+            fn drop(&mut self) {
+                // Same rationale as non-generic variant: remove diagnostics on
+                // last-owner drop so cleanup is deterministic and race-free.
+                let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+                if should_clear {
+                    self.clear_diagnostics();
+                }
             }
         }
 

@@ -27,6 +27,9 @@ impl GreenFlags {
     ///
     /// This pattern originates from Roslyn's syntax tree design.
     pub const IS_NOT_MISSING: Self = Self(1 << 0);
+
+    /// Marks a green element as carrying diagnostics in the side-table.
+    pub const CONTAINS_DIAGNOSTIC: Self = Self(1 << 1);
 }
 
 impl GreenFlags {
@@ -135,6 +138,11 @@ mod tests {
     fn test_from_bits() {
         let flags = GreenFlags::from_bits(0b0101);
         assert_eq!(flags.bits(), 0b0101);
+    }
+
+    #[test]
+    fn test_contains_diagnostic_constant() {
+        assert_eq!(GreenFlags::CONTAINS_DIAGNOSTIC.bits(), 1 << 1);
     }
 
     #[test]

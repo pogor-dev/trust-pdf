@@ -14,10 +14,11 @@ use std::{
 use crate::{
     GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::flags::GreenFlags,
+    green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
+use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
 pub(crate) type GreenTokenWithIntValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia<u32>;
@@ -171,6 +172,37 @@ impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         GreenTokenWithValueAndTrailingTrivia { ptr }
     }
+
+    #[inline]
+    pub fn new_with_diagnostic(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: T,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenWithValueAndTrailingTrivia<T> {
+        if diagnostics.is_empty() {
+            return Self::new(kind, text, value, trailing_trivia);
+        }
+
+        let trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
+        let full_width = text.len() as u16 + trailing_width;
+
+        let head = GreenTokenWithValueAndTrailingTriviaHead::<T> {
+            kind,
+            flags: GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
+            full_width,
+            trailing_trivia,
+            value,
+            _c: Count::new(),
+        };
+        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
+        let token = GreenTokenWithValueAndTrailingTrivia { ptr };
+
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
+    }
 }
 
 impl_green_boilerplate!(generic GreenTokenWithValueAndTrailingTriviaHead, GreenTokenWithValueAndTrailingTriviaData, GreenTokenWithValueAndTrailingTrivia, u8);
@@ -236,6 +268,8 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
     use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
@@ -307,5 +341,29 @@ mod tests {
         assert_eq!(borrowed.value(), "Catalog");
         assert_eq!(borrowed.leading_trivia(), None);
         assert!(borrowed.trailing_trivia().is_some());
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "token value trailing diag");
+        let key;
+
+        {
+            let token: GreenTokenWithIntValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia::new_with_diagnostic(
+                SyntaxKind::NumericLiteralToken,
+                b"42",
+                42,
+                trailing_trivia(),
+                vec![diagnostic.clone()],
+            );
+            assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = token.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*token as *const GreenTokenWithValueAndTrailingTriviaData<u32>) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
     }
 }
