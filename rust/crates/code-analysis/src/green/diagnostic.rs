@@ -14,9 +14,9 @@ use crate::DiagnosticKind;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub(crate) enum DiagnosticSeverity {
-    Info = 0,
-    Warning = 1,
-    Error = 2,
+    Info = 1,
+    Warning = 2,
+    Error = 3,
 }
 
 #[derive(PartialEq, Eq, Hash)]
