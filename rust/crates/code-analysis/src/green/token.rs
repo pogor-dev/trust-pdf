@@ -131,19 +131,12 @@ impl GreenToken {
     /// Creates a present (non-missing) token.
     #[inline]
     pub fn new(kind: SyntaxKind) -> GreenToken {
-        Self::create(kind, GreenFlags::IS_NOT_MISSING)
+        Self::create_full(kind, GreenFlags::IS_NOT_MISSING, Vec::new())
     }
 
     #[inline]
     pub fn new_with_diagnostic(kind: SyntaxKind, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
-        if diagnostics.is_empty() {
-            return Self::new(kind);
-        }
-
-        let token = Self::create(kind, GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC);
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, GreenFlags::IS_NOT_MISSING, diagnostics)
     }
 
     /// Creates a missing (synthetic) token for error recovery.
@@ -152,26 +145,32 @@ impl GreenToken {
     /// absent. They do **not** set `GreenFlags::IS_NOT_MISSING`.
     #[inline]
     pub fn new_missing(kind: SyntaxKind) -> GreenToken {
-        Self::create(kind, GreenFlags::NONE)
+        Self::create_full(kind, GreenFlags::NONE, Vec::new())
     }
 
     #[inline]
     pub fn new_missing_with_diagnostic(kind: SyntaxKind, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
-        if diagnostics.is_empty() {
-            return Self::new_missing(kind);
-        }
-
-        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC);
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, GreenFlags::NONE, diagnostics)
     }
 
     #[inline]
-    fn create(kind: SyntaxKind, flags: GreenFlags) -> GreenToken {
+    fn create_full(kind: SyntaxKind, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let head = GreenTokenHead { kind, flags, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
-        GreenToken { ptr }
+        let token = GreenToken { ptr };
+
+        if has_diagnostics {
+            let key = token.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
+        token
     }
 }
 

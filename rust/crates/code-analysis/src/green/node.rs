@@ -322,7 +322,7 @@ impl GreenNode {
         I: IntoIterator<Item = GreenNodeElement>,
         I::IntoIter: ExactSizeIterator,
     {
-        Self::create_with_flags(kind, slots, GreenFlags::NONE)
+        Self::create_full(kind, slots, GreenFlags::NONE, Vec::new())
     }
 
     #[inline]
@@ -331,22 +331,21 @@ impl GreenNode {
         I: IntoIterator<Item = GreenNodeElement>,
         I::IntoIter: ExactSizeIterator,
     {
-        if diagnostics.is_empty() {
-            return Self::new(kind, slots);
-        }
-
-        let node = Self::create_with_flags(kind, slots, GreenFlags::CONTAINS_DIAGNOSTIC);
-        let key = node.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        node
+        Self::create_full(kind, slots, GreenFlags::NONE, diagnostics)
     }
 
     #[inline]
-    fn create_with_flags<I>(kind: SyntaxKind, slots: I, flags: GreenFlags) -> GreenNode
+    fn create_full<I>(kind: SyntaxKind, slots: I, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenNode
     where
         I: IntoIterator<Item = GreenNodeElement>,
         I::IntoIter: ExactSizeIterator,
     {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let mut full_width = 0u32;
         let slots = slots.into_iter().map(|el| {
             full_width += el.full_width();
@@ -374,7 +373,14 @@ impl GreenNode {
             Arc::into_thin(data)
         };
 
-        GreenNode { ptr: data }
+        let node = GreenNode { ptr: data };
+
+        if has_diagnostics {
+            let key = node.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
+        node
     }
 }
 

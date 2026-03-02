@@ -100,25 +100,31 @@ impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
-        let flags = GreenFlags::IS_NOT_MISSING; // Trivia created via `new` is always not-missing
-        let head = GreenTriviaHead { kind, flags, _c: Count::new() };
-        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
-        GreenTrivia { ptr }
+        Self::create_full(kind, text, GreenFlags::IS_NOT_MISSING, Vec::new())
     }
 
     #[inline]
     pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
-        if diagnostics.is_empty() {
-            return Self::new(kind, text);
-        }
+        Self::create_full(kind, text, GreenFlags::IS_NOT_MISSING, diagnostics)
+    }
 
-        let flags = GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC;
+    #[inline]
+    fn create_full(kind: SyntaxKind, text: &[u8], base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let head = GreenTriviaHead { kind, flags, _c: Count::new() };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         let trivia = GreenTrivia { ptr };
 
-        let key = trivia.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
+        if has_diagnostics {
+            let key = trivia.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
         trivia
     }
 }

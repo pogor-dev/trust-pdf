@@ -161,7 +161,22 @@ impl<T> GreenTokenWithValue<T> {
     /// Creates new token.
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8], value: T) -> GreenTokenWithValue<T> {
-        let flags = GreenFlags::IS_NOT_MISSING; // Tokens created via `new` are always not-missing
+        Self::create_full(kind, text, value, GreenFlags::IS_NOT_MISSING, Vec::new())
+    }
+
+    #[inline]
+    pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], value: T, diagnostics: Vec<GreenDiagnostic>) -> GreenTokenWithValue<T> {
+        Self::create_full(kind, text, value, GreenFlags::IS_NOT_MISSING, diagnostics)
+    }
+
+    #[inline]
+    fn create_full(kind: SyntaxKind, text: &[u8], value: T, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenTokenWithValue<T> {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let head = GreenTokenWithValueHead::<T> {
             kind,
             flags,
@@ -169,26 +184,13 @@ impl<T> GreenTokenWithValue<T> {
             _c: Count::new(),
         };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
-        GreenTokenWithValue { ptr }
-    }
-
-    #[inline]
-    pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], value: T, diagnostics: Vec<GreenDiagnostic>) -> GreenTokenWithValue<T> {
-        if diagnostics.is_empty() {
-            return Self::new(kind, text, value);
-        }
-
-        let head = GreenTokenWithValueHead::<T> {
-            kind,
-            flags: GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
-            value,
-            _c: Count::new(),
-        };
-        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         let token = GreenTokenWithValue { ptr };
 
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
+        if has_diagnostics {
+            let key = token.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
         token
     }
 }
@@ -390,12 +392,7 @@ mod green_token_tests {
         let key;
 
         {
-            let token: GreenTokenWithIntValue = GreenTokenWithValue::new_with_diagnostic(
-                SyntaxKind::NumericLiteralToken,
-                b"42",
-                42,
-                vec![diagnostic.clone()],
-            );
+            let token: GreenTokenWithIntValue = GreenTokenWithValue::new_with_diagnostic(SyntaxKind::NumericLiteralToken, b"42", 42, vec![diagnostic.clone()]);
             assert!(token.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
             let diagnostics = token.diagnostics().expect("diagnostics should exist");
             assert_eq!(diagnostics, vec![diagnostic]);

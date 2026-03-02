@@ -127,40 +127,33 @@ pub(crate) struct GreenTokenWithTrailingTrivia {
 impl GreenTokenWithTrailingTrivia {
     #[inline]
     pub fn new(kind: SyntaxKind, trailing_trivia: Option<GreenNode>) -> Self {
-        Self::create(kind, GreenFlags::IS_NOT_MISSING, trailing_trivia)
+        Self::create_full(kind, trailing_trivia, GreenFlags::IS_NOT_MISSING, Vec::new())
     }
 
     #[inline]
     pub fn new_with_diagnostic(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        if diagnostics.is_empty() {
-            return Self::new(kind, trailing_trivia);
-        }
-
-        let token = Self::create(kind, GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC, trailing_trivia);
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, trailing_trivia, GreenFlags::IS_NOT_MISSING, diagnostics)
     }
 
     #[inline]
     pub fn new_missing(kind: SyntaxKind, trailing_trivia: Option<GreenNode>) -> Self {
-        Self::create(kind, GreenFlags::NONE, trailing_trivia)
+        Self::create_full(kind, trailing_trivia, GreenFlags::NONE, Vec::new())
     }
 
     #[inline]
     pub fn new_missing_with_diagnostic(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        if diagnostics.is_empty() {
-            return Self::new_missing(kind, trailing_trivia);
-        }
-
-        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC, trailing_trivia);
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, trailing_trivia, GreenFlags::NONE, diagnostics)
     }
 
     #[inline]
-    fn create(kind: SyntaxKind, flags: GreenFlags, trailing_trivia: Option<GreenNode>) -> Self {
+    fn create_full(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> Self {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = if has_diagnostics {
+            base_flags | GreenFlags::CONTAINS_DIAGNOSTIC
+        } else {
+            base_flags
+        };
+
         let trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let full_width = kind.get_text().len() as u16 + trailing_width;
 
@@ -173,7 +166,15 @@ impl GreenTokenWithTrailingTrivia {
         };
 
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
-        GreenTokenWithTrailingTrivia { ptr }
+        let token = GreenTokenWithTrailingTrivia { ptr };
+
+        if !has_diagnostics {
+            return token;
+        }
+
+        let key = token.diagnostics_key();
+        diagnostics::insert_diagnostics(key, diagnostics);
+        token
     }
 }
 

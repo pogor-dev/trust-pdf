@@ -157,7 +157,36 @@ impl<T> Hash for GreenTokenWithValueAndTrailingTrivia<T> {
 impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8], value: T, trailing_trivia: Option<GreenNode>) -> GreenTokenWithValueAndTrailingTrivia<T> {
-        let flags = GreenFlags::IS_NOT_MISSING;
+        Self::create_full(kind, text, value, trailing_trivia, GreenFlags::IS_NOT_MISSING, Vec::new())
+    }
+
+    #[inline]
+    pub fn new_with_diagnostic(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: T,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenWithValueAndTrailingTrivia<T> {
+        Self::create_full(kind, text, value, trailing_trivia, GreenFlags::IS_NOT_MISSING, diagnostics)
+    }
+
+    #[inline]
+    fn create_full(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: T,
+        trailing_trivia: Option<GreenNode>,
+        base_flags: GreenFlags,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenWithValueAndTrailingTrivia<T> {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = if has_diagnostics {
+            base_flags | GreenFlags::CONTAINS_DIAGNOSTIC
+        } else {
+            base_flags
+        };
+
         let trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let full_width = text.len() as u16 + trailing_width;
 
@@ -170,34 +199,11 @@ impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
             _c: Count::new(),
         };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
-        GreenTokenWithValueAndTrailingTrivia { ptr }
-    }
-
-    #[inline]
-    pub fn new_with_diagnostic(
-        kind: SyntaxKind,
-        text: &[u8],
-        value: T,
-        trailing_trivia: Option<GreenNode>,
-        diagnostics: Vec<GreenDiagnostic>,
-    ) -> GreenTokenWithValueAndTrailingTrivia<T> {
-        if diagnostics.is_empty() {
-            return Self::new(kind, text, value, trailing_trivia);
-        }
-
-        let trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
-        let full_width = text.len() as u16 + trailing_width;
-
-        let head = GreenTokenWithValueAndTrailingTriviaHead::<T> {
-            kind,
-            flags: GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
-            full_width,
-            trailing_trivia,
-            value,
-            _c: Count::new(),
-        };
-        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         let token = GreenTokenWithValueAndTrailingTrivia { ptr };
+
+        if !has_diagnostics {
+            return token;
+        }
 
         let key = token.diagnostics_key();
         diagnostics::insert_diagnostics(key, diagnostics);
@@ -268,9 +274,9 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GreenTrivia;
     use crate::green::diagnostics;
     use crate::{DiagnosticKind, DiagnosticSeverity};
-    use crate::GreenTrivia;
     use pretty_assertions::assert_eq;
 
     fn trailing_trivia() -> Option<GreenNode> {

@@ -148,7 +148,7 @@ impl GreenTokenWithTrivia {
     /// Creates a present (non-missing) token with optional trivia.
     #[inline]
     pub fn new(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
-        Self::create(kind, GreenFlags::IS_NOT_MISSING, leading_trivia, trailing_trivia)
+        Self::create_full(kind, leading_trivia, trailing_trivia, GreenFlags::IS_NOT_MISSING, Vec::new())
     }
 
     #[inline]
@@ -158,19 +158,7 @@ impl GreenTokenWithTrivia {
         trailing_trivia: Option<GreenNode>,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        if diagnostics.is_empty() {
-            return Self::new(kind, leading_trivia, trailing_trivia);
-        }
-
-        let token = Self::create(
-            kind,
-            GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
-            leading_trivia,
-            trailing_trivia,
-        );
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, leading_trivia, trailing_trivia, GreenFlags::IS_NOT_MISSING, diagnostics)
     }
 
     /// Creates a missing (synthetic) token for error recovery.
@@ -179,7 +167,7 @@ impl GreenTokenWithTrivia {
     /// absent. They do **not** set `GreenFlags::IS_NOT_MISSING`.
     #[inline]
     pub fn new_missing(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
-        Self::create(kind, GreenFlags::NONE, leading_trivia, trailing_trivia)
+        Self::create_full(kind, leading_trivia, trailing_trivia, GreenFlags::NONE, Vec::new())
     }
 
     #[inline]
@@ -189,18 +177,23 @@ impl GreenTokenWithTrivia {
         trailing_trivia: Option<GreenNode>,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        if diagnostics.is_empty() {
-            return Self::new_missing(kind, leading_trivia, trailing_trivia);
-        }
-
-        let token = Self::create(kind, GreenFlags::CONTAINS_DIAGNOSTIC, leading_trivia, trailing_trivia);
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
-        token
+        Self::create_full(kind, leading_trivia, trailing_trivia, GreenFlags::NONE, diagnostics)
     }
 
     #[inline]
-    fn create(kind: SyntaxKind, flags: GreenFlags, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> Self {
+    fn create_full(
+        kind: SyntaxKind,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        base_flags: GreenFlags,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let first_leading_width = leading_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let last_trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let full_width = kind.get_text().len() as u16 + first_leading_width + last_trailing_width;
@@ -215,7 +208,14 @@ impl GreenTokenWithTrivia {
         };
 
         let ptr = ThinArc::from_header_and_iter(head, std::iter::empty());
-        GreenTokenWithTrivia { ptr }
+        let token = GreenTokenWithTrivia { ptr };
+
+        if has_diagnostics {
+            let key = token.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
+        token
     }
 }
 

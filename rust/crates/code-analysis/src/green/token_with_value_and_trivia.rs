@@ -171,7 +171,37 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
         leading_trivia: Option<GreenNode>,
         trailing_trivia: Option<GreenNode>,
     ) -> GreenTokenWithValueAndTrivia<T> {
-        let flags = GreenFlags::IS_NOT_MISSING;
+        Self::create_full(kind, text, value, leading_trivia, trailing_trivia, GreenFlags::IS_NOT_MISSING, Vec::new())
+    }
+
+    #[inline]
+    pub fn new_with_diagnostic(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: T,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenWithValueAndTrivia<T> {
+        Self::create_full(kind, text, value, leading_trivia, trailing_trivia, GreenFlags::IS_NOT_MISSING, diagnostics)
+    }
+
+    #[inline]
+    fn create_full(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: T,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+        base_flags: GreenFlags,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> GreenTokenWithValueAndTrivia<T> {
+        let has_diagnostics = !diagnostics.is_empty();
+        let flags = match has_diagnostics {
+            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => base_flags,
+        };
+
         let first_leading_width = leading_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let last_trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
         let full_width = text.len() as u16 + first_leading_width + last_trailing_width;
@@ -186,40 +216,13 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
             _c: Count::new(),
         };
         let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
-        GreenTokenWithValueAndTrivia { ptr }
-    }
-
-    #[inline]
-    pub fn new_with_diagnostic(
-        kind: SyntaxKind,
-        text: &[u8],
-        value: T,
-        leading_trivia: Option<GreenNode>,
-        trailing_trivia: Option<GreenNode>,
-        diagnostics: Vec<GreenDiagnostic>,
-    ) -> GreenTokenWithValueAndTrivia<T> {
-        if diagnostics.is_empty() {
-            return Self::new(kind, text, value, leading_trivia, trailing_trivia);
-        }
-
-        let first_leading_width = leading_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
-        let last_trailing_width = trailing_trivia.as_ref().map_or(0, |t| t.full_width()) as u16;
-        let full_width = text.len() as u16 + first_leading_width + last_trailing_width;
-
-        let head = GreenTokenWithValueAndTriviaHead::<T> {
-            kind,
-            flags: GreenFlags::IS_NOT_MISSING | GreenFlags::CONTAINS_DIAGNOSTIC,
-            full_width,
-            leading_trivia,
-            trailing_trivia,
-            value,
-            _c: Count::new(),
-        };
-        let ptr = ThinArc::from_header_and_iter(head, text.iter().copied());
         let token = GreenTokenWithValueAndTrivia { ptr };
 
-        let key = token.diagnostics_key();
-        diagnostics::insert_diagnostics(key, diagnostics);
+        if has_diagnostics {
+            let key = token.diagnostics_key();
+            diagnostics::insert_diagnostics(key, diagnostics);
+        }
+
         token
     }
 }
