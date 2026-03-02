@@ -72,6 +72,42 @@ macro_rules! impl_green_boilerplate {
                 };
                 $owned { ptr: arc }
             }
+
+            #[inline]
+            pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+                let key = self.diagnostics_key();
+                let guard = match crate::green::diagnostics::green_diagnostics_table().lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                guard.get(&key).map(|v| v.clone())
+            }
+
+            #[inline]
+            fn clear_diagnostics(&self) {
+                let key = self.diagnostics_key();
+                let mut guard = match crate::green::diagnostics::green_diagnostics_table().lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                guard.remove(&key);
+            }
+
+            #[inline]
+            fn diagnostics_key(&self) -> usize {
+                let data: &$data = self;
+                data as *const $data as usize
+            }
+        }
+
+        impl Drop for $owned {
+            #[inline]
+            fn drop(&mut self) {
+                let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+                if should_clear {
+                    self.clear_diagnostics();
+                }
+            }
         }
 
         impl ops::Deref for $owned {
