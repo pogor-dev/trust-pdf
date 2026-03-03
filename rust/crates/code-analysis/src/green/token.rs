@@ -155,7 +155,6 @@ impl GreenToken {
 
     #[inline]
     fn create_full(kind: SyntaxKind, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenToken {
-        debug_assert!(kind.is_any_token(), "the token must be a well-known text token kind");
         let has_diagnostics = !diagnostics.is_empty();
         let flags = match has_diagnostics {
             true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,

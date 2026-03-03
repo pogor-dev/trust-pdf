@@ -386,6 +386,13 @@ impl GreenNode {
 
 impl_green_boilerplate!(GreenNodeHead, GreenNodeData, GreenNode, GreenNodeElement);
 
+impl From<GreenTrivia> for GreenNode {
+    #[inline]
+    fn from(trivia: GreenTrivia) -> Self {
+        GreenNode::new(SyntaxKind::List, vec![trivia.into()])
+    }
+}
+
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;

@@ -42,12 +42,12 @@ pub enum SyntaxKind {
     /// `>>`
     CloseDictToken,
 
+    /// End of file token, this is assumed to be textless token
+    EndOfFileToken,
+
     // special tokens
     /// Raw stream data token
     RawStreamDataToken,
-
-    /// End of file token, this is assumed to be textless token
-    EndOfFileToken,
 
     // invalid tokens
     BadToken,
@@ -257,14 +257,12 @@ pub enum SyntaxKind {
 }
 
 impl SyntaxKind {
-    pub const FIRST_TOKEN_KIND: SyntaxKind = SyntaxKind::PdfVersionToken;
-    pub const LAST_TOKEN_KIND: SyntaxKind = SyntaxKind::EndOfFileToken;
     pub const FIRST_WELL_KNOWN_TEXT_TOKEN_KIND: SyntaxKind = SyntaxKind::EndOfFileMarkerToken;
     pub const LAST_WELL_KNOWN_TEXT_TOKEN_KIND: SyntaxKind = SyntaxKind::CloseDictToken;
 
     pub fn is_any_token(&self) -> bool {
         let kind_value = *self as u16;
-        if kind_value >= (SyntaxKind::FIRST_TOKEN_KIND as u16) && kind_value <= (SyntaxKind::LAST_TOKEN_KIND as u16) {
+        if kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
             return true;
         }
 

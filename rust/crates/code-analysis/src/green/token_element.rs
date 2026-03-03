@@ -44,12 +44,61 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
 impl GreenTokenElement {
     #[inline]
     pub fn create(kind: SyntaxKind) -> GreenTokenElement {
-        Self::tokens_with_no_trivia()[kind as usize].clone().into()
+        let raw_kind = kind as usize;
+        let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+
+        if raw_kind > last_token_kind {
+            assert!(kind.is_any_token(), "this method can only be used to create tokens");
+            return Self::create_missing(kind);
+        }
+
+        Self::tokens_with_no_trivia()[raw_kind].clone().into()
+    }
+
+    #[inline]
+    pub fn create_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
+        let raw_kind = kind as usize;
+        let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+
+        if raw_kind > last_token_kind {
+            assert!(kind.is_any_token(), "this method can only be used to create tokens");
+            return Self::create_missing(kind);
+        }
+
+        if leading_trivia.is_none() {
+            match trailing_trivia {
+                None => return Self::tokens_with_no_trivia()[raw_kind].clone().into(),
+                Some(trailing) if trailing == GreenSyntaxFactory::space().into() => {
+                    return Self::tokens_with_single_space()[raw_kind].clone().into();
+                }
+                Some(trailing) if trailing == GreenSyntaxFactory::line_feed().into() => {
+                    return Self::tokens_with_line_feed()[raw_kind].clone().into();
+                }
+                Some(trailing) if trailing == GreenSyntaxFactory::carriage_return_line_feed().into() => {
+                    return Self::tokens_with_carriage_return_line_feed()[raw_kind].clone().into();
+                }
+                _ => {}
+            }
+        }
+
+        GreenTokenWithTrivia::new(kind, leading_trivia, trailing_trivia).into()
     }
 
     #[inline]
     pub fn create_missing(kind: SyntaxKind) -> GreenTokenElement {
-        Self::tokens_missing_with_no_trivia()[kind as usize].clone().into()
+        let raw_kind = kind as usize;
+        let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+        let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+
+        match raw_kind {
+            k if (first_token_kind..=last_token_kind).contains(&k) => Self::tokens_missing_with_no_trivia()[k].clone().into(),
+            _ => GreenToken::new_missing(kind).into(),
+        }
+    }
+
+    #[inline]
+    pub fn create_missing_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
+        GreenTokenWithTrivia::new_missing(kind, leading_trivia, trailing_trivia).into()
     }
 
     #[inline]
