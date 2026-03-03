@@ -290,3 +290,21 @@ impl SyntaxKind {
         }
     }
 }
+
+impl From<SyntaxKind> for u16 {
+    fn from(kind: SyntaxKind) -> Self {
+        kind as u16
+    }
+}
+
+impl TryFrom<u16> for SyntaxKind {
+    type Error = ();
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        if value <= SyntaxKind::CurveToFinalReplicatedOperator as u16 {
+            Ok(unsafe { std::mem::transmute::<u16, SyntaxKind>(value) })
+        } else {
+            Err(())
+        }
+    }
+}

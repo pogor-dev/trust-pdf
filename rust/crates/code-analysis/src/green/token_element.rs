@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use crate::{
     GreenDiagnostic, GreenFlags, GreenNode, GreenToken, GreenTokenData, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrailingTrivia,
     GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData, GreenTokenWithFloatValueData,
@@ -37,6 +39,22 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
     &'a GreenTokenWithFloatValueAndTrailingTriviaData,
     &'a GreenTokenWithStringValueAndTrailingTriviaData,
 >;
+
+pub(crate) fn green_token_with_no_trivia_cache() -> &'static [GreenToken] {
+    static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
+        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
+        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
+        let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+        for kind_value in first_token_kind..=last_token_kind {
+            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+            arr[kind_value] = GreenToken::new(kind);
+        }
+
+        arr.into_boxed_slice()
+    });
+    CACHE.as_ref()
+}
 
 impl GreenTokenElement {
     #[inline]
