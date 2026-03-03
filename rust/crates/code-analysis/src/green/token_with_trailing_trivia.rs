@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{
-    GreenNode,
+    GreenNode, GreenTokenElement,
     arc::{Arc, HeaderSlice, ThinArc},
     green::{diagnostics, flags::GreenFlags},
 };
@@ -147,6 +147,7 @@ impl GreenTokenWithTrailingTrivia {
 
     #[inline]
     fn create_full(kind: SyntaxKind, trailing_trivia: Option<GreenNode>, base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> Self {
+        assert!(kind.is_any_token(), "the token must be a well-known text token kind");
         let has_diagnostics = !diagnostics.is_empty();
         let flags = if has_diagnostics {
             base_flags | GreenFlags::CONTAINS_DIAGNOSTIC

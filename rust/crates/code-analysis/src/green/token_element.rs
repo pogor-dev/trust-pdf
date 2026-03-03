@@ -41,93 +41,17 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
     &'a GreenTokenWithStringValueAndTrailingTriviaData,
 >;
 
-pub(crate) fn green_token_with_no_trivia_cache() -> &'static [GreenToken] {
-    static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
-        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
-        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
-        let mut arr = Vec::with_capacity(last_token_kind + 1);
-
-        for kind_value in first_token_kind..=last_token_kind {
-            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-            arr[kind_value] = GreenToken::new(kind);
-        }
-
-        arr.into_boxed_slice()
-    });
-    CACHE.as_ref()
-}
-
-pub(crate) fn green_token_with_single_space_cache() -> &'static [GreenTokenWithTrivia] {
-    static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
-        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
-        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
-        let mut arr = Vec::with_capacity(last_token_kind + 1);
-
-        for kind_value in first_token_kind..=last_token_kind {
-            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-            let space = GreenSyntaxFactory::space().into();
-            let space_node = GreenNode::new(SyntaxKind::List, vec![space]);
-            arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(space_node));
-        }
-
-        arr.into_boxed_slice()
-    });
-    CACHE.as_ref()
-}
-
-pub(crate) fn green_token_with_line_feed_cache() -> &'static [GreenTokenWithTrivia] {
-    static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
-        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
-        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
-        let mut arr = Vec::with_capacity(last_token_kind + 1);
-
-        for kind_value in first_token_kind..=last_token_kind {
-            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-            let lf = GreenSyntaxFactory::line_feed().into();
-            let lf_node = GreenNode::new(SyntaxKind::List, vec![lf]);
-            arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(lf_node));
-        }
-
-        arr.into_boxed_slice()
-    });
-    CACHE.as_ref()
-}
-
-pub(crate) fn green_token_with_carriage_return_line_feed_cache() -> &'static [GreenTokenWithTrivia] {
-    static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
-        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
-        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
-        let mut arr = Vec::with_capacity(last_token_kind + 1);
-
-        for kind_value in first_token_kind..=last_token_kind {
-            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-            let crlf = GreenSyntaxFactory::carriage_return_line_feed().into();
-            let crlf_node = GreenNode::new(SyntaxKind::List, vec![crlf]);
-            arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(crlf_node));
-        }
-
-        arr.into_boxed_slice()
-    });
-    CACHE.as_ref()
-}
-
-pub(crate) fn green_token_missing_with_no_trivia_cache() -> &'static [GreenToken] {
-    static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
-        let first_token_kind = SyntaxKind::FIRST_TOKEN_KIND as usize;
-        let last_token_kind = SyntaxKind::LAST_TOKEN_KIND as usize;
-        let mut arr = Vec::with_capacity(last_token_kind + 1);
-
-        for kind_value in first_token_kind..=last_token_kind {
-            let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-            arr[kind_value] = GreenToken::new_missing(kind);
-        }
-
-        arr.into_boxed_slice()
-    });
-    CACHE.as_ref()
-}
-
 impl GreenTokenElement {
+    #[inline]
+    pub fn create(kind: SyntaxKind) -> GreenTokenElement {
+        Self::tokens_with_no_trivia()[kind as usize].clone().into()
+    }
+
+    #[inline]
+    pub fn create_missing(kind: SyntaxKind) -> GreenTokenElement {
+        Self::tokens_missing_with_no_trivia()[kind as usize].clone().into()
+    }
+
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         match_token_type!(self, t => t.kind())
@@ -176,6 +100,92 @@ impl GreenTokenElement {
     #[inline]
     pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
         match_token_type!(self, t => t.write_to(leading, trailing))
+    }
+
+    pub(crate) fn tokens_with_no_trivia() -> &'static [GreenToken] {
+        static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
+            let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+            for kind_value in first_token_kind..=last_token_kind {
+                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                arr[kind_value] = GreenToken::new(kind);
+            }
+
+            arr.into_boxed_slice()
+        });
+        CACHE.as_ref()
+    }
+
+    pub(crate) fn tokens_with_single_space() -> &'static [GreenTokenWithTrivia] {
+        static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
+            let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+            for kind_value in first_token_kind..=last_token_kind {
+                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let space = GreenSyntaxFactory::space().into();
+                let space_node = GreenNode::new(SyntaxKind::List, vec![space]);
+                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(space_node));
+            }
+
+            arr.into_boxed_slice()
+        });
+        CACHE.as_ref()
+    }
+
+    pub(crate) fn tokens_with_line_feed() -> &'static [GreenTokenWithTrivia] {
+        static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
+            let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+            for kind_value in first_token_kind..=last_token_kind {
+                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let lf = GreenSyntaxFactory::line_feed().into();
+                let lf_node = GreenNode::new(SyntaxKind::List, vec![lf]);
+                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(lf_node));
+            }
+
+            arr.into_boxed_slice()
+        });
+        CACHE.as_ref()
+    }
+
+    pub(crate) fn tokens_with_carriage_return_line_feed() -> &'static [GreenTokenWithTrivia] {
+        static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
+            let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+            for kind_value in first_token_kind..=last_token_kind {
+                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let crlf = GreenSyntaxFactory::carriage_return_line_feed().into();
+                let crlf_node = GreenNode::new(SyntaxKind::List, vec![crlf]);
+                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(crlf_node));
+            }
+
+            arr.into_boxed_slice()
+        });
+        CACHE.as_ref()
+    }
+
+    pub(crate) fn tokens_missing_with_no_trivia() -> &'static [GreenToken] {
+        static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
+            let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
+            let mut arr = Vec::with_capacity(last_token_kind + 1);
+
+            for kind_value in first_token_kind..=last_token_kind {
+                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                arr[kind_value] = GreenToken::new_missing(kind);
+            }
+
+            arr.into_boxed_slice()
+        });
+        CACHE.as_ref()
     }
 }
 
