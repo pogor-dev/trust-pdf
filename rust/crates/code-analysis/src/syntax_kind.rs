@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u16)]
+#[repr(u16)] // TODO: consider using u8 if the number of syntax kinds is less than 256
 pub enum SyntaxKind {
     None,
     List,
