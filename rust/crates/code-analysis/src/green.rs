@@ -2,6 +2,7 @@
 mod macros;
 mod diagnostic;
 mod diagnostics;
+mod factory;
 mod flags;
 mod node;
 mod node_element;
@@ -20,6 +21,7 @@ mod trivia;
 
 pub(crate) use self::{
     diagnostic::{DiagnosticSeverity, GreenDiagnostic, GreenDiagnosticData},
+    factory::GreenSyntaxFactory,
     flags::GreenFlags,
     node::{GreenNode, GreenNodeData},
     node_element::{GreenNodeElement, GreenNodeElementRef},

@@ -8,11 +8,11 @@ use std::{
 
 use countme::Count;
 
-use crate::green::diagnostics;
 use crate::{
     GreenDiagnostic, GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
 };
+use crate::{GreenTrivia, green::diagnostics};
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
