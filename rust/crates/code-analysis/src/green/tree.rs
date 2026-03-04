@@ -30,16 +30,14 @@ pub(crate) fn make_expected_token(
         };
     }
 
-    let value = 0u32;
+    let value = 0i32;
     match (has_leading, has_trailing, has_diagnostics) {
         (false, false, false) => GreenTokenWithIntValue::new(kind, text, value).into(),
         (false, false, true) => GreenTokenWithIntValue::new_with_diagnostic(kind, text, value, diagnostics).into(),
         (false, true, false) => GreenTokenWithIntValueAndTrailingTrivia::new(kind, text, value, trailing_trivia).into(),
         (false, true, true) => GreenTokenWithIntValueAndTrailingTrivia::new_with_diagnostic(kind, text, value, trailing_trivia, diagnostics).into(),
         (_, _, false) => GreenTokenWithIntValueAndTrivia::new(kind, text, value, leading_trivia, trailing_trivia).into(),
-        (_, _, true) => {
-            GreenTokenWithIntValueAndTrivia::new_with_diagnostic(kind, text, value, leading_trivia, trailing_trivia, diagnostics).into()
-        }
+        (_, _, true) => GreenTokenWithIntValueAndTrivia::new_with_diagnostic(kind, text, value, leading_trivia, trailing_trivia, diagnostics).into(),
     }
 }
 

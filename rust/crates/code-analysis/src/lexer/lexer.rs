@@ -125,7 +125,7 @@ impl<'source> Lexer<'source> {
             };
         }
 
-        let value = 0u32;
+        let value = 0i32;
         match (has_leading, has_trailing, has_diagnostics) {
             (false, false, false) => GreenTokenWithIntValue::new(kind, text, value).into(),
             (false, false, true) => GreenTokenWithIntValue::new_with_diagnostic(kind, text, value, diagnostics).into(),

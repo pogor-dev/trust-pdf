@@ -43,7 +43,7 @@ pub(crate) type GreenTokenElementRef<'a> = TokenType<
 
 impl GreenTokenElement {
     #[inline]
-    pub fn create(kind: SyntaxKind) -> GreenTokenElement {
+    pub(crate) fn create_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
         let raw_kind = kind as usize;
         let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
 
@@ -52,40 +52,67 @@ impl GreenTokenElement {
             return Self::create_missing(kind);
         }
 
-        Self::tokens_with_no_trivia()[raw_kind].clone().into()
-    }
-
-    #[inline]
-    pub fn create_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
-        let raw_kind = kind as usize;
-        let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-
-        if raw_kind > last_token_kind {
-            assert!(kind.is_any_token(), "this method can only be used to create tokens");
-            return Self::create_missing(kind);
-        }
-
-        if leading_trivia.is_none() {
-            match trailing_trivia {
-                None => return Self::tokens_with_no_trivia()[raw_kind].clone().into(),
-                Some(trailing) if trailing == GreenSyntaxFactory::space().into() => {
-                    return Self::tokens_with_single_space()[raw_kind].clone().into();
-                }
-                Some(trailing) if trailing == GreenSyntaxFactory::line_feed().into() => {
-                    return Self::tokens_with_line_feed()[raw_kind].clone().into();
-                }
-                Some(trailing) if trailing == GreenSyntaxFactory::carriage_return_line_feed().into() => {
-                    return Self::tokens_with_carriage_return_line_feed()[raw_kind].clone().into();
-                }
-                _ => {}
+        match (leading_trivia.clone(), trailing_trivia.clone()) {
+            (None, None) => return Self::tokens_with_no_trivia()[raw_kind].clone().into(),
+            (None, Some(trailing)) if trailing == GreenSyntaxFactory::space().into() => Self::tokens_with_single_space()[raw_kind].clone().into(),
+            (None, Some(trailing)) if trailing == GreenSyntaxFactory::line_feed().into() => Self::tokens_with_line_feed()[raw_kind].clone().into(),
+            (None, Some(trailing)) if trailing == GreenSyntaxFactory::carriage_return_line_feed().into() => {
+                Self::tokens_with_carriage_return_line_feed()[raw_kind].clone().into()
             }
+            _ => GreenTokenWithTrivia::new(kind, leading_trivia, trailing_trivia).into(),
         }
-
-        GreenTokenWithTrivia::new(kind, leading_trivia, trailing_trivia).into()
     }
 
     #[inline]
-    pub fn create_missing(kind: SyntaxKind) -> GreenTokenElement {
+    pub(crate) fn create_with_int_value_and_trivia(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: i32,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+    ) -> GreenTokenElement {
+        match (leading_trivia, trailing_trivia) {
+            (None, None) => GreenTokenWithIntValue::new(kind, text, value).into(),
+            (Some(leading), None) => GreenTokenWithIntValueAndTrivia::new(kind, text, value, Some(leading), None).into(),
+            (None, Some(trailing)) => GreenTokenWithIntValueAndTrailingTrivia::new(kind, text, value, Some(trailing)).into(),
+            (Some(leading), Some(trailing)) => GreenTokenWithIntValueAndTrivia::new(kind, text, value, Some(leading), Some(trailing)).into(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn create_with_float_value_and_trivia(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: f32,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+    ) -> GreenTokenElement {
+        match (leading_trivia, trailing_trivia) {
+            (None, None) => GreenTokenWithFloatValue::new(kind, text, value).into(),
+            (Some(leading), None) => GreenTokenWithFloatValueAndTrivia::new(kind, text, value, Some(leading), None).into(),
+            (None, Some(trailing)) => GreenTokenWithFloatValueAndTrailingTrivia::new(kind, text, value, Some(trailing)).into(),
+            (Some(leading), Some(trailing)) => GreenTokenWithFloatValueAndTrivia::new(kind, text, value, Some(leading), Some(trailing)).into(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn create_with_string_value_and_trivia(
+        kind: SyntaxKind,
+        text: &[u8],
+        value: String,
+        leading_trivia: Option<GreenNode>,
+        trailing_trivia: Option<GreenNode>,
+    ) -> GreenTokenElement {
+        match (leading_trivia, trailing_trivia) {
+            (None, None) => GreenTokenWithStringValue::new(kind, text, value).into(),
+            (Some(leading), None) => GreenTokenWithStringValueAndTrivia::new(kind, text, value, Some(leading), None).into(),
+            (None, Some(trailing)) => GreenTokenWithStringValueAndTrailingTrivia::new(kind, text, value, Some(trailing)).into(),
+            (Some(leading), Some(trailing)) => GreenTokenWithStringValueAndTrivia::new(kind, text, value, Some(leading), Some(trailing)).into(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn create_missing(kind: SyntaxKind) -> GreenTokenElement {
         let raw_kind = kind as usize;
         let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
         let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
@@ -97,42 +124,42 @@ impl GreenTokenElement {
     }
 
     #[inline]
-    pub fn create_missing_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
+    pub(crate) fn create_missing_with_trivia(kind: SyntaxKind, leading_trivia: Option<GreenNode>, trailing_trivia: Option<GreenNode>) -> GreenTokenElement {
         GreenTokenWithTrivia::new_missing(kind, leading_trivia, trailing_trivia).into()
     }
 
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub(crate) fn kind(&self) -> SyntaxKind {
         match_token_type!(self, t => t.kind())
     }
 
     #[inline]
-    pub fn text(&self) -> Vec<u8> {
+    pub(crate) fn text(&self) -> Vec<u8> {
         match_token_type!(self, t => t.text().to_vec())
     }
 
     #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
+    pub(crate) fn full_text(&self) -> Vec<u8> {
         match_token_type!(self, t => t.full_text())
     }
 
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub(crate) fn width(&self) -> u32 {
         match_token_type!(self, t => t.width().into())
     }
 
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub(crate) fn full_width(&self) -> u32 {
         match_token_type!(self, t => t.full_width().into())
     }
 
     #[inline]
-    pub fn leading_trivia(&self) -> Option<GreenNode> {
+    pub(crate) fn leading_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.leading_trivia())
     }
 
     #[inline]
-    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+    pub(crate) fn trailing_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.trailing_trivia())
     }
 
@@ -255,37 +282,37 @@ impl_from_token_variant!(
 
 impl<'a> GreenTokenElementRef<'a> {
     #[inline]
-    pub fn kind(&self) -> SyntaxKind {
+    pub(crate) fn kind(&self) -> SyntaxKind {
         match_token_type!(self, t => t.kind())
     }
 
     #[inline]
-    pub fn text(&self) -> &'a [u8] {
+    pub(crate) fn text(&self) -> &'a [u8] {
         match_token_type!(self, t => t.text())
     }
 
     #[inline]
-    pub fn full_text(&self) -> Vec<u8> {
+    pub(crate) fn full_text(&self) -> Vec<u8> {
         match_token_type!(self, t => t.full_text())
     }
 
     #[inline]
-    pub fn width(&self) -> u32 {
+    pub(crate) fn width(&self) -> u32 {
         match_token_type!(self, t => t.width().into())
     }
 
     #[inline]
-    pub fn full_width(&self) -> u32 {
+    pub(crate) fn full_width(&self) -> u32 {
         match_token_type!(self, t => t.full_width().into())
     }
 
     #[inline]
-    pub fn leading_trivia(&self) -> Option<GreenNode> {
+    pub(crate) fn leading_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.leading_trivia())
     }
 
     #[inline]
-    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+    pub(crate) fn trailing_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.trailing_trivia())
     }
 

@@ -21,10 +21,10 @@ use countme::Count;
 use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
-pub(crate) type GreenTokenWithIntValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia<u32>;
+pub(crate) type GreenTokenWithIntValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia<i32>;
 pub(crate) type GreenTokenWithFloatValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia<f32>;
 pub(crate) type GreenTokenWithStringValueAndTrailingTrivia = GreenTokenWithValueAndTrailingTrivia<String>;
-pub(crate) type GreenTokenWithIntValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<u32>;
+pub(crate) type GreenTokenWithIntValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<i32>;
 pub(crate) type GreenTokenWithFloatValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<f32>;
 pub(crate) type GreenTokenWithStringValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<String>;
 
@@ -366,7 +366,7 @@ mod tests {
             let diagnostics = token.diagnostics().expect("diagnostics should exist");
             assert_eq!(diagnostics, vec![diagnostic]);
 
-            key = (&*token as *const GreenTokenWithValueAndTrailingTriviaData<u32>) as usize;
+            key = (&*token as *const GreenTokenWithValueAndTrailingTriviaData<i32>) as usize;
             assert!(diagnostics::contains_diagnostics(key));
         }
 

@@ -22,10 +22,10 @@ use countme::Count;
 use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
-pub(crate) type GreenTokenWithIntValue = GreenTokenWithValue<u32>;
+pub(crate) type GreenTokenWithIntValue = GreenTokenWithValue<i32>;
 pub(crate) type GreenTokenWithFloatValue = GreenTokenWithValue<f32>;
 pub(crate) type GreenTokenWithStringValue = GreenTokenWithValue<String>;
-pub(crate) type GreenTokenWithIntValueData = GreenTokenWithValueData<u32>;
+pub(crate) type GreenTokenWithIntValueData = GreenTokenWithValueData<i32>;
 pub(crate) type GreenTokenWithFloatValueData = GreenTokenWithValueData<f32>;
 pub(crate) type GreenTokenWithStringValueData = GreenTokenWithValueData<String>;
 
@@ -397,7 +397,7 @@ mod green_token_tests {
             let diagnostics = token.diagnostics().expect("diagnostics should exist");
             assert_eq!(diagnostics, vec![diagnostic]);
 
-            key = (&*token as *const GreenTokenWithValueData<u32>) as usize;
+            key = (&*token as *const GreenTokenWithValueData<i32>) as usize;
             assert!(diagnostics::contains_diagnostics(key));
         }
 
@@ -413,7 +413,7 @@ mod green_token_data_tests {
     #[test]
     fn test_to_owned_when_pdf_number_expect_equal_token_with_value() {
         let token: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"123", 123);
-        let data: &GreenTokenWithValueData<u32> = &*token;
+        let data: &GreenTokenWithValueData<i32> = &*token;
         let owned = data.to_owned();
         assert_eq!(token, owned);
         assert_eq!(owned.value(), &123);
@@ -423,8 +423,8 @@ mod green_token_data_tests {
     fn test_eq_when_same_kind_and_same_text_expect_equal() {
         let token1: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"99", 99);
         let token2: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"99", 100);
-        let data1: &GreenTokenWithValueData<u32> = &*token1;
-        let data2: &GreenTokenWithValueData<u32> = &*token2;
+        let data1: &GreenTokenWithValueData<i32> = &*token1;
+        let data2: &GreenTokenWithValueData<i32> = &*token2;
         assert_eq!(data1, data2);
     }
 
@@ -432,8 +432,8 @@ mod green_token_data_tests {
     fn test_eq_when_same_kind_and_different_text_expect_not_equal() {
         let token1: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"99", 99);
         let token2: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, b"100", 100);
-        let data1: &GreenTokenWithValueData<u32> = &*token1;
-        let data2: &GreenTokenWithValueData<u32> = &*token2;
+        let data1: &GreenTokenWithValueData<i32> = &*token1;
+        let data2: &GreenTokenWithValueData<i32> = &*token2;
         assert_ne!(data1, data2);
     }
 
