@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Concrete token element used in node slots.
-pub type GreenTokenElement = TokenType<
+pub(crate) type GreenTokenElement = TokenType<
     GreenToken,
     GreenTokenWithTrivia,
     GreenTokenWithIntValue,

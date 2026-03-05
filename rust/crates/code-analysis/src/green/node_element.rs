@@ -5,7 +5,7 @@ use crate::{
 };
 
 /// Concrete green tree child element used in node slot arrays.
-pub type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
+pub(crate) type GreenNodeElement = NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia>;
 pub(crate) type GreenNodeElementRef<'a> = NodeOrTokenOrTrivia<&'a GreenNodeData, GreenTokenElementRef<'a>, &'a GreenTriviaData>;
 
 impl GreenNodeElement {
