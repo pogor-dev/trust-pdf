@@ -1,7 +1,7 @@
 use crate::{
-    GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithIntValue, GreenTokenWithStringValue,
-    GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValueAndTrivia, GreenTrivia, GreenTriviaData, SyntaxKind,
-    green::NodeOrTokenOrTrivia,
+    GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia,
+    GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTrivia, GreenTriviaData,
+    SyntaxKind, green::NodeOrTokenOrTrivia,
 };
 
 /// Concrete green tree child element used in node slot arrays.
@@ -115,6 +115,44 @@ impl From<GreenTokenElement> for GreenNodeElement {
 }
 
 #[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+
+    #[test]
+    fn test_green_node_element_memory_layout() {
+        // GreenNodeElement is an enum over Arc-backed payloads and should be
+        // pointer-sized payload + enum discriminant.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<GreenNodeElement>(), 16);
+            assert_eq!(std::mem::align_of::<GreenNodeElement>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<GreenNodeElement>(), 8);
+            assert_eq!(std::mem::align_of::<GreenNodeElement>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_green_node_element_ref_memory_layout() {
+        // GreenNodeElementRef stores references/borrows to green data payloads.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<GreenNodeElementRef<'_>>(), 16);
+            assert_eq!(std::mem::align_of::<GreenNodeElementRef<'_>>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<GreenNodeElementRef<'_>>(), 8);
+            assert_eq!(std::mem::align_of::<GreenNodeElementRef<'_>>(), 4);
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -150,12 +188,21 @@ mod tests {
         let int_value = GreenNodeElement::from(GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42));
         let float_value = GreenNodeElement::from(GreenTokenWithFloatValue::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14));
         let string_value = GreenNodeElement::from(GreenTokenWithStringValue::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string()));
-        let int_value_trivia =
-            GreenNodeElement::from(GreenTokenWithIntValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, None, None));
-        let float_value_trivia =
-            GreenNodeElement::from(GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14, None, None));
-        let string_value_trivia =
-            GreenNodeElement::from(GreenTokenWithStringValueAndTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), None, None));
+        let int_value_trivia = GreenNodeElement::from(GreenTokenWithIntValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"42", 42, None, None));
+        let float_value_trivia = GreenNodeElement::from(GreenTokenWithFloatValueAndTrivia::new(
+            SyntaxKind::NumericLiteralToken,
+            b"3.14",
+            3.14,
+            None,
+            None,
+        ));
+        let string_value_trivia = GreenNodeElement::from(GreenTokenWithStringValueAndTrivia::new(
+            SyntaxKind::NameLiteralToken,
+            b"Type",
+            "Type".to_string(),
+            None,
+            None,
+        ));
         let trivia = GreenNodeElement::from(GreenTrivia::new(SyntaxKind::CommentTrivia, b"%x"));
 
         assert!(matches!(plain, GreenNodeElement::Token(GreenTokenElement::Token(_))));

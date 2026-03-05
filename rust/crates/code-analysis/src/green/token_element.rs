@@ -328,6 +328,43 @@ impl<'a> GreenTokenElementRef<'a> {
 }
 
 #[cfg(test)]
+mod memory_layout_tests {
+    use super::*;
+
+    #[test]
+    fn test_green_token_element_memory_layout() {
+        // GreenTokenElement is an enum over Arc-backed token payload variants.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenElement>(), 16);
+            assert_eq!(std::mem::align_of::<GreenTokenElement>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenElement>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenElement>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_green_token_element_ref_memory_layout() {
+        // GreenTokenElementRef is an enum over borrowed token payloads.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenElementRef<'_>>(), 16);
+            assert_eq!(std::mem::align_of::<GreenTokenElementRef<'_>>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<GreenTokenElementRef<'_>>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenElementRef<'_>>(), 4);
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::GreenTrivia;
