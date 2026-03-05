@@ -79,6 +79,37 @@ impl<N: fmt::Display, T: fmt::Display, R: fmt::Display> fmt::Display for NodeOrT
 }
 
 #[cfg(test)]
+mod memory_layout_tests {
+    use super::NodeOrTokenOrTrivia;
+
+    type U8NodeType = NodeOrTokenOrTrivia<u8, u8, u8>;
+    type PointerNodeType = NodeOrTokenOrTrivia<usize, usize, usize>;
+
+    #[test]
+    fn test_node_or_token_or_trivia_u8_payload_memory_layout() {
+        // Small payloads still require a discriminant for the 3 variants.
+        assert_eq!(std::mem::size_of::<U8NodeType>(), 2);
+        assert_eq!(std::mem::align_of::<U8NodeType>(), 1);
+    }
+
+    #[test]
+    fn test_node_or_token_or_trivia_pointer_payload_memory_layout() {
+        // Pointer-sized payload + discriminant rounds up to pointer alignment.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<PointerNodeType>(), 16);
+            assert_eq!(std::mem::align_of::<PointerNodeType>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<PointerNodeType>(), 8);
+            assert_eq!(std::mem::align_of::<PointerNodeType>(), 4);
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::NodeOrTokenOrTrivia;
     use crate::{GreenNode, GreenToken, GreenTokenElement, GreenTrivia, SyntaxKind};

@@ -24,12 +24,7 @@ impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> TokenType<T1, T2, T3, T4
         (into_token_with_int_value, as_token_with_int_value, TokenWithIntValue, T3),
         (into_token_with_float_value, as_token_with_float_value, TokenWithFloatValue, T4),
         (into_token_with_string_value, as_token_with_string_value, TokenWithStringValue, T5),
-        (
-            into_token_with_trailing_trivia,
-            as_token_with_trailing_trivia,
-            TokenWithTrailingTrivia,
-            T6
-        ),
+        (into_token_with_trailing_trivia, as_token_with_trailing_trivia, TokenWithTrailingTrivia, T6),
         (
             into_token_with_int_value_and_trivia,
             as_token_with_int_value_and_trivia,
@@ -126,12 +121,42 @@ impl<
 }
 
 #[cfg(test)]
+mod memory_layout_tests {
+    use super::TokenType;
+
+    type U8TokenType = TokenType<u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8>;
+    type PointerTokenType = TokenType<usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize>;
+
+    #[test]
+    fn test_token_type_u8_payload_memory_layout() {
+        // Small payloads still require a discriminant for the 12 variants.
+        assert_eq!(std::mem::size_of::<U8TokenType>(), 2);
+        assert_eq!(std::mem::align_of::<U8TokenType>(), 1);
+    }
+
+    #[test]
+    fn test_token_type_pointer_payload_memory_layout() {
+        // Pointer-sized payload + discriminant rounds up to pointer alignment.
+        #[cfg(target_pointer_width = "64")]
+        {
+            assert_eq!(std::mem::size_of::<PointerTokenType>(), 16);
+            assert_eq!(std::mem::align_of::<PointerTokenType>(), 8);
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            assert_eq!(std::mem::size_of::<PointerTokenType>(), 8);
+            assert_eq!(std::mem::align_of::<PointerTokenType>(), 4);
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::TokenType;
     use crate::{
-        GreenTokenWithFloatValueAndTrailingTrivia,
-        GreenToken, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia,
-        GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
+        GreenToken, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrailingTrivia, GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue,
+        GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
         GreenTokenWithStringValueAndTrivia, GreenTokenWithTrailingTrivia, GreenTokenWithTrivia, SyntaxKind,
     };
 
