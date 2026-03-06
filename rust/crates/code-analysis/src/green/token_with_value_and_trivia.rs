@@ -232,6 +232,20 @@ impl_green_boilerplate!(generic GreenTokenWithValueAndTriviaHead, GreenTokenWith
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use crate::arc::{ArcInner, HeaderSlice};
+    use std::mem::offset_of;
+
+    fn expected_heap_allocation_size<T>(text_len: usize) -> usize {
+        type ThinRepr<T> = ArcInner<HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>>;
+        let inner_to_data_offset = offset_of!(ThinRepr<T>, data);
+        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>>();
+        let usable_size = inner_to_data_offset
+            .checked_add(data_to_slice_offset)
+            .and_then(|v| v.checked_add(text_len))
+            .expect("size overflows");
+        let align = std::mem::align_of::<ThinRepr<T>>();
+        usable_size.wrapping_add(align - 1) & !(align - 1)
+    }
 
     #[test]
     fn test_green_token_memory_layout() {
@@ -283,6 +297,45 @@ mod memory_layout_tests {
             assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTrivia>(), 4);
             assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTrivia>(), 4);
             assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTrivia>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_known_lengths_expect_aligned_sizes() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            let cases_u32: &[(usize, usize)] = &[(0, 48), (1, 56), (8, 56), (9, 64)];
+            for (text_len, expected) in cases_u32 {
+                assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
+            }
+
+            let cases_f32: &[(usize, usize)] = &[(0, 48), (1, 56), (8, 56), (9, 64)];
+            for (text_len, expected) in cases_f32 {
+                assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
+            }
+
+            let cases_string: &[(usize, usize)] = &[(0, 64), (1, 72), (8, 72), (9, 80)];
+            for (text_len, expected) in cases_string {
+                assert_eq!(expected_heap_allocation_size::<String>(*text_len), *expected);
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            let cases_u32: &[(usize, usize)] = &[(0, 28), (1, 32), (4, 32), (5, 36)];
+            for (text_len, expected) in cases_u32 {
+                assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
+            }
+
+            let cases_f32: &[(usize, usize)] = &[(0, 28), (1, 32), (4, 32), (5, 36)];
+            for (text_len, expected) in cases_f32 {
+                assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
+            }
+
+            let cases_string: &[(usize, usize)] = &[(0, 36), (1, 40), (4, 40), (5, 44)];
+            for (text_len, expected) in cases_string {
+                assert_eq!(expected_heap_allocation_size::<String>(*text_len), *expected);
+            }
         }
     }
 }

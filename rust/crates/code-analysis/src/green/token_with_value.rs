@@ -200,6 +200,20 @@ impl_green_boilerplate!(generic GreenTokenWithValueHead, GreenTokenWithValueData
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use crate::arc::{ArcInner, HeaderSlice};
+    use std::mem::offset_of;
+
+    fn expected_heap_allocation_size<T>(text_len: usize) -> usize {
+        type ThinRepr<T> = ArcInner<HeaderSlice<GreenTokenWithValueHead<T>, [u8; 0]>>;
+        let inner_to_data_offset = offset_of!(ThinRepr<T>, data);
+        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenTokenWithValueHead<T>, [u8; 0]>>();
+        let usable_size = inner_to_data_offset
+            .checked_add(data_to_slice_offset)
+            .and_then(|v| v.checked_add(text_len))
+            .expect("size overflows");
+        let align = std::mem::align_of::<ThinRepr<T>>();
+        usable_size.wrapping_add(align - 1) & !(align - 1)
+    }
 
     #[test]
     fn test_green_token_memory_layout() {
@@ -253,6 +267,96 @@ mod memory_layout_tests {
             assert_eq!(std::mem::align_of::<GreenTokenWithFloatValue>(), 4);
             assert_eq!(std::mem::size_of::<GreenTokenWithStringValue>(), 4);
             assert_eq!(std::mem::align_of::<GreenTokenWithStringValue>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_known_lengths_expect_aligned_sizes() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            let cases_u32: &[(usize, usize)] = &[(0, 24), (1, 32), (8, 32), (9, 40)];
+            for (text_len, expected) in cases_u32 {
+                assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
+            }
+
+            let cases_f32: &[(usize, usize)] = &[(0, 24), (1, 32), (8, 32), (9, 40)];
+            for (text_len, expected) in cases_f32 {
+                assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
+            }
+
+            let cases_string: &[(usize, usize)] = &[(0, 48), (1, 56), (8, 56), (9, 64)];
+            for (text_len, expected) in cases_string {
+                assert_eq!(expected_heap_allocation_size::<String>(*text_len), *expected);
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            let cases_u32: &[(usize, usize)] = &[(0, 16), (1, 20), (4, 20), (5, 24)];
+            for (text_len, expected) in cases_u32 {
+                assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
+            }
+
+            let cases_f32: &[(usize, usize)] = &[(0, 16), (1, 20), (4, 20), (5, 24)];
+            for (text_len, expected) in cases_f32 {
+                assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
+            }
+
+            let cases_string: &[(usize, usize)] = &[(0, 24), (1, 28), (4, 28), (5, 32)];
+            for (text_len, expected) in cases_string {
+                assert_eq!(expected_heap_allocation_size::<String>(*text_len), *expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_created_tokens_expect_matches_case_table() {
+        let int_cases: [(&[u8], usize); 3] = {
+            #[cfg(target_pointer_width = "64")]
+            {
+                [(b"", 24), (b"42", 32), (b"123456789", 40)]
+            }
+            #[cfg(target_pointer_width = "32")]
+            {
+                [(b"", 16), (b"42", 20), (b"12345", 20)]
+            }
+        };
+
+        for (text, expected) in int_cases {
+            let token: GreenTokenWithIntValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, text, 7);
+            assert_eq!(expected_heap_allocation_size::<i32>(token.width() as usize), expected);
+        }
+
+        let float_cases: [(&[u8], usize); 3] = {
+            #[cfg(target_pointer_width = "64")]
+            {
+                [(b"", 24), (b"3.14", 32), (b"123456789", 40)]
+            }
+            #[cfg(target_pointer_width = "32")]
+            {
+                [(b"", 16), (b"3.14", 20), (b"12345", 20)]
+            }
+        };
+
+        for (text, expected) in float_cases {
+            let token: GreenTokenWithFloatValue = GreenTokenWithValue::new(SyntaxKind::NumericLiteralToken, text, 3.14);
+            assert_eq!(expected_heap_allocation_size::<f32>(token.width() as usize), expected);
+        }
+
+        let string_cases: [(&[u8], usize); 3] = {
+            #[cfg(target_pointer_width = "64")]
+            {
+                [(b"", 48), (b"ab", 56), (b"123456789", 64)]
+            }
+            #[cfg(target_pointer_width = "32")]
+            {
+                [(b"", 24), (b"ab", 28), (b"12345", 32)]
+            }
+        };
+
+        for (text, expected) in string_cases {
+            let token: GreenTokenWithStringValue = GreenTokenWithValue::new(SyntaxKind::NameLiteralToken, text, "x".to_string());
+            assert_eq!(expected_heap_allocation_size::<String>(token.width() as usize), expected);
         }
     }
 }

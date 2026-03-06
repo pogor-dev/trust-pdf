@@ -179,6 +179,20 @@ impl_green_boilerplate!(GreenTokenHead, GreenTokenData, GreenToken, u8);
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use crate::arc::{ArcInner, HeaderSlice};
+    use std::mem::offset_of;
+
+    fn expected_heap_allocation_size(payload_len: usize) -> usize {
+        type ThinRepr = ArcInner<HeaderSlice<GreenTokenHead, [u8; 0]>>;
+        let inner_to_data_offset = offset_of!(ThinRepr, data);
+        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenTokenHead, [u8; 0]>>();
+        let usable_size = inner_to_data_offset
+            .checked_add(data_to_slice_offset)
+            .and_then(|v| v.checked_add(payload_len))
+            .expect("size overflows");
+        let align = std::mem::align_of::<ThinRepr>();
+        usable_size.wrapping_add(align - 1) & !(align - 1)
+    }
 
     #[test]
     fn test_green_token_head_memory_layout() {
@@ -220,6 +234,35 @@ mod memory_layout_tests {
         {
             assert_eq!(std::mem::size_of::<GreenToken>(), 4);
             assert_eq!(std::mem::align_of::<GreenToken>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_zero_payload_expect_header_only_allocation() {
+        #[cfg(target_pointer_width = "64")]
+        assert_eq!(expected_heap_allocation_size(0), 24);
+
+        #[cfg(target_pointer_width = "32")]
+        assert_eq!(expected_heap_allocation_size(0), 12);
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_created_tokens_expect_zero_payload_allocation() {
+        let tokens = [
+            GreenToken::new(SyntaxKind::TrueKeyword),
+            GreenToken::new_missing(SyntaxKind::FalseKeyword),
+            GreenToken::new_with_diagnostic(SyntaxKind::NullKeyword, vec![]),
+        ];
+
+        #[cfg(target_pointer_width = "64")]
+        let expected = 24;
+
+        #[cfg(target_pointer_width = "32")]
+        let expected = 12;
+
+        for token in tokens {
+            let _ = token.kind();
+            assert_eq!(expected_heap_allocation_size(0), expected);
         }
     }
 }

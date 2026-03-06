@@ -134,6 +134,23 @@ impl_green_boilerplate!(GreenTriviaHead, GreenTriviaData, GreenTrivia, u8);
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use crate::arc::{ArcInner, HeaderSlice};
+    use std::mem::offset_of;
+
+    fn expected_heap_allocation_size(text_len: usize) -> usize {
+        type ThinRepr = ArcInner<HeaderSlice<GreenTriviaHead, [u8; 0]>>;
+
+        // Mirror ThinArc::from_header_and_iter allocation math:
+        // slice_offset + payload, rounded up to allocation alignment.
+        let inner_to_data_offset = offset_of!(ThinRepr, data);
+        // `slice` is private to `arc.rs`; for `[u8; 0]` use the sized prefix.
+        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenTriviaHead, [u8; 0]>>();
+        let slice_offset = inner_to_data_offset + data_to_slice_offset;
+
+        let usable_size = slice_offset.checked_add(text_len).expect("size overflows");
+        let align = std::mem::align_of::<ThinRepr>();
+        usable_size.wrapping_add(align - 1) & !(align - 1)
+    }
 
     #[test]
     fn test_green_trivia_head_memory_layout() {
@@ -175,6 +192,46 @@ mod memory_layout_tests {
         {
             assert_eq!(std::mem::size_of::<GreenTrivia>(), 4);
             assert_eq!(std::mem::align_of::<GreenTrivia>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_known_lengths_expect_aligned_sizes() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            let cases: &[(usize, usize)] = &[(0, 24), (1, 32), (8, 32), (9, 40)];
+            for (text_len, expected) in cases {
+                assert_eq!(expected_heap_allocation_size(*text_len), *expected);
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            let cases: &[(usize, usize)] = &[(0, 12), (1, 16), (4, 16), (5, 20)];
+            for (text_len, expected) in cases {
+                assert_eq!(expected_heap_allocation_size(*text_len), *expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_created_trivia_expect_matches_case_table() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            let cases: [(&[u8], usize); 4] = [(b"", 24), (b" ", 32), (b"12345678", 32), (b"123456789", 40)];
+            for (text, expected) in cases {
+                let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, text);
+                assert_eq!(expected_heap_allocation_size(trivia.width() as usize), expected);
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            let cases: [(&[u8], usize); 4] = [(b"", 12), (b" ", 16), (b"1234", 16), (b"12345", 20)];
+            for (text, expected) in cases {
+                let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, text);
+                assert_eq!(expected_heap_allocation_size(trivia.width() as usize), expected);
+            }
         }
     }
 }

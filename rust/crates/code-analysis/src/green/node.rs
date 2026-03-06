@@ -396,6 +396,21 @@ impl From<GreenTrivia> for GreenNode {
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use crate::arc::{ArcInner, HeaderSlice};
+    use std::mem::offset_of;
+
+    fn expected_heap_allocation_size(slot_count: usize) -> usize {
+        type ThinRepr = ArcInner<HeaderSlice<GreenNodeHead, [GreenNodeElement; 0]>>;
+        let inner_to_data_offset = offset_of!(ThinRepr, data);
+        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenNodeHead, [GreenNodeElement; 0]>>();
+        let payload = std::mem::size_of::<GreenNodeElement>().checked_mul(slot_count).expect("size overflows");
+        let usable_size = inner_to_data_offset
+            .checked_add(data_to_slice_offset)
+            .and_then(|v| v.checked_add(payload))
+            .expect("size overflows");
+        let align = std::mem::align_of::<ThinRepr>();
+        usable_size.wrapping_add(align - 1) & !(align - 1)
+    }
 
     #[test]
     fn test_green_node_head_memory_layout() {
@@ -439,6 +454,25 @@ mod memory_layout_tests {
         {
             assert_eq!(std::mem::size_of::<GreenNode>(), 4);
             assert_eq!(std::mem::align_of::<GreenNode>(), 4);
+        }
+    }
+
+    #[test]
+    fn test_expected_heap_allocation_size_when_known_slot_counts_expect_aligned_sizes() {
+        #[cfg(target_pointer_width = "64")]
+        {
+            let cases: &[(usize, usize)] = &[(0, 24), (1, 40), (2, 56)];
+            for (slot_count, expected) in cases {
+                assert_eq!(expected_heap_allocation_size(*slot_count), *expected);
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            let cases: &[(usize, usize)] = &[(0, 16), (1, 24), (2, 32)];
+            for (slot_count, expected) in cases {
+                assert_eq!(expected_heap_allocation_size(*slot_count), *expected);
+            }
         }
     }
 }
