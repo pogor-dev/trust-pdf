@@ -8,7 +8,12 @@ use crate::{
 pub(crate) struct GreenPdfVersionSyntax(GreenExpressionSyntax);
 
 impl GreenPdfVersionSyntax {
-    pub(crate) fn new(kind: SyntaxKind, major_version_token: GreenNodeElement, minor_version_token: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
+    pub(crate) fn new(
+        kind: SyntaxKind,
+        major_version_token: GreenNodeElement,
+        minor_version_token: GreenNodeElement,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
         let slots = vec![major_version_token.into(), minor_version_token.into()];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenPdfVersionSyntax(GreenExpressionSyntax(green))

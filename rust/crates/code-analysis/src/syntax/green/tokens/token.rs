@@ -502,4 +502,3 @@ mod green_missing_token_tests {
         assert!(token.diagnostics().is_none());
     }
 }
-

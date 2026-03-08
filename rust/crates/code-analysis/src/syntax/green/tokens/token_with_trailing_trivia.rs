@@ -365,4 +365,3 @@ mod tests {
         assert!(!diagnostics::contains_diagnostics(key));
     }
 }
-

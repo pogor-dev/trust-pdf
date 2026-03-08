@@ -289,4 +289,3 @@ macro_rules! impl_from_token_variant {
         )*
     };
 }
-

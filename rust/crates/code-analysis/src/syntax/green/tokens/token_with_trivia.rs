@@ -578,4 +578,3 @@ mod green_missing_token_tests {
         assert!(!diagnostics::contains_diagnostics(key));
     }
 }
-

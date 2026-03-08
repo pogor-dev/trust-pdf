@@ -550,4 +550,3 @@ mod green_token_data_tests {
         assert_ne!(data1, data2);
     }
 }
-

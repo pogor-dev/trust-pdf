@@ -9,7 +9,13 @@ use crate::{
 pub(crate) struct FileTrailerSyntax(GreenExpressionSyntax);
 
 impl FileTrailerSyntax {
-    pub(crate) fn new(kind: SyntaxKind, trailer_token: GreenNodeElement, body: GreenNodeElement, start_xref: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
+    pub(crate) fn new(
+        kind: SyntaxKind,
+        trailer_token: GreenNodeElement,
+        body: GreenNodeElement,
+        start_xref: GreenNodeElement,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
         let slots = vec![trailer_token.into(), body.into(), start_xref.into()];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         FileTrailerSyntax(GreenExpressionSyntax(green))

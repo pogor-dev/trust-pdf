@@ -79,7 +79,13 @@ impl GreenCst for GreenXRefSectionSyntax {
 pub(crate) struct GreenXRefSubSectionSyntax(GreenExpressionSyntax);
 
 impl GreenXRefSubSectionSyntax {
-    pub(crate) fn new(kind: SyntaxKind, start_object_number: GreenNodeElement, entry_count: GreenNodeElement, entries: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
+    pub(crate) fn new(
+        kind: SyntaxKind,
+        start_object_number: GreenNodeElement,
+        entry_count: GreenNodeElement,
+        entries: GreenNodeElement,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
         let slots = vec![start_object_number.into(), entry_count.into(), entries.into()];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenXRefSubSectionSyntax(GreenExpressionSyntax(green))

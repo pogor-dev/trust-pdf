@@ -46,7 +46,13 @@ impl GreenCst for GreenPdfDocumentSyntax {
 pub(crate) struct GreenPdfDocumentElementSyntax(GreenExpressionSyntax);
 
 impl GreenPdfDocumentElementSyntax {
-    pub(crate) fn new(kind: SyntaxKind, objects: GreenNodeElement, xref_table: GreenNodeElement, trailer: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
+    pub(crate) fn new(
+        kind: SyntaxKind,
+        objects: GreenNodeElement,
+        xref_table: GreenNodeElement,
+        trailer: GreenNodeElement,
+        diagnostics: Vec<GreenDiagnostic>,
+    ) -> Self {
         let slots = vec![objects.into(), xref_table.into(), trailer.into()];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenPdfDocumentElementSyntax(GreenExpressionSyntax(green))
