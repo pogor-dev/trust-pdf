@@ -18,5 +18,4 @@ serde_json.workspace = true
 tracing.workspace = true
 
 # Local crates
-lexer.workspace = true
-syntax.workspace = true
+code-analysis.workspace = true

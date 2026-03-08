@@ -96,20 +96,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 
 [[package]]
-name = "la-arena"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3752f229dcc5a481d60f385fa479ff46818033d881d2d801aa27dffcfb5e8306"
-
-[[package]]
-name = "lexer"
-version = "0.1.0"
-dependencies = [
- "pretty_assertions",
- "syntax",
-]
-
-[[package]]
 name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -154,14 +140,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
-name = "parser"
-version = "0.1.0"
-dependencies = [
- "lexer",
- "syntax",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -200,13 +178,6 @@ name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
-
-[[package]]
-name = "semantic"
-version = "0.1.0"
-dependencies = [
- "la-arena",
-]
 
 [[package]]
 name = "serde"
@@ -274,16 +245,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "syntax"
-version = "0.1.0"
-dependencies = [
- "countme",
- "hashbrown",
- "pretty_assertions",
- "rustc-hash",
-]
-
-[[package]]
 name = "tracing"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -319,12 +280,11 @@ name = "trust-pdf-analyzer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "lexer",
+ "code-analysis",
  "lsp-server",
  "lsp-types",
  "serde",
  "serde_json",
- "syntax",
  "tracing",
 ]
 

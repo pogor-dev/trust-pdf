@@ -1,9 +1,10 @@
-use lexer::Lexer;
-use syntax::{GreenPdfDocumentSyntax, GreenToken};
+use crate::{GreenTokenElement, Lexer};
 
-pub struct Parser<'source> {
+mod cursor;
+
+pub(crate) struct Parser<'source> {
     pub(super) lexer: Lexer<'source>,
-    pub(super) lexed_tokens: Vec<Option<GreenToken>>,
+    pub(super) lexed_tokens: Vec<Option<GreenTokenElement>>,
     /// Global token index for `lexed_tokens[0]` in the full stream.
     pub(super) window_start: usize,
     /// Slot offset of the current token within `lexed_tokens`.
@@ -16,7 +17,7 @@ pub struct Parser<'source> {
 impl<'source> Parser<'source> {
     pub(super) const CACHED_TOKEN_ARRAY_SIZE: usize = 64;
 
-    pub fn new(lexer: Lexer<'source>) -> Self {
+    pub(crate) fn new(lexer: Lexer<'source>) -> Self {
         let mut parser = Self {
             lexer,
             lexed_tokens: vec![None; Self::CACHED_TOKEN_ARRAY_SIZE],
@@ -27,10 +28,5 @@ impl<'source> Parser<'source> {
 
         parser.pre_lex();
         parser
-    }
-
-    pub fn parse_pdf_document(&mut self) -> GreenPdfDocumentSyntax {
-        // Parsing logic goes here
-        unreachable!()
     }
 }

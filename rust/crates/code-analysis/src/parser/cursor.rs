@@ -1,11 +1,9 @@
 use std::cmp::min;
 
-use syntax::{GreenToken, SyntaxKind, green_syntax_factory};
+use crate::{GreenTokenElement, SyntaxKind};
 
-use crate::Parser;
-
-impl<'source> Parser<'source> {
-    pub(super) fn current_token(&mut self) -> GreenToken {
+impl<'source> super::Parser<'source> {
+    pub(super) fn current_token(&mut self) -> GreenTokenElement {
         if self.window_offset >= self.window_size {
             let token = self.lexer.next_token();
             self.add_lexed_token(token);
@@ -19,11 +17,11 @@ impl<'source> Parser<'source> {
     }
 
     // TODO: decide what functions should be inlined
-    pub(super) fn peek_token(&mut self) -> GreenToken {
+    pub(super) fn peek_token(&mut self) -> GreenTokenElement {
         self.peek_token_by(1)
     }
 
-    pub(super) fn peek_token_by(&mut self, offset: usize) -> GreenToken {
+    pub(super) fn peek_token_by(&mut self, offset: usize) -> GreenTokenElement {
         debug_assert!(offset > 0, "Offset must be positive");
 
         if self.window_offset + offset >= self.window_size {
@@ -38,19 +36,19 @@ impl<'source> Parser<'source> {
         token
     }
 
-    pub(super) fn advance_token(&mut self) -> GreenToken {
+    pub(super) fn advance_token(&mut self) -> GreenTokenElement {
         let current_token = self.current_token();
         self.move_to_next_token();
         current_token
     }
 
-    pub(super) fn eat_token(&mut self) -> GreenToken {
+    pub(super) fn eat_token(&mut self) -> GreenTokenElement {
         let current_token = self.current_token();
         self.move_to_next_token();
         current_token
     }
 
-    pub(super) fn eat_token_or_create_missing(&mut self, expected: SyntaxKind) -> GreenToken {
+    pub(super) fn eat_token_or_create_missing(&mut self, expected: SyntaxKind) -> GreenTokenElement {
         debug_assert!(expected.is_any_token(), "Expected a token kind, got {:?}", expected);
         let current_token = self.current_token();
         let actual = current_token.kind();
@@ -62,7 +60,7 @@ impl<'source> Parser<'source> {
         self.create_missing_token(expected, actual)
     }
 
-    pub(super) fn eat_token_or_replace_with_missing(&mut self, expected: SyntaxKind) -> GreenToken {
+    pub(super) fn eat_token_or_replace_with_missing(&mut self, expected: SyntaxKind) -> GreenTokenElement {
         debug_assert!(expected.is_any_token(), "Expected a token kind, got {:?}", expected);
         let current_token = self.current_token();
         let actual = current_token.kind();
@@ -90,8 +88,8 @@ impl<'source> Parser<'source> {
         }
     }
 
-    fn create_missing_token(&self, expected: SyntaxKind, actual: SyntaxKind) -> GreenToken {
-        green_syntax_factory::missing_token(expected)
+    fn create_missing_token(&self, expected: SyntaxKind, actual: SyntaxKind) -> GreenTokenElement {
+        unreachable!()
         // TODO: add diagnostic information to the token for error reporting
         /*
            var token = SyntaxFactory.MissingToken(expected);
@@ -103,7 +101,7 @@ impl<'source> Parser<'source> {
         self.window_offset += 1;
     }
 
-    fn add_lexed_token(&mut self, token: GreenToken) {
+    fn add_lexed_token(&mut self, token: GreenTokenElement) {
         if self.window_size >= self.lexed_tokens.len() {
             self.add_lexed_token_slot();
         }
@@ -163,10 +161,7 @@ impl<'source> Parser<'source> {
 
 #[cfg(test)]
 mod tests {
-    use lexer::Lexer;
-    use syntax::SyntaxKind;
-
-    use crate::Parser;
+    use crate::{Lexer, Parser, SyntaxKind};
 
     /// Helper to create a parser from PDF source
     fn create_parser(source: &[u8]) -> Parser<'_> {

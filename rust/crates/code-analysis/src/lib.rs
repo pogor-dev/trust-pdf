@@ -3,6 +3,7 @@
 mod arc;
 mod diagnostic_kind;
 mod lexer;
+mod parser;
 mod syntax;
 mod syntax_kind;
 
@@ -11,6 +12,7 @@ pub use crate::syntax_kind::SyntaxKind;
 
 pub(crate) use crate::{
     lexer::Lexer,
+    parser::Parser,
     syntax::{
         DiagnosticSeverity, FileTrailerStartXrefSyntax, FileTrailerSyntax, GreenArrayElementExpressionSyntax, GreenArrayExpressionSyntax,
         GreenCompatibilityExpressionSyntax, GreenCst, GreenDiagnostic, GreenDiagnosticData, GreenDictionaryElementSyntax, GreenDictionaryExpressionSyntax,
