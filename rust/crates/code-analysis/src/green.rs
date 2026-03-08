@@ -7,6 +7,7 @@ mod flags;
 mod node;
 mod node_element;
 mod node_type;
+mod nodes;
 mod tokens;
 #[cfg(test)]
 pub(crate) mod tree;
@@ -19,6 +20,15 @@ pub(crate) use self::{
     node::{GreenNode, GreenNodeData},
     node_element::{GreenNodeElement, GreenNodeElementRef},
     node_type::NodeOrTokenOrTrivia,
+    nodes::{
+        FileTrailerStartXrefSyntax, FileTrailerSyntax, GreenArrayElementExpressionSyntax, GreenArrayExpressionSyntax, GreenCompatibilityExpressionSyntax,
+        GreenCst, GreenDictionaryElementSyntax, GreenDictionaryExpressionSyntax, GreenDirectObjectExpressionSyntax,
+        GreenDirectObjectOrIndirectReferenceExpressionSyntax, GreenExpressionSyntax, GreenIndirectBodyExpressionSyntax,
+        GreenIndirectObjectHeaderExpressionSyntax, GreenIndirectReferenceExpressionSyntax, GreenInlineImageSyntax, GreenListSyntax,
+        GreenLiteralExpressionSyntax, GreenMarkedContentSyntax, GreenNodeSyntax, GreenPdfDocumentElementSyntax, GreenPdfDocumentSyntax, GreenPdfVersionSyntax,
+        GreenStreamBodySyntax, GreenStreamExpressionSyntax, GreenStreamOperatorOperandExpressionSyntax, GreenStreamRawDataSyntax, GreenTextObjectSyntax,
+        GreenTrait, GreenXRefEntryExpressionSyntax, GreenXRefSectionSyntax, GreenXRefSubSectionSyntax, GreenXRefTableExpressionSyntax,
+    },
     tokens::{
         GreenToken, GreenTokenData, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrailingTrivia,
         GreenTokenWithFloatValueAndTrailingTriviaData, GreenTokenWithFloatValueAndTrivia, GreenTokenWithFloatValueAndTriviaData, GreenTokenWithFloatValueData,

@@ -90,13 +90,13 @@ impl GreenNodeData {
     }
 
     #[inline]
-    fn slot(&self, index: usize) -> Option<&GreenNodeElement> {
+    pub(crate) fn slot(&self, index: usize) -> Option<&GreenNodeElement> {
         self.slots().get(index)
     }
 
     /// Compute the starting offset of slot `index` relative to this node.
     /// (Useful for red position computation.)
-    fn slot_offset(&self, index: usize) -> Option<u32> {
+    pub(crate) fn slot_offset(&self, index: usize) -> Option<u32> {
         if index >= self.slot_count() {
             return None;
         }
