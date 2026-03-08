@@ -57,6 +57,16 @@ impl GreenTriviaData {
     pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
+
+    #[inline]
+    pub fn contains_diagnostics(&self) -> bool {
+        self.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC)
+    }
+
+    #[inline]
+    pub fn is_missing(&self) -> bool {
+        !self.flags().contains(GreenFlags::IS_NOT_MISSING)
+    }
 }
 
 impl PartialEq for GreenTriviaData {
@@ -424,4 +434,3 @@ mod green_trivia_data_tests {
         assert_ne!(data1, data2);
     }
 }
-

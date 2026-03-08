@@ -11,7 +11,7 @@ pub(crate) struct GreenArrayExpressionSyntax(GreenExpressionSyntax);
 impl GreenArrayExpressionSyntax {
     pub(crate) fn new(
         kind: SyntaxKind,
-        open_bracket_token: GreenNodeElement, // TODO: Create GreenSyntaxToken to accept Missing node?
+        open_bracket_token: GreenNodeElement,
         elements: GreenNodeElement,
         close_bracket_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,

@@ -1,7 +1,7 @@
 use crate::{
-    GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia,
-    GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTrivia, GreenTriviaData,
-    SyntaxKind, syntax::green::NodeOrTokenOrTrivia,
+    GreenDiagnostic, GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue,
+    GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia,
+    GreenTrivia, GreenTriviaData, SyntaxKind, syntax::green::NodeOrTokenOrTrivia,
 };
 
 /// Concrete green tree child element used in node slot arrays.
@@ -28,11 +28,107 @@ impl GreenNodeElement {
     }
 
     #[inline]
+    pub fn text(&self) -> Vec<u8> {
+        match self {
+            GreenNodeElement::Node(n) => n.text(),
+            GreenNodeElement::Token(t) => t.text(),
+            GreenNodeElement::Trivia(tr) => tr.text().to_vec(),
+        }
+    }
+
+    #[inline]
     pub fn full_width(&self) -> u32 {
         match self {
             GreenNodeElement::Node(n) => n.full_width(),
             GreenNodeElement::Token(t) => t.full_width(),
             GreenNodeElement::Trivia(tr) => tr.width().into(),
+        }
+    }
+
+    #[inline]
+    pub fn full_text(&self) -> Vec<u8> {
+        match self {
+            GreenNodeElement::Node(n) => n.full_text(),
+            GreenNodeElement::Token(t) => t.full_text(),
+            GreenNodeElement::Trivia(tr) => tr.text().to_vec(),
+        }
+    }
+
+    #[inline]
+    pub fn leading_trivia_width(&self) -> u32 {
+        match self {
+            GreenNodeElement::Node(n) => n.leading_trivia_width(),
+            GreenNodeElement::Token(t) => t.leading_trivia_width(),
+            GreenNodeElement::Trivia(_) => 0,
+        }
+    }
+
+    #[inline]
+    pub fn trailing_trivia_width(&self) -> u32 {
+        match self {
+            GreenNodeElement::Node(n) => n.trailing_trivia_width(),
+            GreenNodeElement::Token(t) => t.trailing_trivia_width(),
+            GreenNodeElement::Trivia(_) => 0,
+        }
+    }
+
+    #[inline]
+    pub fn leading_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenNodeElement::Node(n) => n.leading_trivia(),
+            GreenNodeElement::Token(t) => t.leading_trivia(),
+            GreenNodeElement::Trivia(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn trailing_trivia(&self) -> Option<GreenNode> {
+        match self {
+            GreenNodeElement::Node(n) => n.trailing_trivia(),
+            GreenNodeElement::Token(t) => t.trailing_trivia(),
+            GreenNodeElement::Trivia(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn contains_diagnostics(&self) -> bool {
+        match self {
+            GreenNodeElement::Node(n) => n.contains_diagnostics(),
+            GreenNodeElement::Token(t) => t.contains_diagnostics(),
+            GreenNodeElement::Trivia(tr) => tr.contains_diagnostics(),
+        }
+    }
+
+    #[inline]
+    pub fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
+        match self {
+            GreenNodeElement::Node(n) => n.diagnostics(),
+            GreenNodeElement::Token(t) => t.diagnostics(),
+            GreenNodeElement::Trivia(tr) => tr.diagnostics(),
+        }
+    }
+
+    #[inline]
+    pub fn is_token(&self) -> bool {
+        matches!(self, GreenNodeElement::Token(_))
+    }
+
+    #[inline]
+    pub fn is_trivia(&self) -> bool {
+        matches!(self, GreenNodeElement::Trivia(_))
+    }
+
+    #[inline]
+    pub fn is_list(&self) -> bool {
+        self.kind() == SyntaxKind::List
+    }
+
+    #[inline]
+    pub fn is_missing(&self) -> bool {
+        match self {
+            GreenNodeElement::Node(n) => n.is_missing(),
+            GreenNodeElement::Token(t) => t.is_missing(),
+            GreenNodeElement::Trivia(tr) => tr.is_missing(),
         }
     }
 }
@@ -231,4 +327,3 @@ mod tests {
         assert!(matches!(node_element, GreenNodeElement::Token(GreenTokenElement::Token(_))));
     }
 }
-

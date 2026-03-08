@@ -73,10 +73,20 @@ impl GreenNodeData {
         self.first_token().and_then(|t| t.leading_trivia())
     }
 
+    #[inline]
+    pub(crate) fn leading_trivia_width(&self) -> u32 {
+        self.first_token().and_then(|t| t.leading_trivia()).map_or(0, |t| t.full_width())
+    }
+
     /// The trailing trivia of this Node.
     #[inline]
     pub fn trailing_trivia(&self) -> Option<GreenNode> {
         self.last_token().and_then(|t| t.trailing_trivia())
+    }
+
+    #[inline]
+    pub fn trailing_trivia_width(&self) -> u32 {
+        self.last_token().and_then(|t| t.trailing_trivia()).map_or(0, |t| t.full_width())
     }
 
     #[inline]
@@ -109,6 +119,16 @@ impl GreenNodeData {
             }
         }
         Some(off)
+    }
+
+    #[inline]
+    pub fn contains_diagnostics(&self) -> bool {
+        self.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC)
+    }
+
+    #[inline]
+    pub fn is_missing(&self) -> bool {
+        !self.flags().contains(GreenFlags::IS_NOT_MISSING)
     }
 
     /// Returns the node's text as a byte vector.
@@ -877,4 +897,3 @@ mod tests {
         assert!(node.diagnostics().is_none());
     }
 }
-

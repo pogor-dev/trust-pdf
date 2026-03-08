@@ -30,3 +30,5 @@ pub(crate) use crate::{
         GreenXRefSectionSyntax, GreenXRefSubSectionSyntax, GreenXRefTableExpressionSyntax,
     },
 };
+
+pub use crate::syntax::{SyntaxNode, SyntaxToken, SyntaxTrivia};

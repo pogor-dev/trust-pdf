@@ -1,4 +1,5 @@
 pub(crate) mod green;
+pub(crate) mod red;
 
 pub(crate) use self::green::{
     DiagnosticSeverity, FileTrailerStartXrefSyntax, FileTrailerSyntax, GreenArrayElementExpressionSyntax, GreenArrayExpressionSyntax,
@@ -18,3 +19,5 @@ pub(crate) use self::green::{
     GreenTokenWithValueData, GreenTrait, GreenTrivia, GreenTriviaData, GreenXRefEntryExpressionSyntax, GreenXRefSectionSyntax, GreenXRefSubSectionSyntax,
     GreenXRefTableExpressionSyntax,
 };
+
+pub use self::red::{SyntaxNode, SyntaxToken, SyntaxTrivia};

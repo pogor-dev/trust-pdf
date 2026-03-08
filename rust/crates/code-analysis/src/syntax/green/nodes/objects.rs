@@ -85,7 +85,7 @@ impl GreenIndirectReferenceExpressionSyntax {
 impl GreenCst for GreenIndirectReferenceExpressionSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
-        node.kind() == SyntaxKind::IndirectReferenceExpression && node.slot_count() == 3 // TODO: Validate slot kinds?
+        node.kind() == SyntaxKind::IndirectReferenceExpression && node.slot_count() == 3
     }
 
     #[inline]
@@ -289,7 +289,7 @@ impl GreenIndirectObjectHeaderExpressionSyntax {
 impl GreenCst for GreenIndirectObjectHeaderExpressionSyntax {
     #[inline]
     fn can_cast(node: &GreenNode) -> bool {
-        node.kind() == SyntaxKind::IndirectObjectHeaderExpression && node.slot_count() == 3 // TODO: Validate slot kinds?
+        node.kind() == SyntaxKind::IndirectObjectHeaderExpression && node.slot_count() == 3
     }
 
     #[inline]

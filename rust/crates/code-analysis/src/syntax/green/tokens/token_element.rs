@@ -159,8 +159,18 @@ impl GreenTokenElement {
     }
 
     #[inline]
+    pub(crate) fn leading_trivia_width(&self) -> u32 {
+        match_token_type!(self, t => t.leading_trivia()).map_or(0, |t| t.full_width())
+    }
+
+    #[inline]
     pub(crate) fn trailing_trivia(&self) -> Option<GreenNode> {
         match_token_type!(self, t => t.trailing_trivia())
+    }
+
+    #[inline]
+    pub(crate) fn trailing_trivia_width(&self) -> u32 {
+        match_token_type!(self, t => t.trailing_trivia()).map_or(0, |t| t.full_width())
     }
 
     #[inline]
@@ -171,6 +181,16 @@ impl GreenTokenElement {
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
         match_token_type!(self, t => t.flags())
+    }
+
+    #[inline]
+    pub fn contains_diagnostics(&self) -> bool {
+        self.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC)
+    }
+
+    #[inline]
+    pub fn is_missing(&self) -> bool {
+        !self.flags().contains(GreenFlags::IS_NOT_MISSING)
     }
 
     #[inline]
@@ -562,4 +582,3 @@ mod tests {
         assert!(matches!(string_value_trailing, GreenTokenElement::TokenWithStringValueAndTrailingTrivia(_)));
     }
 }
-
