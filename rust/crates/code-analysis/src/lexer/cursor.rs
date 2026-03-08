@@ -1,6 +1,4 @@
-use crate::lexer::Lexer;
-
-impl<'source> Lexer<'source> {
+impl<'source> super::Lexer<'source> {
     /// Start recording a lexeme from the current position.
     pub(super) fn start_lexeme(&mut self) {
         self.lexeme = Some(self.position..self.position);
