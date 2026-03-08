@@ -12,7 +12,7 @@ use crate::{
     GreenDiagnostic, GreenFlags, GreenNodeElement, GreenNodeElementRef, GreenTokenElement, GreenTokenElementRef, GreenTriviaData, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
 };
-use crate::{GreenTrivia, green::diagnostics};
+use crate::{GreenTrivia, syntax::green::diagnostics};
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
@@ -480,7 +480,7 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::green::diagnostics;
+    use crate::syntax::green::diagnostics;
     use crate::{DiagnosticKind, DiagnosticSeverity, GreenToken};
     use pretty_assertions::assert_eq;
 
@@ -877,3 +877,4 @@ mod tests {
         assert!(node.diagnostics().is_none());
     }
 }
+

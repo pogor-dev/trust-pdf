@@ -59,11 +59,11 @@ macro_rules! tree_entries {
     };
     ($slots:ident, $pending:ident; @diagnostic($severity:expr, $code:expr, $message:expr) $(, $($rest:tt)*)?) => {{
         let code: $crate::DiagnosticKind = $code;
-        $pending.push($crate::green::tree::make_diagnostic($severity, code, $message));
+        $pending.push($crate::syntax::green::tree::make_diagnostic($severity, code, $message));
         $crate::tree_entries!($slots, $pending; $($($rest)*)?);
     }};
     ($slots:ident, $pending:ident; ($kind:expr, $text:expr) $(, $($rest:tt)*)?) => {{
-        let token = $crate::green::tree::make_expected_token($kind, $text, None, None, std::mem::take(&mut $pending));
+        let token = $crate::syntax::green::tree::make_expected_token($kind, $text, None, None, std::mem::take(&mut $pending));
         $slots.push($crate::GreenNodeElement::Token(token));
         $crate::tree_entries!($slots, $pending; $($($rest)*)?);
     }};
@@ -85,7 +85,7 @@ macro_rules! tree_entries {
             Some($crate::GreenNode::new($crate::SyntaxKind::List, trailing))
         };
 
-        let token = $crate::green::tree::make_expected_token(
+        let token = $crate::syntax::green::tree::make_expected_token(
             $kind,
             text,
             leading_node,
@@ -190,3 +190,4 @@ mod tests {
         }
     }
 }
+

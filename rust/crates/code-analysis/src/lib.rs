@@ -2,15 +2,16 @@
 
 mod arc;
 mod diagnostic_kind;
-mod green;
 mod lexer;
+mod syntax;
 mod syntax_kind;
 
 pub use crate::diagnostic_kind::DiagnosticKind;
 pub use crate::syntax_kind::SyntaxKind;
 
 pub(crate) use crate::{
-    green::{
+    lexer::Lexer,
+    syntax::{
         DiagnosticSeverity, FileTrailerStartXrefSyntax, FileTrailerSyntax, GreenArrayElementExpressionSyntax, GreenArrayExpressionSyntax,
         GreenCompatibilityExpressionSyntax, GreenCst, GreenDiagnostic, GreenDiagnosticData, GreenDictionaryElementSyntax, GreenDictionaryExpressionSyntax,
         GreenDirectObjectExpressionSyntax, GreenDirectObjectOrIndirectReferenceExpressionSyntax, GreenExpressionSyntax, GreenFlags,
@@ -28,5 +29,4 @@ pub(crate) use crate::{
         GreenTokenWithValueAndTriviaData, GreenTokenWithValueData, GreenTrait, GreenTrivia, GreenTriviaData, GreenXRefEntryExpressionSyntax,
         GreenXRefSectionSyntax, GreenXRefSubSectionSyntax, GreenXRefTableExpressionSyntax,
     },
-    lexer::Lexer,
 };

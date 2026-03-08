@@ -1,7 +1,7 @@
 use crate::{
     GreenNode, GreenNodeData, GreenToken, GreenTokenElement, GreenTokenElementRef, GreenTokenWithFloatValue, GreenTokenWithFloatValueAndTrivia,
     GreenTokenWithIntValue, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrivia, GreenTrivia, GreenTriviaData,
-    SyntaxKind, green::NodeOrTokenOrTrivia,
+    SyntaxKind, syntax::green::NodeOrTokenOrTrivia,
 };
 
 /// Concrete green tree child element used in node slot arrays.
@@ -231,3 +231,4 @@ mod tests {
         assert!(matches!(node_element, GreenNodeElement::Token(GreenTokenElement::Token(_))));
     }
 }
+

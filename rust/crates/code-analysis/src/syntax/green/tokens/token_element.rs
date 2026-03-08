@@ -7,7 +7,7 @@ use crate::{
     GreenTokenWithIntValueAndTrailingTriviaData, GreenTokenWithIntValueAndTrivia, GreenTokenWithIntValueAndTriviaData, GreenTokenWithIntValueData,
     GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia, GreenTokenWithStringValueAndTrailingTriviaData, GreenTokenWithStringValueAndTrivia,
     GreenTokenWithStringValueAndTriviaData, GreenTokenWithStringValueData, GreenTokenWithTrailingTrivia, GreenTokenWithTrailingTriviaData,
-    GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind, green::TokenType,
+    GreenTokenWithTrivia, GreenTokenWithTriviaData, SyntaxKind, syntax::green::TokenType,
 };
 
 /// Concrete token element used in node slots.
@@ -562,3 +562,4 @@ mod tests {
         assert!(matches!(string_value_trailing, GreenTokenElement::TokenWithStringValueAndTrailingTrivia(_)));
     }
 }
+

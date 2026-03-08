@@ -142,7 +142,7 @@ mod tests {
         let trivia = GreenTrivia::new(SyntaxKind::EndOfLineTrivia, b"");
 
         let node_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Node(node);
-        let token_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Token(crate::green::TokenType::Token(token));
+        let token_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Token(crate::syntax::green::TokenType::Token(token));
         let trivia_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Trivia(trivia);
 
         assert!(node_element.as_node().is_some());
@@ -167,7 +167,7 @@ mod tests {
         let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, b"");
 
         let node_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Node(node);
-        let token_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Token(crate::green::TokenType::Token(token));
+        let token_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Token(crate::syntax::green::TokenType::Token(token));
         let trivia_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Trivia(trivia);
 
         // Verify display doesn't panic
@@ -181,3 +181,4 @@ mod tests {
         assert!(_3.len() >= 0);
     }
 }
+

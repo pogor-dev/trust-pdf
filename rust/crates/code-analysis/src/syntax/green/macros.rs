@@ -75,14 +75,14 @@ macro_rules! impl_green_boilerplate {
 
             #[inline]
             pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
-                use crate::green::diagnostics;
+                use crate::syntax::green::diagnostics;
 
                 diagnostics::get_diagnostics(self.diagnostics_key())
             }
 
             #[inline]
             fn clear_diagnostics(&self) {
-                use crate::green::diagnostics;
+                use crate::syntax::green::diagnostics;
 
                 diagnostics::remove_diagnostics(self.diagnostics_key());
             }
@@ -184,14 +184,14 @@ macro_rules! impl_green_boilerplate {
 
             #[inline]
             pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
-                use crate::green::diagnostics;
+                use crate::syntax::green::diagnostics;
 
                 diagnostics::get_diagnostics(self.diagnostics_key())
             }
 
             #[inline]
             fn clear_diagnostics(&self) {
-                use crate::green::diagnostics;
+                use crate::syntax::green::diagnostics;
 
                 diagnostics::remove_diagnostics(self.diagnostics_key());
             }
@@ -289,3 +289,4 @@ macro_rules! impl_from_token_variant {
         )*
     };
 }
+

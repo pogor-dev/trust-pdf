@@ -12,7 +12,7 @@ use std::{
 
 use crate::{
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{diagnostics, flags::GreenFlags},
+    syntax::green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
@@ -239,7 +239,7 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod green_trivia_tests {
     use super::*;
-    use crate::green::diagnostics;
+    use crate::syntax::green::diagnostics;
     use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
@@ -424,3 +424,4 @@ mod green_trivia_data_tests {
         assert_ne!(data1, data2);
     }
 }
+

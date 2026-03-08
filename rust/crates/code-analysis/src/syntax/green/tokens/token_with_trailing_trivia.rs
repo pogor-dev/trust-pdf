@@ -14,7 +14,7 @@ use std::{
 use crate::{
     GreenNode, GreenTokenElement,
     arc::{Arc, HeaderSlice, ThinArc},
-    green::{diagnostics, flags::GreenFlags},
+    syntax::green::{diagnostics, flags::GreenFlags},
 };
 use countme::Count;
 
@@ -262,7 +262,7 @@ mod memory_layout_tests {
 mod tests {
     use super::*;
     use crate::GreenTrivia;
-    use crate::green::diagnostics;
+    use crate::syntax::green::diagnostics;
     use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
@@ -365,3 +365,4 @@ mod tests {
         assert!(!diagnostics::contains_diagnostics(key));
     }
 }
+
