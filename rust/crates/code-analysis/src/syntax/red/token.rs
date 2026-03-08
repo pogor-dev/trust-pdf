@@ -1,8 +1,8 @@
-use std::{fmt, ops};
+use std::{fmt, hash, ops};
 
 use crate::{GreenDiagnostic, GreenNodeElement, SyntaxKind, SyntaxNode};
 
-#[derive(Clone, Hash)]
+#[derive(Clone)]
 #[repr(C)]
 pub struct SyntaxToken<'a> {
     underlying_node: GreenNodeElement, // 16 bytes
@@ -124,6 +124,15 @@ impl<'a> PartialEq for SyntaxToken<'a> {
 }
 
 impl<'a> Eq for SyntaxToken<'a> {}
+
+impl<'a> hash::Hash for SyntaxToken<'a> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.underlying_node.hash(state);
+        self.position.hash(state);
+        self.index.hash(state);
+    }
+}
 
 impl<'a> fmt::Debug for SyntaxToken<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

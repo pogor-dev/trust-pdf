@@ -1,8 +1,8 @@
-use std::{fmt, ops};
+use std::{fmt, hash, ops};
 
 use crate::{GreenDiagnostic, GreenNodeElement, SyntaxKind};
 
-#[derive(Clone, Hash)]
+#[derive(Clone)]
 #[repr(C)]
 pub struct SyntaxNode<'a> {
     underlying_node: GreenNodeElement,  // 16 bytes
@@ -14,7 +14,6 @@ impl<'a> SyntaxNode<'a> {
     /// Creates a new root token (rarely used).
     #[inline]
     pub(crate) fn new(parent: Option<&'a SyntaxNode<'a>>, node: GreenNodeElement, position: u32) -> Self {
-        debug_assert!(position >= 0, "Position must be non-negative");
         debug_assert!(!node.is_list(), "List cannot be a parent of a node");
 
         Self {
@@ -121,6 +120,14 @@ impl<'a> PartialEq for SyntaxNode<'a> {
 }
 
 impl<'a> Eq for SyntaxNode<'a> {}
+
+impl<'a> hash::Hash for SyntaxNode<'a> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.underlying_node.hash(state);
+        self.position.hash(state);
+    }
+}
 
 impl<'a> fmt::Debug for SyntaxNode<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -262,11 +262,10 @@ impl SyntaxKind {
 
     pub fn is_any_token(&self) -> bool {
         let kind_value = *self as u16;
-        if kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
-            return true;
+        match kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
+            true => true,
+            false => false,
         }
-
-        return false;
     }
 
     pub fn get_text(&self) -> &'static [u8] {
