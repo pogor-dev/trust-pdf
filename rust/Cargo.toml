@@ -12,7 +12,6 @@ repository = "https://github.com/pogor-dev/trust-pdf"
 [workspace.dependencies]
 # Local crates
 code-analysis = { path = "./crates/code-analysis", version = "0.1.0" }
-trust-pdf-analyzer = { path = "./crates/lsp", version = "0.1.0" }
 
 # Non-local crates
 anyhow = "1.0.102"
