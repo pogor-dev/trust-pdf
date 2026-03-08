@@ -95,11 +95,10 @@ impl<T> GreenTokenWithValueAndTrailingTriviaData<T> {
         let mut bytes = Vec::with_capacity(self.full_width() as usize);
         bytes.extend_from_slice(self.text());
 
-        if trailing {
-            if let Some(trailing_trivia) = &self.data.header.trailing_trivia {
+        if trailing
+            && let Some(trailing_trivia) = &self.data.header.trailing_trivia {
                 bytes.extend_from_slice(&trailing_trivia.full_text());
             }
-        }
 
         bytes
     }

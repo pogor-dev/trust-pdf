@@ -10,7 +10,7 @@ pub(crate) struct GreenDirectObjectExpressionSyntax(GreenExpressionSyntax);
 
 impl GreenDirectObjectExpressionSyntax {
     pub(crate) fn new(kind: SyntaxKind, value: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![value.into()];
+        let slots = vec![value];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenDirectObjectExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -52,7 +52,7 @@ impl GreenIndirectReferenceExpressionSyntax {
         r_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![object_number.0.0.clone().into(), generation_number.0.0.clone().into(), r_token.into()];
+        let slots = vec![object_number.0.0.clone().into(), generation_number.0.0.clone().into(), r_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenIndirectReferenceExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -154,7 +154,7 @@ impl IndirectObjectExpressionSyntax {
         endobj_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![header.0.0.clone().into(), body.0.0.clone().into(), endobj_token.into()];
+        let slots = vec![header.0.0.clone().into(), body.0.0.clone().into(), endobj_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         IndirectObjectExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -206,7 +206,7 @@ pub(crate) struct GreenIndirectBodyExpressionSyntax(GreenExpressionSyntax);
 
 impl GreenIndirectBodyExpressionSyntax {
     pub(crate) fn new(kind: SyntaxKind, value: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![value.into()];
+        let slots = vec![value];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenIndirectBodyExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -256,7 +256,7 @@ impl GreenIndirectObjectHeaderExpressionSyntax {
         obj_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![object_number.0.0.clone().into(), generation_number.0.0.clone().into(), obj_token.into()];
+        let slots = vec![object_number.0.0.clone().into(), generation_number.0.0.clone().into(), obj_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenIndirectObjectHeaderExpressionSyntax(GreenExpressionSyntax(green))
     }

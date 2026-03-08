@@ -94,7 +94,7 @@ impl<'a> SyntaxTrivia<'a> {
     }
 
     #[inline]
-    pub fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
+    pub(crate) fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
         self.underlying_node.diagnostics()
     }
 }

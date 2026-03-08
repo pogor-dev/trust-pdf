@@ -26,7 +26,7 @@ impl<'source> super::Lexer<'source> {
     #[inline]
     pub(super) fn advance_by(&mut self, offset: usize) -> Option<u8> {
         assert!(offset > 0, "Offset must be positive");
-        self.position = self.position + offset;
+        self.position += offset;
 
         // Update lexeme range before retrieving byte, so it updates even at EOF
         if let Some(lexeme) = &mut self.lexeme {
@@ -62,7 +62,7 @@ impl<'source> super::Lexer<'source> {
     /// `false` otherwise (including when there aren't enough bytes remaining).
     #[inline]
     pub(super) fn matches_sequence(&self, sequence: &[u8]) -> bool {
-        self.source.get(self.position..).map_or(false, |remaining| remaining.starts_with(sequence))
+        self.source.get(self.position..).is_some_and(|remaining| remaining.starts_with(sequence))
     }
 
     /// Peek at the first byte without advancing the cursor.

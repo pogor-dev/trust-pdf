@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{
-    GreenNode, GreenTokenElement,
+    GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
     syntax::green::{diagnostics, flags::GreenFlags},
 };
@@ -81,11 +81,10 @@ impl GreenTokenWithTrailingTriviaData {
     pub(crate) fn write_to(&self, _leading: bool, trailing: bool) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(self.full_width() as usize);
         bytes.extend_from_slice(self.text());
-        if trailing {
-            if let Some(trailing_trivia) = &self.data.header.trailing_trivia {
+        if trailing
+            && let Some(trailing_trivia) = &self.data.header.trailing_trivia {
                 bytes.extend_from_slice(&trailing_trivia.full_text());
             }
-        }
         bytes
     }
 }

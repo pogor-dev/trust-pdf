@@ -16,7 +16,7 @@ impl GreenArrayExpressionSyntax {
         close_bracket_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![open_bracket_token.into(), elements.into(), close_bracket_token.into()];
+        let slots = vec![open_bracket_token, elements, close_bracket_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenArrayExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -110,7 +110,7 @@ impl GreenDictionaryExpressionSyntax {
         close_angle_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![open_angle_token.into(), entries.into(), close_angle_token.into()];
+        let slots = vec![open_angle_token, entries, close_angle_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenDictionaryExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -162,7 +162,7 @@ pub(crate) struct GreenDictionaryElementSyntax(GreenExpressionSyntax);
 
 impl GreenDictionaryElementSyntax {
     pub(crate) fn new(kind: SyntaxKind, key: GreenNodeElement, value: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![key.into(), value.into()];
+        let slots = vec![key, value];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenDictionaryElementSyntax(GreenExpressionSyntax(green))
     }

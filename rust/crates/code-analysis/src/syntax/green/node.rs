@@ -147,7 +147,7 @@ impl GreenNodeData {
                         output.extend_from_slice(&token_data.write_to(current_leading, current_trailing));
                     }
                     GreenNodeElementRef::Trivia(trivia_data) => {
-                        output.extend_from_slice(&trivia_data.text());
+                        output.extend_from_slice(trivia_data.text());
                     }
                     GreenNodeElementRef::Node(node_data) => {
                         let slots = node_data.slots();
@@ -249,19 +249,17 @@ impl PartialEq for GreenNodeData {
 
         // Normalize single-element lists: unwrap the child if this is a List with one slot
         if kind1 != kind2 {
-            if kind1 == SyntaxKind::List && node1.slot_count() == 1 {
-                if let Some(GreenNodeElement::Node(child)) = node1.slot(0) {
+            if kind1 == SyntaxKind::List && node1.slot_count() == 1
+                && let Some(GreenNodeElement::Node(child)) = node1.slot(0) {
                     kind1 = child.kind();
                     node1 = child;
                 }
-            }
 
-            if kind2 == SyntaxKind::List && node2.slot_count() == 1 {
-                if let Some(GreenNodeElement::Node(child)) = node2.slot(0) {
+            if kind2 == SyntaxKind::List && node2.slot_count() == 1
+                && let Some(GreenNodeElement::Node(child)) = node2.slot(0) {
                     kind2 = child.kind();
                     node2 = child;
                 }
-            }
 
             if kind1 != kind2 {
                 return false;
@@ -367,9 +365,8 @@ impl GreenNode {
         };
 
         let mut full_width = 0u32;
-        let slots = slots.into_iter().map(|el| {
+        let slots = slots.into_iter().inspect(|el| {
             full_width += el.full_width();
-            el
         });
 
         let data = ThinArc::from_header_and_iter(

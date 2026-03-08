@@ -9,11 +9,9 @@ impl<'source> super::Parser<'source> {
             self.add_lexed_token(token);
         }
 
-        let token = self.lexed_tokens[self.window_offset]
+        self.lexed_tokens[self.window_offset]
             .clone()
-            .expect("The sliding window logic must be broken, we don't expect the tokens to be None");
-
-        token
+            .expect("The sliding window logic must be broken, we don't expect the tokens to be None")
     }
 
     // TODO: decide what functions should be inlined
@@ -29,11 +27,9 @@ impl<'source> super::Parser<'source> {
             self.add_lexed_token(token);
         }
 
-        let token = self.lexed_tokens[self.window_offset + offset]
+        self.lexed_tokens[self.window_offset + offset]
             .clone()
-            .expect("The sliding window logic must be broken, we don't expect the tokens to be None");
-
-        token
+            .expect("The sliding window logic must be broken, we don't expect the tokens to be None")
     }
 
     pub(super) fn advance_token(&mut self) -> GreenTokenElement {
@@ -69,9 +65,8 @@ impl<'source> super::Parser<'source> {
             return self.eat_token();
         }
 
-        let replacement = self.create_missing_token(expected, actual);
         // TODO: return AddTrailingSkippedSyntax(replacement, this.EatToken())
-        return replacement;
+        self.create_missing_token(expected, actual)
     }
 
     pub(super) fn pre_lex(&mut self) {
@@ -88,7 +83,7 @@ impl<'source> super::Parser<'source> {
         }
     }
 
-    fn create_missing_token(&self, expected: SyntaxKind, actual: SyntaxKind) -> GreenTokenElement {
+    fn create_missing_token(&self, _expected: SyntaxKind, _actual: SyntaxKind) -> GreenTokenElement {
         unreachable!()
         // TODO: add diagnostic information to the token for error reporting
         /*

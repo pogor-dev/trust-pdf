@@ -1,5 +1,5 @@
 use crate::{
-    GreenCst, GreenDiagnostic, GreenExpressionSyntax, GreenLiteralExpressionSyntax, GreenNode, GreenNodeElement, GreenNodeSyntax, GreenTokenElement, SyntaxKind,
+    GreenCst, GreenDiagnostic, GreenExpressionSyntax, GreenLiteralExpressionSyntax, GreenNode, GreenNodeElement, GreenNodeSyntax, SyntaxKind,
 };
 
 /// PDF version: %PDF-major.minor
@@ -14,7 +14,7 @@ impl GreenPdfVersionSyntax {
         minor_version_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![major_version_token.into(), minor_version_token.into()];
+        let slots = vec![major_version_token, minor_version_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenPdfVersionSyntax(GreenExpressionSyntax(green))
     }

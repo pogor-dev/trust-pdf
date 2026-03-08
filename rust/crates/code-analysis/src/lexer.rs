@@ -233,11 +233,7 @@ impl<'source> Lexer<'source> {
     /// Returns a vector of GreenTrivia elements.
     fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> Vec<GreenTrivia> {
         let mut trivia = Vec::new();
-        loop {
-            let first_byte = match self.peek() {
-                Some(byte) => byte,
-                _ => break,
-            };
+        while let Some(first_byte) = self.peek() {
 
             match first_byte {
                 _ if token_info.kind == SyntaxKind::RawStreamDataToken => {
@@ -539,13 +535,13 @@ impl<'source> Lexer<'source> {
                         self.advance();
                     }
                 }
-                b'\\' if matches!(self.peek_by(1), Some(_)) => {
+                b'\\' if self.peek_by(1).is_some() => {
                     // Unknown escape: emit warning, consume backslash only; next char handled normally
                     let kind = DiagnosticKind::InvalidEscapeInStringLiteral;
                     token_info.diagnostics.push((DiagnosticSeverity::Warning, kind, kind.as_str()));
                     self.advance();
                 }
-                b'\\' if matches!(self.peek_by(1), None) => {
+                b'\\' if self.peek_by(1).is_none() => {
                     // Backslash at EOF: consume backslash only and exit loop; string will be unbalanced
                     self.advance();
                     break;
@@ -843,7 +839,7 @@ fn is_whitespace(byte: u8, include_eol: bool) -> bool {
 /// Returns true when the byte is a hexadecimal digit (`0-9`, `A-F`, `a-f`).
 #[inline]
 fn is_hexcode(byte: u8) -> bool {
-    matches!(byte, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
+    byte.is_ascii_hexdigit()
 }
 
 /// Returns true for regular name characters according to ISO 32000-2:2020 §7.3.5 Name objects.

@@ -16,7 +16,7 @@ impl GreenStreamExpressionSyntax {
         end_stream_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![stream_token.into(), body.into(), end_stream_token.into()];
+        let slots = vec![stream_token, body, end_stream_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenStreamExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -112,7 +112,7 @@ pub(crate) struct GreenStreamRawDataSyntax(GreenExpressionSyntax);
 
 impl GreenStreamRawDataSyntax {
     pub(crate) fn new(kind: SyntaxKind, data: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![data.into()];
+        let slots = vec![data];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenStreamRawDataSyntax(GreenExpressionSyntax(green))
     }
@@ -148,7 +148,7 @@ pub(crate) struct GreenStreamOperatorOperandExpressionSyntax(GreenExpressionSynt
 
 impl GreenStreamOperatorOperandExpressionSyntax {
     pub(crate) fn new(kind: SyntaxKind, operands: GreenNodeElement, operator: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![operands.into(), operator.into()];
+        let slots = vec![operands, operator];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenStreamOperatorOperandExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -198,7 +198,7 @@ impl GreenTextObjectSyntax {
         et_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![bt_token.into(), content.into(), et_token.into()];
+        let slots = vec![bt_token, content, et_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenTextObjectSyntax(GreenExpressionSyntax(green))
     }
@@ -258,7 +258,7 @@ impl GreenInlineImageSyntax {
         ei_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![bi_token.into(), inline_dict.into(), id_token.into(), image_data.into(), ei_token.into()];
+        let slots = vec![bi_token, inline_dict, id_token, image_data, ei_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenInlineImageSyntax(GreenExpressionSyntax(green))
     }
@@ -332,7 +332,7 @@ impl GreenMarkedContentSyntax {
         close_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![open_token.into(), content.into(), close_token.into()];
+        let slots = vec![open_token, content, close_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenMarkedContentSyntax(GreenExpressionSyntax(green))
     }
@@ -390,7 +390,7 @@ impl GreenCompatibilityExpressionSyntax {
         ex_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![bx_token.into(), content.into(), ex_token.into()];
+        let slots = vec![bx_token, content, ex_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenCompatibilityExpressionSyntax(GreenExpressionSyntax(green))
     }

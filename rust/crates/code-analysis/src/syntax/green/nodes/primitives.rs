@@ -7,7 +7,7 @@ pub(crate) struct GreenLiteralExpressionSyntax(pub(crate) GreenExpressionSyntax)
 
 impl GreenLiteralExpressionSyntax {
     pub(crate) fn new(kind: SyntaxKind, token: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![token.into()];
+        let slots = vec![token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenLiteralExpressionSyntax(GreenExpressionSyntax(green))
     }

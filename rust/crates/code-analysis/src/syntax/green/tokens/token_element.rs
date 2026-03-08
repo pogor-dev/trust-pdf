@@ -53,7 +53,7 @@ impl GreenTokenElement {
         }
 
         match (leading_trivia.clone(), trailing_trivia.clone()) {
-            (None, None) => return Self::tokens_with_no_trivia()[raw_kind].clone().into(),
+            (None, None) => Self::tokens_with_no_trivia()[raw_kind].clone().into(),
             (None, Some(trailing)) if trailing == GreenSyntaxFactory::space().into() => Self::tokens_with_single_space()[raw_kind].clone().into(),
             (None, Some(trailing)) if trailing == GreenSyntaxFactory::line_feed().into() => Self::tokens_with_line_feed()[raw_kind].clone().into(),
             (None, Some(trailing)) if trailing == GreenSyntaxFactory::carriage_return_line_feed().into() => {
@@ -202,11 +202,11 @@ impl GreenTokenElement {
         static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
             let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
             let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-            let mut arr = Vec::with_capacity(last_token_kind + 1);
+            let mut arr = vec![GreenToken::new_missing(SyntaxKind::EndOfFileMarkerToken); last_token_kind + 1];
 
-            for kind_value in first_token_kind..=last_token_kind {
+            for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
                 let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-                arr[kind_value] = GreenToken::new(kind);
+                *slot = GreenToken::new(kind);
             }
 
             arr.into_boxed_slice()
@@ -218,13 +218,13 @@ impl GreenTokenElement {
         static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
             let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
             let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-            let mut arr = Vec::with_capacity(last_token_kind + 1);
+            let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
-            for kind_value in first_token_kind..=last_token_kind {
+            for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
                 let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
                 let space = GreenSyntaxFactory::space().into();
                 let space_node = GreenNode::new(SyntaxKind::List, vec![space]);
-                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(space_node));
+                *slot = GreenTokenWithTrivia::new(kind, None, Some(space_node));
             }
 
             arr.into_boxed_slice()
@@ -236,13 +236,13 @@ impl GreenTokenElement {
         static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
             let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
             let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-            let mut arr = Vec::with_capacity(last_token_kind + 1);
+            let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
-            for kind_value in first_token_kind..=last_token_kind {
+            for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
                 let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
                 let lf = GreenSyntaxFactory::line_feed().into();
                 let lf_node = GreenNode::new(SyntaxKind::List, vec![lf]);
-                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(lf_node));
+                *slot = GreenTokenWithTrivia::new(kind, None, Some(lf_node));
             }
 
             arr.into_boxed_slice()
@@ -254,13 +254,13 @@ impl GreenTokenElement {
         static CACHE: LazyLock<Box<[GreenTokenWithTrivia]>> = LazyLock::new(|| {
             let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
             let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-            let mut arr = Vec::with_capacity(last_token_kind + 1);
+            let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
-            for kind_value in first_token_kind..=last_token_kind {
+            for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
                 let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
                 let crlf = GreenSyntaxFactory::carriage_return_line_feed().into();
                 let crlf_node = GreenNode::new(SyntaxKind::List, vec![crlf]);
-                arr[kind_value] = GreenTokenWithTrivia::new(kind, None, Some(crlf_node));
+                *slot = GreenTokenWithTrivia::new(kind, None, Some(crlf_node));
             }
 
             arr.into_boxed_slice()
@@ -272,11 +272,11 @@ impl GreenTokenElement {
         static CACHE: LazyLock<Box<[GreenToken]>> = LazyLock::new(|| {
             let first_token_kind = SyntaxKind::FIRST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
             let last_token_kind = SyntaxKind::LAST_WELL_KNOWN_TEXT_TOKEN_KIND as usize;
-            let mut arr = Vec::with_capacity(last_token_kind + 1);
+            let mut arr = vec![GreenToken::new_missing(SyntaxKind::EndOfFileMarkerToken); last_token_kind + 1];
 
-            for kind_value in first_token_kind..=last_token_kind {
+            for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
                 let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
-                arr[kind_value] = GreenToken::new_missing(kind);
+                *slot = GreenToken::new_missing(kind);
             }
 
             arr.into_boxed_slice()

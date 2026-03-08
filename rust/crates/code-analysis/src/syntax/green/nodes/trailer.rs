@@ -16,7 +16,7 @@ impl FileTrailerSyntax {
         start_xref: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![trailer_token.into(), body.into(), start_xref.into()];
+        let slots = vec![trailer_token, body, start_xref];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         FileTrailerSyntax(GreenExpressionSyntax(green))
     }
@@ -74,7 +74,7 @@ impl FileTrailerStartXrefSyntax {
         end_of_file_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![start_xref_token.into(), xref_offset.into(), end_of_file_token.into()];
+        let slots = vec![start_xref_token, xref_offset, end_of_file_token];
 
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         FileTrailerStartXrefSyntax(GreenExpressionSyntax(green))

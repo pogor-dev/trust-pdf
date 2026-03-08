@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{
-    GreenNode, GreenTokenElement,
+    GreenNode,
     arc::{Arc, HeaderSlice, ThinArc},
     syntax::green::{diagnostics, flags::GreenFlags},
 };

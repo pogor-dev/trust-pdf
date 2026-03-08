@@ -10,7 +10,7 @@ pub(crate) struct GreenXRefTableExpressionSyntax(GreenExpressionSyntax);
 
 impl GreenXRefTableExpressionSyntax {
     pub(crate) fn new(kind: SyntaxKind, sections: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![sections.into()];
+        let slots = vec![sections];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenXRefTableExpressionSyntax(GreenExpressionSyntax(green))
     }
@@ -44,7 +44,7 @@ pub(crate) struct GreenXRefSectionSyntax(GreenExpressionSyntax);
 
 impl GreenXRefSectionSyntax {
     pub(crate) fn new(kind: SyntaxKind, subsections: GreenNodeElement, diagnostics: Vec<GreenDiagnostic>) -> Self {
-        let slots = vec![subsections.into()];
+        let slots = vec![subsections];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenXRefSectionSyntax(GreenExpressionSyntax(green))
     }
@@ -86,7 +86,7 @@ impl GreenXRefSubSectionSyntax {
         entries: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![start_object_number.into(), entry_count.into(), entries.into()];
+        let slots = vec![start_object_number, entry_count, entries];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenXRefSubSectionSyntax(GreenExpressionSyntax(green))
     }
@@ -144,7 +144,7 @@ impl GreenXRefEntryExpressionSyntax {
         in_use_token: GreenNodeElement,
         diagnostics: Vec<GreenDiagnostic>,
     ) -> Self {
-        let slots = vec![byte_offset.into(), generation_number.into(), in_use_token.into()];
+        let slots = vec![byte_offset, generation_number, in_use_token];
         let green = GreenNode::new_with_diagnostic(kind, slots, diagnostics);
         GreenXRefEntryExpressionSyntax(GreenExpressionSyntax(green))
     }
