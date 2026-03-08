@@ -29,15 +29,24 @@ jobs:
           - os: ubuntu-latest
             arch: x86
             target: i686-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            target: aarch64-unknown-linux-gnu
           - os: windows-latest
             arch: x64
             target: x86_64-pc-windows-msvc
           - os: windows-latest
             arch: x86
             target: i686-pc-windows-msvc
-          - os: macos-latest
+          - os: windows-11-arm
+            arch: arm64
+            target: aarch64-pc-windows-msvc
+          - os: macos-latest-large
             arch: x64
             target: x86_64-apple-darwin
+          - os: macos-latest
+            arch: arm64
+            target: aarch64-apple-darwin
 
     steps:
       - name: Checkout repository
@@ -60,7 +69,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             rust/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
@@ -70,6 +79,7 @@ jobs:
         run: cargo install cargo2junit --locked --force
 
       - name: Install Rust target
+        working-directory: rust
         run: rustup target add ${{ matrix.target }}
 
       - name: Install 32-bit Linux linker deps
