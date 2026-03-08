@@ -234,7 +234,6 @@ impl<'source> Lexer<'source> {
     fn scan_trivia(&mut self, token_info: &TokenInfo<'source>) -> Vec<GreenTrivia> {
         let mut trivia = Vec::new();
         while let Some(first_byte) = self.peek() {
-
             match first_byte {
                 _ if token_info.kind == SyntaxKind::RawStreamDataToken => {
                     break; // In raw stream mode, do not scan trivia within the raw data token

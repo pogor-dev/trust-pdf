@@ -81,10 +81,9 @@ impl GreenTokenWithTrailingTriviaData {
     pub(crate) fn write_to(&self, _leading: bool, trailing: bool) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(self.full_width() as usize);
         bytes.extend_from_slice(self.text());
-        if trailing
-            && let Some(trailing_trivia) = &self.data.header.trailing_trivia {
-                bytes.extend_from_slice(&trailing_trivia.full_text());
-            }
+        if trailing && let Some(trailing_trivia) = &self.data.header.trailing_trivia {
+            bytes.extend_from_slice(&trailing_trivia.full_text());
+        }
         bytes
     }
 }

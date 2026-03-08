@@ -249,17 +249,21 @@ impl PartialEq for GreenNodeData {
 
         // Normalize single-element lists: unwrap the child if this is a List with one slot
         if kind1 != kind2 {
-            if kind1 == SyntaxKind::List && node1.slot_count() == 1
-                && let Some(GreenNodeElement::Node(child)) = node1.slot(0) {
-                    kind1 = child.kind();
-                    node1 = child;
-                }
+            if kind1 == SyntaxKind::List
+                && node1.slot_count() == 1
+                && let Some(GreenNodeElement::Node(child)) = node1.slot(0)
+            {
+                kind1 = child.kind();
+                node1 = child;
+            }
 
-            if kind2 == SyntaxKind::List && node2.slot_count() == 1
-                && let Some(GreenNodeElement::Node(child)) = node2.slot(0) {
-                    kind2 = child.kind();
-                    node2 = child;
-                }
+            if kind2 == SyntaxKind::List
+                && node2.slot_count() == 1
+                && let Some(GreenNodeElement::Node(child)) = node2.slot(0)
+            {
+                kind2 = child.kind();
+                node2 = child;
+            }
 
             if kind1 != kind2 {
                 return false;
