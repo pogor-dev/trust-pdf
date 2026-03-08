@@ -245,18 +245,18 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueHead>(), 8);
-            assert_eq!(std::mem::align_of::<GreenTokenWithIntValueHead>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueHead<i32>>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueHead<i32>>(), 4);
             assert_eq!(std::mem::size_of::<GreenTokenWithIntValueData>(), 12);
             assert_eq!(std::mem::align_of::<GreenTokenWithIntValueData>(), 4);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueHead>(), 8);
-            assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueHead>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueHead<f32>>(), 8);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueHead<f32>>(), 4);
             assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueData>(), 12);
             assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueData>(), 4);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueHead>(), 16);
-            assert_eq!(std::mem::align_of::<GreenTokenWithStringValueHead>(), 4);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueHead<String>>(), 16);
+            assert_eq!(std::mem::align_of::<GreenTokenWithValueHead<String>>(), 4);
             assert_eq!(std::mem::size_of::<GreenTokenWithStringValueData>(), 20);
             assert_eq!(std::mem::align_of::<GreenTokenWithStringValueData>(), 4);
 
@@ -318,7 +318,7 @@ mod memory_layout_tests {
             }
             #[cfg(target_pointer_width = "32")]
             {
-                [(b"", 16), (b"42", 20), (b"12345", 20)]
+                [(b"", 16), (b"42", 20), (b"12345", 24)]
             }
         };
 
@@ -334,7 +334,7 @@ mod memory_layout_tests {
             }
             #[cfg(target_pointer_width = "32")]
             {
-                [(b"", 16), (b"3.14", 20), (b"12345", 20)]
+                [(b"", 16), (b"3.14", 20), (b"12345", 24)]
             }
         };
 
