@@ -33,4 +33,4 @@ pub(crate) use crate::{
     },
 };
 
-pub use crate::syntax::{SyntaxNode, SyntaxToken, SyntaxTrivia};
+pub use crate::syntax::{SyntaxNode, SyntaxToken, SyntaxTokenValueRef, SyntaxTrivia};

@@ -20,4 +20,4 @@ pub(crate) use self::green::{
     GreenXRefTableExpressionSyntax,
 };
 
-pub use self::red::{SyntaxNode, SyntaxToken, SyntaxTrivia};
+pub use self::red::{SyntaxNode, SyntaxToken, SyntaxTokenValueRef, SyntaxTrivia};

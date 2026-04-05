@@ -1,6 +1,14 @@
 use std::{fmt, hash, ops};
 
-use crate::{GreenDiagnostic, GreenNodeElement, SyntaxKind, SyntaxNode};
+use crate::{GreenDiagnostic, GreenNodeElement, GreenTokenElement, SyntaxKind, SyntaxNode};
+
+/// Typed token value borrowed from the underlying green token variant.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SyntaxTokenValueRef<'a> {
+    Int(i32),
+    Float(f32),
+    String(&'a str),
+}
 
 #[derive(Clone)]
 #[repr(C)]
@@ -115,6 +123,64 @@ impl<'a> SyntaxToken<'a> {
     pub fn has_trailing_trivia(&self) -> bool {
         self.underlying_node.trailing_trivia().is_some()
     }
+
+    /// Returns the token's typed semantic value when present.
+    #[inline]
+    pub fn value(&self) -> Option<SyntaxTokenValueRef<'_>> {
+        if let Some(value) = self.int_value() {
+            return Some(SyntaxTokenValueRef::Int(value));
+        }
+
+        if let Some(value) = self.float_value() {
+            return Some(SyntaxTokenValueRef::Float(value));
+        }
+
+        self.string_value().map(SyntaxTokenValueRef::String)
+    }
+
+    /// Returns integer value for numeric tokens parsed as an integer.
+    #[inline]
+    pub fn int_value(&self) -> Option<i32> {
+        let token = self.token_element();
+
+        token
+            .as_token_with_int_value()
+            .map(|t| *t.value())
+            .or_else(|| token.as_token_with_int_value_and_trivia().map(|t| *t.value()))
+            .or_else(|| token.as_token_with_int_value_and_trailing_trivia().map(|t| *t.value()))
+    }
+
+    /// Returns floating-point value for numeric tokens parsed as a float.
+    #[inline]
+    pub fn float_value(&self) -> Option<f32> {
+        let token = self.token_element();
+
+        token
+            .as_token_with_float_value()
+            .map(|t| *t.value())
+            .or_else(|| token.as_token_with_float_value_and_trivia().map(|t| *t.value()))
+            .or_else(|| token.as_token_with_float_value_and_trailing_trivia().map(|t| *t.value()))
+    }
+
+    /// Returns string value for string-like tokens.
+    #[inline]
+    pub fn string_value(&self) -> Option<&str> {
+        let token = self.token_element();
+
+        token
+            .as_token_with_string_value()
+            .map(|t| t.value().as_str())
+            .or_else(|| token.as_token_with_string_value_and_trivia().map(|t| t.value().as_str()))
+            .or_else(|| token.as_token_with_string_value_and_trailing_trivia().map(|t| t.value().as_str()))
+    }
+
+    #[inline]
+    fn token_element(&self) -> &GreenTokenElement {
+        match &self.underlying_node {
+            GreenNodeElement::Token(token) => token,
+            _ => unreachable!("SyntaxToken must wrap a green token variant"),
+        }
+    }
 }
 
 impl<'a> PartialEq for SyntaxToken<'a> {
@@ -143,5 +209,65 @@ impl<'a> fmt::Debug for SyntaxToken<'a> {
             .field("position", &self.position)
             .field("index", &self.index)
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        GreenNode, GreenToken, GreenTokenElement, GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue, GreenTokenWithStringValueAndTrailingTrivia,
+    };
+
+    #[test]
+    fn test_value_when_int_token_expect_int_variant_and_int_value() {
+        let parent_green = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenToken::new(SyntaxKind::NullKeyword).into()]);
+        let parent_red = SyntaxNode::new(None, parent_green.into(), 0);
+
+        let token = GreenTokenWithIntValue::new(SyntaxKind::NumericLiteralToken, b"42", 42);
+        let token_element: GreenTokenElement = token.into();
+        let red_token = SyntaxToken::new(&parent_red, token_element.into(), 0, 0);
+
+        assert_eq!(red_token.int_value(), Some(42));
+        assert_eq!(red_token.value(), Some(SyntaxTokenValueRef::Int(42)));
+    }
+
+    #[test]
+    fn test_value_when_float_token_with_trivia_expect_float_variant_and_float_value() {
+        let parent_green = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenToken::new(SyntaxKind::NullKeyword).into()]);
+        let parent_red = SyntaxNode::new(None, parent_green.into(), 0);
+
+        let token = GreenTokenWithFloatValueAndTrivia::new(SyntaxKind::NumericLiteralToken, b"3.14", 3.14, None, None);
+        let red_token = SyntaxToken::new(&parent_red, token.into(), 0, 0);
+
+        assert_eq!(red_token.float_value(), Some(3.14));
+        assert_eq!(red_token.value(), Some(SyntaxTokenValueRef::Float(3.14)));
+    }
+
+    #[test]
+    fn test_value_when_string_token_with_trailing_trivia_expect_string_variant_and_string_value() {
+        let parent_green = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenToken::new(SyntaxKind::NullKeyword).into()]);
+        let parent_red = SyntaxNode::new(None, parent_green.into(), 0);
+
+        let token = GreenTokenWithStringValueAndTrailingTrivia::new(SyntaxKind::NameLiteralToken, b"Type", "Type".to_string(), None);
+        let token_element: GreenTokenElement = token.into();
+        let red_token = SyntaxToken::new(&parent_red, token_element.into(), 0, 0);
+
+        assert_eq!(red_token.string_value(), Some("Type"));
+        assert_eq!(red_token.value(), Some(SyntaxTokenValueRef::String("Type")));
+    }
+
+    #[test]
+    fn test_value_when_plain_token_expect_none() {
+        let parent_green = GreenNode::new(SyntaxKind::DirectObjectExpression, vec![GreenToken::new(SyntaxKind::NullKeyword).into()]);
+        let parent_red = SyntaxNode::new(None, parent_green.into(), 0);
+
+        let token = GreenToken::new(SyntaxKind::TrueKeyword);
+        let red_token = SyntaxToken::new(&parent_red, token.into(), 0, 0);
+
+        assert_eq!(red_token.int_value(), None);
+        assert_eq!(red_token.float_value(), None);
+        assert_eq!(red_token.string_value(), None);
+        assert_eq!(red_token.value(), None);
     }
 }
