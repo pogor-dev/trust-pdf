@@ -350,6 +350,7 @@ impl<'a> GreenTokenElementRef<'a> {
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_green_token_element_memory_layout() {
@@ -388,6 +389,7 @@ mod memory_layout_tests {
 mod tests {
     use super::*;
     use crate::GreenTrivia;
+    use pretty_assertions::assert_eq;
 
     fn leading_trivia() -> Option<GreenNode> {
         Some(GreenNode::new(

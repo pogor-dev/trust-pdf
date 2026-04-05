@@ -122,6 +122,7 @@ macro_rules! tree_token_items {
 #[cfg(test)]
 mod tests {
     use crate::{DiagnosticKind, DiagnosticSeverity, GreenNodeElement, GreenTokenElement, SyntaxKind};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_tree_when_single_token_expect_token_slot() {

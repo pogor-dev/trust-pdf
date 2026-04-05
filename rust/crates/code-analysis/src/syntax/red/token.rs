@@ -218,6 +218,7 @@ mod tests {
     use crate::{
         GreenNode, GreenToken, GreenTokenElement, GreenTokenWithFloatValueAndTrivia, GreenTokenWithIntValue, GreenTokenWithStringValueAndTrailingTrivia,
     };
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_value_when_int_token_expect_int_variant_and_int_value() {

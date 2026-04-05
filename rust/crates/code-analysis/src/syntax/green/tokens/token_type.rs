@@ -124,6 +124,7 @@ impl<
 #[cfg(test)]
 mod memory_layout_tests {
     use super::TokenType;
+    use pretty_assertions::assert_eq;
 
     type U8TokenType = TokenType<u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8>;
     type PointerTokenType = TokenType<usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize>;
@@ -160,6 +161,7 @@ mod tests {
         GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
         GreenTokenWithStringValueAndTrivia, GreenTokenWithTrailingTrivia, GreenTokenWithTrivia, SyntaxKind,
     };
+    use pretty_assertions::assert_eq;
 
     type TestTokenType = TokenType<
         GreenToken,

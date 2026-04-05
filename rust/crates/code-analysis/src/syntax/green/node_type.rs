@@ -81,6 +81,7 @@ impl<N: fmt::Display, T: fmt::Display, R: fmt::Display> fmt::Display for NodeOrT
 #[cfg(test)]
 mod memory_layout_tests {
     use super::NodeOrTokenOrTrivia;
+    use pretty_assertions::assert_eq;
 
     type U8NodeType = NodeOrTokenOrTrivia<u8, u8, u8>;
     type PointerNodeType = NodeOrTokenOrTrivia<usize, usize, usize>;
@@ -113,6 +114,7 @@ mod memory_layout_tests {
 mod tests {
     use super::NodeOrTokenOrTrivia;
     use crate::{GreenNode, GreenToken, GreenTokenElement, GreenTrivia, SyntaxKind};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_into_node_when_node_variant_expect_some() {
