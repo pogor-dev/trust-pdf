@@ -31,18 +31,7 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Code Quality Gate**: Identify the affected architectural boundaries, explain the root-cause
-  approach, list any public API or documentation updates, and justify any dependency change.
-- **Testing Gate**: List the tests to add or update, include malformed-input and recovery coverage,
-  note SafeDocs whitespace or adjacency coverage when lexer or parser behavior changes, and define
-  the validation command.
-- **User Experience Gate**: State whether diagnostics, terminology, editor behavior,
-  rendered/documented output, or workflows change; if they do, record the consistency updates that
-  will ship in the same change.
-- **Performance Gate**: Describe allocation, layout, traversal, latency, or memory impact for hot
-  paths and name the verification approach when a regression risk exists.
-- **Exception Handling**: Any unmet gate MUST be recorded in Complexity Tracking with a concrete
-  justification and reviewer-visible follow-up.
+[Gates determined based on constitution file]
 
 ## Project Structure
 
