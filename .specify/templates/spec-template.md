@@ -11,6 +11,9 @@
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.
   Each user story/journey must be INDEPENDENTLY TESTABLE - meaning if you implement just ONE of them,
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
+
+  If the story changes diagnostics, terminology, UX flow, documented output, or editor behavior,
+  capture the expected user-visible result and the consistency constraints in the story itself.
   
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Think of each story as a standalone slice of functionality that can be:
@@ -73,7 +76,9 @@
 -->
 
 - What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- How does system handle malformed, partial, or non-compliant input?
+- How does system preserve user-facing consistency when diagnostics, messaging, or output format change?
+- What happens when the change encounters a throughput, latency, or memory boundary?
 
 ## Requirements *(mandatory)*
 
@@ -95,6 +100,16 @@
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
+### Quality & Consistency Requirements
+
+- **QR-001**: Feature MUST define the automated tests required to prove the changed behavior.
+- **QR-002**: Feature MUST define malformed-input, recovery, or regression cases when the change
+  affects parsing, validation, or user-visible output.
+- **QR-003**: Feature MUST define how terminology, diagnostics, and documented workflows remain
+  consistent if the feature changes any user-facing surface.
+- **QR-004**: Feature MUST define measurable performance expectations when the change touches hot
+  paths, large inputs, or memory-sensitive code.
+
 ### Key Entities *(include if feature involves data)*
 
 - **[Entity 1]**: [What it represents, key attributes without implementation]
@@ -113,6 +128,9 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+
+Include user-experience and performance outcomes here whenever the feature changes a user-visible
+surface or a performance-sensitive path.
 
 ## Assumptions
 
