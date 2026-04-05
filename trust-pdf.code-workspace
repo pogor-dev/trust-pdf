@@ -21,5 +21,8 @@
         "rust-analyzer.testExplorer": true,
         "rust-analyzer.gotoImplementations.filterAdjacentDerives": true,
         "debug.allowBreakpointsEverywhere": true,
+        "chat.tools.terminal.autoApprove": {
+            "cargo nextest": true
+        },
     }
 }
