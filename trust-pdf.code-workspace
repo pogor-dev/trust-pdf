@@ -23,6 +23,6 @@
         "debug.allowBreakpointsEverywhere": true,
         "chat.tools.terminal.autoApprove": {
             "cargo nextest": true
-        },
+        }
     }
 }

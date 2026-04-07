@@ -1,7 +1,7 @@
 // @ts-check
-import { defineConfig } from "astro/config"
 import starlight from "@astrojs/starlight"
 import tailwindcss from "@tailwindcss/vite"
+import { defineConfig } from "astro/config"
 
 // https://astro.build/config
 export default defineConfig({
@@ -21,11 +21,18 @@ export default defineConfig({
           label: "Reference",
           autogenerate: { directory: "reference" },
         },
+        {
+          label: "Syntax",
+          items: [{ label: "Green", autogenerate: { directory: "syntax/green" } }],
+        },
       ],
       customCss: ["./src/styles/global.css"],
     }),
   ],
   vite: {
     plugins: [tailwindcss()],
+  },
+  experimental: {
+    contentIntellisense: true,
   },
 })
