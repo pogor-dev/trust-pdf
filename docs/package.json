@@ -16,11 +16,14 @@
     "check": "biome check ."
   },
   "dependencies": {
+    "@astrojs/solid-js": "^6.0.1",
     "@astrojs/starlight": "^0.38.2",
     "@astrojs/starlight-tailwind": "^5.0.0",
     "@tailwindcss/vite": "^4.0.7",
     "astro": "^6.1.4",
     "sharp": "^0.34.2",
+    "solid-devtools": "^0.34.5",
+    "solid-js": "^1.9.12",
     "tailwindcss": "^4.0.7"
   },
   "devDependencies": {

@@ -1,0 +1,19 @@
+---
+import MemoryLayoutApp from "./memory-layout-ui/MemoryLayoutApp"
+import type { MemoryStructDefinition } from "./memory-layout"
+
+type Props = {
+  definition: MemoryStructDefinition
+  title?: string
+  caption?: string
+  showControls?: boolean
+}
+---
+
+<MemoryLayoutApp
+  client:load
+  definition={(Astro.props as Props).definition}
+  title={(Astro.props as Props).title}
+  caption={(Astro.props as Props).caption}
+  showControls={(Astro.props as Props).showControls}
+/>
