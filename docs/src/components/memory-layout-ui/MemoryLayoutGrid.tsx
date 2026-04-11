@@ -4,7 +4,7 @@ import {
   MEMORY_LAYOUT_BYTES_PER_ROW,
   type MemoryLayoutFragment,
   type MemoryLayoutRows,
-} from "../memory-layout"
+} from "./memory-layout"
 
 type MemoryLayoutGridProps = {
   rows: MemoryLayoutRows

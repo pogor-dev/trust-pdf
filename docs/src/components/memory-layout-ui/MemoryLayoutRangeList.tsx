@@ -1,6 +1,6 @@
 import { For } from "solid-js"
 
-import { formatBytes, formatOffset, type LayoutRange } from "../memory-layout"
+import { formatBytes, formatOffset, type LayoutRange } from "./memory-layout"
 
 type MemoryLayoutRangeListProps = {
   ranges: LayoutRange[]

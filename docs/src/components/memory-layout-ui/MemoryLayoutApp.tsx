@@ -7,7 +7,7 @@ import {
   findMemoryLayoutItem,
   formatBytes,
   type MemoryStructDefinition,
-} from "../memory-layout"
+} from "./memory-layout"
 import { MemoryLayoutControls } from "./MemoryLayoutControls"
 import { MemoryLayoutGrid } from "./MemoryLayoutGrid"
 import { MemoryLayoutInspector } from "./MemoryLayoutInspector"

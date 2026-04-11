@@ -1,11 +1,6 @@
 import { For, Show } from "solid-js"
 
-import {
-  formatBytes,
-  formatOffset,
-  type LayoutRange,
-  type MemoryLayoutItem,
-} from "../memory-layout"
+import { formatBytes, formatOffset, type LayoutRange, type MemoryLayoutItem } from "./memory-layout"
 
 type MemoryLayoutInspectorProps = {
   item: MemoryLayoutItem

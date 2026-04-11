@@ -1,4 +1,4 @@
-import type { MemoryStructDefinition } from "../memory-layout"
+import type { MemoryStructDefinition } from "./memory-layout"
 
 export const greenTriviaHead: MemoryStructDefinition = {
   name: "GreenTriviaHead",
