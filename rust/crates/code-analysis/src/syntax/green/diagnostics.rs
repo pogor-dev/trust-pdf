@@ -48,6 +48,7 @@ pub(crate) fn remove_diagnostics(key: usize) {
 }
 
 #[inline]
+#[allow(dead_code)]
 pub(crate) fn contains_diagnostics(key: usize) -> bool {
     lock_diagnostics_table().contains_key(&key)
 }

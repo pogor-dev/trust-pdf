@@ -172,6 +172,7 @@ impl<T> Hash for GreenTokenWithValueAndTrivia<T> {
     }
 }
 
+#[allow(dead_code)]
 impl<T> GreenTokenWithValueAndTrivia<T> {
     #[inline]
     pub fn new(

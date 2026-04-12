@@ -440,6 +440,7 @@ impl fmt::Debug for GreenNode {
     }
 }
 
+#[allow(dead_code)]
 impl GreenNode {
     /// Consumes the handle and returns a raw non-null pointer to the data.
     #[inline]

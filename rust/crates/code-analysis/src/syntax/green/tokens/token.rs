@@ -141,6 +141,7 @@ pub(crate) struct GreenToken {
     ptr: ThinArc<GreenTokenHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenToken {
     /// Creates a present (non-missing) token.
     #[inline]

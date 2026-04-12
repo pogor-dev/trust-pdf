@@ -70,9 +70,8 @@ macro_rules! tree_entries {
     ($slots:ident, $pending:ident; ($kind:expr) => { $($token_items:tt)* } $(, $($rest:tt)*)?) => {{
         let mut leading: Vec<$crate::GreenNodeElement> = Vec::new();
         let mut trailing: Vec<$crate::GreenNodeElement> = Vec::new();
-        let mut text: &[u8] = b"";
-        let mut seen_text = false;
-        $crate::tree_token_items!(leading, trailing, text, seen_text; $($token_items)*);
+        let mut text: Option<&[u8]> = None;
+        $crate::tree_token_items!(leading, trailing, text; $($token_items)*);
 
         let leading_node = if leading.is_empty() {
             None
@@ -87,7 +86,7 @@ macro_rules! tree_entries {
 
         let token = $crate::syntax::green::tree::make_expected_token(
             $kind,
-            text,
+            text.unwrap_or(b""),
             leading_node,
             trailing_node,
             std::mem::take(&mut $pending),
@@ -99,23 +98,22 @@ macro_rules! tree_entries {
 
 #[macro_export]
 macro_rules! tree_token_items {
-    ($leading:ident, $trailing:ident, $text:ident, $seen_text:ident; ) => {};
-    ($leading:ident, $trailing:ident, $text:ident, $seen_text:ident; , $($rest:tt)*) => {
-        $crate::tree_token_items!($leading, $trailing, $text, $seen_text; $($rest)*);
+    ($leading:ident, $trailing:ident, $text:ident; ) => {};
+    ($leading:ident, $trailing:ident, $text:ident; , $($rest:tt)*) => {
+        $crate::tree_token_items!($leading, $trailing, $text; $($rest)*);
     };
-    ($leading:ident, $trailing:ident, $text:ident, $seen_text:ident; text($bytes:expr) $(, $($rest:tt)*)?) => {{
-        $text = $bytes;
-        $seen_text = true;
-        $crate::tree_token_items!($leading, $trailing, $text, $seen_text; $($($rest)*)?);
+    ($leading:ident, $trailing:ident, $text:ident; text($bytes:expr) $(, $($rest:tt)*)?) => {{
+        let _previous_text = $text.replace($bytes);
+        $crate::tree_token_items!($leading, $trailing, $text; $($($rest)*)?);
     }};
-    ($leading:ident, $trailing:ident, $text:ident, $seen_text:ident; trivia($kind:expr, $bytes:expr) $(, $($rest:tt)*)?) => {{
+    ($leading:ident, $trailing:ident, $text:ident; trivia($kind:expr, $bytes:expr) $(, $($rest:tt)*)?) => {{
         let trivia = $crate::GreenTrivia::new($kind, $bytes);
-        if $seen_text {
+        if $text.is_some() {
             $trailing.push($crate::GreenNodeElement::Trivia(trivia));
         } else {
             $leading.push($crate::GreenNodeElement::Trivia(trivia));
         }
-        $crate::tree_token_items!($leading, $trailing, $text, $seen_text; $($($rest)*)?);
+        $crate::tree_token_items!($leading, $trailing, $text; $($($rest)*)?);
     }};
 }
 

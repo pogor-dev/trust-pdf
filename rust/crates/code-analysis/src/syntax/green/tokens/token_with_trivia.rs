@@ -154,6 +154,7 @@ pub(crate) struct GreenTokenWithTrivia {
     ptr: ThinArc<GreenTokenWithTriviaHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenTokenWithTrivia {
     /// Creates a present (non-missing) token with optional trivia.
     #[inline]

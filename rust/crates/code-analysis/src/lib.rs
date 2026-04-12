@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![allow(unused_imports)]
 
 mod arc;
 mod diagnostic_kind;

@@ -120,6 +120,7 @@ pub(crate) struct GreenTrivia {
     ptr: ThinArc<GreenTriviaHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
@@ -174,6 +175,7 @@ impl fmt::Debug for GreenTrivia {
     }
 }
 
+#[allow(dead_code)]
 impl GreenTrivia {
     /// Consumes the handle and returns a raw non-null pointer to the data.
     #[inline]

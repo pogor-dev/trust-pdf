@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 pub(crate) mod green;
 pub(crate) mod red;
 

@@ -171,6 +171,7 @@ impl<T> Hash for GreenTokenWithValue<T> {
     }
 }
 
+#[allow(dead_code)]
 impl<T> GreenTokenWithValue<T> {
     /// Creates new token.
     #[inline]

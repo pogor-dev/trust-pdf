@@ -136,6 +136,7 @@ pub(crate) struct GreenTokenWithTrailingTrivia {
     ptr: ThinArc<GreenTokenWithTrailingTriviaHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenTokenWithTrailingTrivia {
     #[inline]
     pub fn new(kind: SyntaxKind, trailing_trivia: Option<GreenNode>) -> Self {

@@ -150,7 +150,6 @@ impl<T: Clone> ToOwned for GreenTokenWithValueAndTrailingTriviaData<T> {
 pub(crate) struct GreenTokenWithValueAndTrailingTrivia<T> {
     ptr: ThinArc<GreenTokenWithValueAndTrailingTriviaHead<T>, u8>,
 }
-
 impl<T> PartialEq for GreenTokenWithValueAndTrailingTrivia<T> {
     fn eq(&self, other: &Self) -> bool {
         self.kind() == other.kind() && self.text() == other.text()
@@ -166,6 +165,7 @@ impl<T> Hash for GreenTokenWithValueAndTrailingTrivia<T> {
     }
 }
 
+#[allow(dead_code)]
 impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8], value: T, trailing_trivia: Option<GreenNode>) -> GreenTokenWithValueAndTrailingTrivia<T> {

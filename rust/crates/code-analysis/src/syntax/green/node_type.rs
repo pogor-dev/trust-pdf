@@ -169,19 +169,22 @@ mod tests {
         let token = GreenToken::new(SyntaxKind::NumericLiteralToken);
         let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, b"");
 
+        let expected_node_display = node.to_string();
+        let expected_token_display = token.to_string();
+        let expected_trivia_display = trivia.to_string();
+
         let node_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Node(node);
         let token_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> =
             NodeOrTokenOrTrivia::Token(crate::syntax::green::TokenType::Token(token));
         let trivia_element: NodeOrTokenOrTrivia<GreenNode, GreenTokenElement, GreenTrivia> = NodeOrTokenOrTrivia::Trivia(trivia);
 
-        // Verify display doesn't panic
-        let _1 = node_element.to_string();
-        let _2 = token_element.to_string();
-        let _3 = trivia_element.to_string();
+        // Verify enum display delegates to the wrapped variant display.
+        let s1 = node_element.to_string();
+        let s2 = token_element.to_string();
+        let s3 = trivia_element.to_string();
 
-        // Display should work for all variants
-        assert!(!_1.is_empty() || _1.is_empty()); // Always true
-        assert!(_2.len() >= 0);
-        assert!(_3.len() >= 0);
+        assert_eq!(s1, expected_node_display);
+        assert_eq!(s2, expected_token_display);
+        assert_eq!(s3, expected_trivia_display);
     }
 }
