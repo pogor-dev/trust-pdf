@@ -28,6 +28,9 @@ pub(crate) type GreenTokenWithIntValueAndTriviaData = GreenTokenWithValueAndTriv
 pub(crate) type GreenTokenWithFloatValueAndTriviaData = GreenTokenWithValueAndTriviaData<f32>;
 pub(crate) type GreenTokenWithStringValueAndTriviaData = GreenTokenWithValueAndTriviaData<String>;
 
+type Repr<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8]>;
+type ReprThin<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenWithValueAndTriviaHead<T> {
@@ -137,6 +140,17 @@ impl<T> fmt::Debug for GreenTokenWithValueAndTriviaData<T> {
     }
 }
 
+impl<T: Clone> ToOwned for GreenTokenWithValueAndTriviaData<T> {
+    type Owned = GreenTokenWithValueAndTrivia<T>;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTokenWithValueAndTrivia<T> {
+        let green = unsafe { GreenTokenWithValueAndTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTokenWithValueAndTrivia::<T>::clone(&green)
+    }
+}
+
 #[derive(Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithValueAndTrivia<T> {
@@ -223,7 +237,96 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
     }
 }
 
-impl_green_boilerplate!(generic GreenTokenWithValueAndTriviaHead, GreenTokenWithValueAndTriviaData, GreenTokenWithValueAndTrivia, u8);
+impl<T> Borrow<GreenTokenWithValueAndTriviaData<T>> for GreenTokenWithValueAndTrivia<T> {
+    #[inline]
+    fn borrow(&self) -> &GreenTokenWithValueAndTriviaData<T> {
+        self
+    }
+}
+
+impl<T> fmt::Display for GreenTokenWithValueAndTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl<T> fmt::Debug for GreenTokenWithValueAndTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl<T> GreenTokenWithValueAndTrivia<T> {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenTokenWithValueAndTrivia<T>) -> ptr::NonNull<GreenTokenWithValueAndTriviaData<T>> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenTokenWithValueAndTriviaData<T> = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueAndTriviaData<T>>) -> GreenTokenWithValueAndTrivia<T> {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin<T>);
+            mem::transmute::<Arc<ReprThin<T>>, ThinArc<GreenTokenWithValueAndTriviaHead<T>, u8>>(arc)
+        };
+        GreenTokenWithValueAndTrivia { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        data as *const GreenTokenWithValueAndTriviaData<T> as usize
+    }
+}
+
+impl<T> Drop for GreenTokenWithValueAndTrivia<T> {
+    #[inline]
+    fn drop(&mut self) {
+        // Same rationale as non-generic variant: remove diagnostics on
+        // last-owner drop so cleanup is deterministic and race-free.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl<T> ops::Deref for GreenTokenWithValueAndTrivia<T> {
+    type Target = GreenTokenWithValueAndTriviaData<T>;
+
+    #[inline]
+    fn deref(&self) -> &GreenTokenWithValueAndTriviaData<T> {
+        unsafe {
+            let repr: &Repr<T> = &*self.ptr;
+            let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
+            mem::transmute::<&ReprThin<T>, &GreenTokenWithValueAndTriviaData<T>>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {

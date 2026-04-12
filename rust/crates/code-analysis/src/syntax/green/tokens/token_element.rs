@@ -130,57 +130,202 @@ impl GreenTokenElement {
 
     #[inline]
     pub(crate) fn kind(&self) -> SyntaxKind {
-        match_token_type!(self, t => t.kind())
+        match self {
+            Self::Token(t) => t.kind(),
+            Self::TokenWithTrivia(t) => t.kind(),
+            Self::TokenWithIntValue(t) => t.kind(),
+            Self::TokenWithFloatValue(t) => t.kind(),
+            Self::TokenWithStringValue(t) => t.kind(),
+            Self::TokenWithTrailingTrivia(t) => t.kind(),
+            Self::TokenWithIntValueAndTrivia(t) => t.kind(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.kind(),
+            Self::TokenWithStringValueAndTrivia(t) => t.kind(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.kind(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.kind(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.kind(),
+        }
     }
 
     #[inline]
     pub(crate) fn text(&self) -> Vec<u8> {
-        match_token_type!(self, t => t.text().to_vec())
+        match self {
+            Self::Token(t) => t.text().to_vec(),
+            Self::TokenWithTrivia(t) => t.text().to_vec(),
+            Self::TokenWithIntValue(t) => t.text().to_vec(),
+            Self::TokenWithFloatValue(t) => t.text().to_vec(),
+            Self::TokenWithStringValue(t) => t.text().to_vec(),
+            Self::TokenWithTrailingTrivia(t) => t.text().to_vec(),
+            Self::TokenWithIntValueAndTrivia(t) => t.text().to_vec(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.text().to_vec(),
+            Self::TokenWithStringValueAndTrivia(t) => t.text().to_vec(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.text().to_vec(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.text().to_vec(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.text().to_vec(),
+        }
     }
 
     #[inline]
     pub(crate) fn full_text(&self) -> Vec<u8> {
-        match_token_type!(self, t => t.full_text())
+        match self {
+            Self::Token(t) => t.full_text(),
+            Self::TokenWithTrivia(t) => t.full_text(),
+            Self::TokenWithIntValue(t) => t.full_text(),
+            Self::TokenWithFloatValue(t) => t.full_text(),
+            Self::TokenWithStringValue(t) => t.full_text(),
+            Self::TokenWithTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithIntValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithStringValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.full_text(),
+        }
     }
 
     #[inline]
     pub(crate) fn width(&self) -> u32 {
-        match_token_type!(self, t => t.width().into())
+        match self {
+            Self::Token(t) => t.width().into(),
+            Self::TokenWithTrivia(t) => t.width().into(),
+            Self::TokenWithIntValue(t) => t.width().into(),
+            Self::TokenWithFloatValue(t) => t.width().into(),
+            Self::TokenWithStringValue(t) => t.width().into(),
+            Self::TokenWithTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithIntValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithStringValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.width().into(),
+        }
     }
 
     #[inline]
     pub(crate) fn full_width(&self) -> u32 {
-        match_token_type!(self, t => t.full_width().into())
+        match self {
+            Self::Token(t) => t.full_width().into(),
+            Self::TokenWithTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValue(t) => t.full_width().into(),
+            Self::TokenWithFloatValue(t) => t.full_width().into(),
+            Self::TokenWithStringValue(t) => t.full_width().into(),
+            Self::TokenWithTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.full_width().into(),
+        }
     }
 
     #[inline]
     pub(crate) fn leading_trivia(&self) -> Option<GreenNode> {
-        match_token_type!(self, t => t.leading_trivia())
+        match self {
+            Self::Token(t) => t.leading_trivia(),
+            Self::TokenWithTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValue(t) => t.leading_trivia(),
+            Self::TokenWithFloatValue(t) => t.leading_trivia(),
+            Self::TokenWithStringValue(t) => t.leading_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.leading_trivia(),
+        }
     }
 
     #[inline]
     pub(crate) fn leading_trivia_width(&self) -> u32 {
-        match_token_type!(self, t => t.leading_trivia()).map_or(0, |t| t.full_width())
+        match self {
+            Self::Token(t) => t.leading_trivia(),
+            Self::TokenWithTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValue(t) => t.leading_trivia(),
+            Self::TokenWithFloatValue(t) => t.leading_trivia(),
+            Self::TokenWithStringValue(t) => t.leading_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.leading_trivia(),
+        }
+        .map_or(0, |t| t.full_width())
     }
 
     #[inline]
     pub(crate) fn trailing_trivia(&self) -> Option<GreenNode> {
-        match_token_type!(self, t => t.trailing_trivia())
+        match self {
+            Self::Token(t) => t.trailing_trivia(),
+            Self::TokenWithTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValue(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValue(t) => t.trailing_trivia(),
+            Self::TokenWithStringValue(t) => t.trailing_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.trailing_trivia(),
+        }
     }
 
     #[inline]
     pub(crate) fn trailing_trivia_width(&self) -> u32 {
-        match_token_type!(self, t => t.trailing_trivia()).map_or(0, |t| t.full_width())
+        match self {
+            Self::Token(t) => t.trailing_trivia(),
+            Self::TokenWithTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValue(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValue(t) => t.trailing_trivia(),
+            Self::TokenWithStringValue(t) => t.trailing_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.trailing_trivia(),
+        }
+        .map_or(0, |t| t.full_width())
     }
 
     #[inline]
     pub(crate) fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
-        match_token_type!(self, t => t.diagnostics())
+        match self {
+            Self::Token(t) => t.diagnostics(),
+            Self::TokenWithTrivia(t) => t.diagnostics(),
+            Self::TokenWithIntValue(t) => t.diagnostics(),
+            Self::TokenWithFloatValue(t) => t.diagnostics(),
+            Self::TokenWithStringValue(t) => t.diagnostics(),
+            Self::TokenWithTrailingTrivia(t) => t.diagnostics(),
+            Self::TokenWithIntValueAndTrivia(t) => t.diagnostics(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.diagnostics(),
+            Self::TokenWithStringValueAndTrivia(t) => t.diagnostics(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.diagnostics(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.diagnostics(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.diagnostics(),
+        }
     }
 
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
-        match_token_type!(self, t => t.flags())
+        match self {
+            Self::Token(t) => t.flags(),
+            Self::TokenWithTrivia(t) => t.flags(),
+            Self::TokenWithIntValue(t) => t.flags(),
+            Self::TokenWithFloatValue(t) => t.flags(),
+            Self::TokenWithStringValue(t) => t.flags(),
+            Self::TokenWithTrailingTrivia(t) => t.flags(),
+            Self::TokenWithIntValueAndTrivia(t) => t.flags(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.flags(),
+            Self::TokenWithStringValueAndTrivia(t) => t.flags(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.flags(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.flags(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.flags(),
+        }
     }
 
     #[inline]
@@ -195,7 +340,20 @@ impl GreenTokenElement {
 
     #[inline]
     pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
-        match_token_type!(self, t => t.write_to(leading, trailing))
+        match self {
+            Self::Token(t) => t.write_to(leading, trailing),
+            Self::TokenWithTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+        }
     }
 
     pub(crate) fn tokens_with_no_trivia() -> &'static [GreenToken] {
@@ -285,65 +443,239 @@ impl GreenTokenElement {
     }
 }
 
-impl_from_token_variant!(
-    GreenToken => Token,
-    GreenTokenWithTrivia => TokenWithTrivia,
-    GreenTokenWithIntValue => TokenWithIntValue,
-    GreenTokenWithFloatValue => TokenWithFloatValue,
-    GreenTokenWithStringValue => TokenWithStringValue,
-    GreenTokenWithTrailingTrivia => TokenWithTrailingTrivia,
-    GreenTokenWithIntValueAndTrivia => TokenWithIntValueAndTrivia,
-    GreenTokenWithFloatValueAndTrivia => TokenWithFloatValueAndTrivia,
-    GreenTokenWithStringValueAndTrivia => TokenWithStringValueAndTrivia,
-    GreenTokenWithIntValueAndTrailingTrivia => TokenWithIntValueAndTrailingTrivia,
-    GreenTokenWithFloatValueAndTrailingTrivia => TokenWithFloatValueAndTrailingTrivia,
-    GreenTokenWithStringValueAndTrailingTrivia => TokenWithStringValueAndTrailingTrivia,
-);
+impl From<GreenToken> for GreenTokenElement {
+    fn from(token: GreenToken) -> GreenTokenElement {
+        GreenTokenElement::Token(token)
+    }
+}
+
+impl From<GreenTokenWithTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithIntValue> for GreenTokenElement {
+    fn from(token: GreenTokenWithIntValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithIntValue(token)
+    }
+}
+
+impl From<GreenTokenWithFloatValue> for GreenTokenElement {
+    fn from(token: GreenTokenWithFloatValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithFloatValue(token)
+    }
+}
+
+impl From<GreenTokenWithStringValue> for GreenTokenElement {
+    fn from(token: GreenTokenWithStringValue) -> GreenTokenElement {
+        GreenTokenElement::TokenWithStringValue(token)
+    }
+}
+
+impl From<GreenTokenWithTrailingTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithTrailingTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithTrailingTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithIntValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithIntValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithIntValueAndTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithFloatValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithFloatValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithFloatValueAndTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithStringValueAndTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithStringValueAndTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithStringValueAndTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithIntValueAndTrailingTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithIntValueAndTrailingTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithIntValueAndTrailingTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithFloatValueAndTrailingTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithFloatValueAndTrailingTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithFloatValueAndTrailingTrivia(token)
+    }
+}
+
+impl From<GreenTokenWithStringValueAndTrailingTrivia> for GreenTokenElement {
+    fn from(token: GreenTokenWithStringValueAndTrailingTrivia) -> GreenTokenElement {
+        GreenTokenElement::TokenWithStringValueAndTrailingTrivia(token)
+    }
+}
 
 impl<'a> GreenTokenElementRef<'a> {
     #[inline]
     pub(crate) fn kind(&self) -> SyntaxKind {
-        match_token_type!(self, t => t.kind())
+        match self {
+            Self::Token(t) => t.kind(),
+            Self::TokenWithTrivia(t) => t.kind(),
+            Self::TokenWithIntValue(t) => t.kind(),
+            Self::TokenWithFloatValue(t) => t.kind(),
+            Self::TokenWithStringValue(t) => t.kind(),
+            Self::TokenWithTrailingTrivia(t) => t.kind(),
+            Self::TokenWithIntValueAndTrivia(t) => t.kind(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.kind(),
+            Self::TokenWithStringValueAndTrivia(t) => t.kind(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.kind(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.kind(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.kind(),
+        }
     }
 
     #[inline]
     pub(crate) fn text(&self) -> &'a [u8] {
-        match_token_type!(self, t => t.text())
+        match self {
+            Self::Token(t) => t.text(),
+            Self::TokenWithTrivia(t) => t.text(),
+            Self::TokenWithIntValue(t) => t.text(),
+            Self::TokenWithFloatValue(t) => t.text(),
+            Self::TokenWithStringValue(t) => t.text(),
+            Self::TokenWithTrailingTrivia(t) => t.text(),
+            Self::TokenWithIntValueAndTrivia(t) => t.text(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.text(),
+            Self::TokenWithStringValueAndTrivia(t) => t.text(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.text(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.text(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.text(),
+        }
     }
 
     #[inline]
     pub(crate) fn full_text(&self) -> Vec<u8> {
-        match_token_type!(self, t => t.full_text())
+        match self {
+            Self::Token(t) => t.full_text(),
+            Self::TokenWithTrivia(t) => t.full_text(),
+            Self::TokenWithIntValue(t) => t.full_text(),
+            Self::TokenWithFloatValue(t) => t.full_text(),
+            Self::TokenWithStringValue(t) => t.full_text(),
+            Self::TokenWithTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithIntValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithStringValueAndTrivia(t) => t.full_text(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.full_text(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.full_text(),
+        }
     }
 
     #[inline]
     pub(crate) fn width(&self) -> u32 {
-        match_token_type!(self, t => t.width().into())
+        match self {
+            Self::Token(t) => t.width().into(),
+            Self::TokenWithTrivia(t) => t.width().into(),
+            Self::TokenWithIntValue(t) => t.width().into(),
+            Self::TokenWithFloatValue(t) => t.width().into(),
+            Self::TokenWithStringValue(t) => t.width().into(),
+            Self::TokenWithTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithIntValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithStringValueAndTrivia(t) => t.width().into(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.width().into(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.width().into(),
+        }
     }
 
     #[inline]
     pub(crate) fn full_width(&self) -> u32 {
-        match_token_type!(self, t => t.full_width().into())
+        match self {
+            Self::Token(t) => t.full_width().into(),
+            Self::TokenWithTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValue(t) => t.full_width().into(),
+            Self::TokenWithFloatValue(t) => t.full_width().into(),
+            Self::TokenWithStringValue(t) => t.full_width().into(),
+            Self::TokenWithTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithStringValueAndTrivia(t) => t.full_width().into(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.full_width().into(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.full_width().into(),
+        }
     }
 
     #[inline]
     pub(crate) fn leading_trivia(&self) -> Option<GreenNode> {
-        match_token_type!(self, t => t.leading_trivia())
+        match self {
+            Self::Token(t) => t.leading_trivia(),
+            Self::TokenWithTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValue(t) => t.leading_trivia(),
+            Self::TokenWithFloatValue(t) => t.leading_trivia(),
+            Self::TokenWithStringValue(t) => t.leading_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.leading_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.leading_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.leading_trivia(),
+        }
     }
 
     #[inline]
     pub(crate) fn trailing_trivia(&self) -> Option<GreenNode> {
-        match_token_type!(self, t => t.trailing_trivia())
+        match self {
+            Self::Token(t) => t.trailing_trivia(),
+            Self::TokenWithTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValue(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValue(t) => t.trailing_trivia(),
+            Self::TokenWithStringValue(t) => t.trailing_trivia(),
+            Self::TokenWithTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.trailing_trivia(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.trailing_trivia(),
+        }
     }
 
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
-        match_token_type!(self, t => t.flags())
+        match self {
+            Self::Token(t) => t.flags(),
+            Self::TokenWithTrivia(t) => t.flags(),
+            Self::TokenWithIntValue(t) => t.flags(),
+            Self::TokenWithFloatValue(t) => t.flags(),
+            Self::TokenWithStringValue(t) => t.flags(),
+            Self::TokenWithTrailingTrivia(t) => t.flags(),
+            Self::TokenWithIntValueAndTrivia(t) => t.flags(),
+            Self::TokenWithFloatValueAndTrivia(t) => t.flags(),
+            Self::TokenWithStringValueAndTrivia(t) => t.flags(),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.flags(),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.flags(),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.flags(),
+        }
     }
 
     #[inline]
     pub(crate) fn write_to(&self, leading: bool, trailing: bool) -> Vec<u8> {
-        match_token_type!(self, t => t.write_to(leading, trailing))
+        match self {
+            Self::Token(t) => t.write_to(leading, trailing),
+            Self::TokenWithTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValue(t) => t.write_to(leading, trailing),
+            Self::TokenWithTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValueAndTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => t.write_to(leading, trailing),
+        }
     }
 }
 

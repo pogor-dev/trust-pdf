@@ -1,5 +1,3 @@
-#[macro_use]
-mod macros;
 mod diagnostic;
 mod diagnostics;
 mod factory;

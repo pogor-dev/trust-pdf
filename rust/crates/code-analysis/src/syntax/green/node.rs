@@ -14,6 +14,9 @@ use crate::{
 };
 use crate::{GreenTrivia, syntax::green::diagnostics};
 
+type Repr = HeaderSlice<GreenNodeHead, [GreenNodeElement]>;
+type ReprThin = HeaderSlice<GreenNodeHead, [GreenNodeElement; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenNodeHead {
@@ -329,6 +332,17 @@ impl fmt::Debug for GreenNodeData {
     }
 }
 
+impl ToOwned for GreenNodeData {
+    type Owned = GreenNode;
+
+    #[inline]
+    fn to_owned(&self) -> GreenNode {
+        let green = unsafe { GreenNode::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenNode::clone(&green)
+    }
+}
+
 /// Leaf node in the immutable tree.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
@@ -405,7 +419,97 @@ impl GreenNode {
     }
 }
 
-impl_green_boilerplate!(GreenNodeHead, GreenNodeData, GreenNode, GreenNodeElement);
+impl Borrow<GreenNodeData> for GreenNode {
+    #[inline]
+    fn borrow(&self) -> &GreenNodeData {
+        self
+    }
+}
+
+impl fmt::Display for GreenNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenNodeData = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl fmt::Debug for GreenNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenNodeData = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl GreenNode {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenNode) -> ptr::NonNull<GreenNodeData> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenNodeData = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenNodeData>) -> GreenNode {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenNodeHead, GreenNodeElement>>(arc)
+        };
+        GreenNode { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenNodeData = self;
+        data as *const GreenNodeData as usize
+    }
+}
+
+impl Drop for GreenNode {
+    #[inline]
+    fn drop(&mut self) {
+        // Clear side-table diagnostics only for the final owner.
+        // This avoids duplicate removals while cloned green handles are
+        // still alive and keeps diagnostics lifetime tied to green data.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl ops::Deref for GreenNode {
+    type Target = GreenNodeData;
+
+    #[inline]
+    fn deref(&self) -> &GreenNodeData {
+        unsafe {
+            let repr: &Repr = &*self.ptr;
+            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
+            mem::transmute::<&ReprThin, &GreenNodeData>(repr)
+        }
+    }
+}
 
 impl From<GreenTrivia> for GreenNode {
     #[inline]

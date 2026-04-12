@@ -28,6 +28,9 @@ pub(crate) type GreenTokenWithIntValueAndTrailingTriviaData = GreenTokenWithValu
 pub(crate) type GreenTokenWithFloatValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<f32>;
 pub(crate) type GreenTokenWithStringValueAndTrailingTriviaData = GreenTokenWithValueAndTrailingTriviaData<String>;
 
+type Repr<T> = HeaderSlice<GreenTokenWithValueAndTrailingTriviaHead<T>, [u8]>;
+type ReprThin<T> = HeaderSlice<GreenTokenWithValueAndTrailingTriviaHead<T>, [u8; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenWithValueAndTrailingTriviaHead<T> {
@@ -131,6 +134,17 @@ impl<T> fmt::Debug for GreenTokenWithValueAndTrailingTriviaData<T> {
     }
 }
 
+impl<T: Clone> ToOwned for GreenTokenWithValueAndTrailingTriviaData<T> {
+    type Owned = GreenTokenWithValueAndTrailingTrivia<T>;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTokenWithValueAndTrailingTrivia<T> {
+        let green = unsafe { GreenTokenWithValueAndTrailingTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTokenWithValueAndTrailingTrivia::<T>::clone(&green)
+    }
+}
+
 #[derive(Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithValueAndTrailingTrivia<T> {
@@ -209,7 +223,96 @@ impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
     }
 }
 
-impl_green_boilerplate!(generic GreenTokenWithValueAndTrailingTriviaHead, GreenTokenWithValueAndTrailingTriviaData, GreenTokenWithValueAndTrailingTrivia, u8);
+impl<T> Borrow<GreenTokenWithValueAndTrailingTriviaData<T>> for GreenTokenWithValueAndTrailingTrivia<T> {
+    #[inline]
+    fn borrow(&self) -> &GreenTokenWithValueAndTrailingTriviaData<T> {
+        self
+    }
+}
+
+impl<T> fmt::Display for GreenTokenWithValueAndTrailingTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTrailingTriviaData<T> = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl<T> fmt::Debug for GreenTokenWithValueAndTrailingTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTrailingTriviaData<T> = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl<T> GreenTokenWithValueAndTrailingTrivia<T> {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenTokenWithValueAndTrailingTrivia<T>) -> ptr::NonNull<GreenTokenWithValueAndTrailingTriviaData<T>> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenTokenWithValueAndTrailingTriviaData<T> = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueAndTrailingTriviaData<T>>) -> GreenTokenWithValueAndTrailingTrivia<T> {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin<T>);
+            mem::transmute::<Arc<ReprThin<T>>, ThinArc<GreenTokenWithValueAndTrailingTriviaHead<T>, u8>>(arc)
+        };
+        GreenTokenWithValueAndTrailingTrivia { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTokenWithValueAndTrailingTriviaData<T> = self;
+        data as *const GreenTokenWithValueAndTrailingTriviaData<T> as usize
+    }
+}
+
+impl<T> Drop for GreenTokenWithValueAndTrailingTrivia<T> {
+    #[inline]
+    fn drop(&mut self) {
+        // Same rationale as non-generic variant: remove diagnostics on
+        // last-owner drop so cleanup is deterministic and race-free.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl<T> ops::Deref for GreenTokenWithValueAndTrailingTrivia<T> {
+    type Target = GreenTokenWithValueAndTrailingTriviaData<T>;
+
+    #[inline]
+    fn deref(&self) -> &GreenTokenWithValueAndTrailingTriviaData<T> {
+        unsafe {
+            let repr: &Repr<T> = &*self.ptr;
+            let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
+            mem::transmute::<&ReprThin<T>, &GreenTokenWithValueAndTrailingTriviaData<T>>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {
