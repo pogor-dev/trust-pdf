@@ -36,10 +36,10 @@ type ReprThin<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>;
 struct GreenTokenWithValueAndTriviaHead<T> {
     leading_trivia: Option<GreenNode>,           // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
     trailing_trivia: Option<GreenNode>,          // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
+    value: T,                                    // size depends on T
     full_width: u16,                             // 2 bytes
     kind: SyntaxKind,                            // 2 bytes (`repr(u16)`)
     flags: GreenFlags,                           // 1 byte
-    value: T,                                    // size depends on T
     _c: Count<GreenTokenWithValueAndTrivia<()>>, // 0 bytes
 }
 
