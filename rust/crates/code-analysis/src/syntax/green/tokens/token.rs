@@ -301,16 +301,15 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_token_head_memory_layout() {
-        // GreenTokenHead: kind (2 bytes) + flags (1 byte) + _c (0 bytes)
-        // Expected: 2 + 1 + 1 padding for alignment = 4 bytes
-        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 4);
-        assert_eq!(std::mem::align_of::<GreenTokenHead>(), 2);
+        // GreenTokenHead: kind (1 byte) + flags (1 byte) + _c (0 bytes)
+        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 2);
+        assert_eq!(std::mem::align_of::<GreenTokenHead>(), 1);
     }
 
     #[test]
     fn test_green_token_data_memory_layout() {
         // GreenTokenData on 64-bit targets:
-        // header (4 bytes) + padding (4 bytes) + length (8 bytes) = 16 bytes
+        // header (2 bytes) + padding (6 bytes) + length (8 bytes) = 16 bytes
         #[cfg(target_pointer_width = "64")]
         {
             assert_eq!(std::mem::size_of::<GreenTokenData>(), 16);
@@ -318,7 +317,7 @@ mod memory_layout_tests {
         }
 
         // GreenTokenData on 32-bit targets:
-        // header (4 bytes) + length (4 bytes) = 8 bytes
+        // header (2 bytes) + padding (2 bytes) + length (4 bytes) = 8 bytes
         #[cfg(target_pointer_width = "32")]
         {
             assert_eq!(std::mem::size_of::<GreenTokenData>(), 8);

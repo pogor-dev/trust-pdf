@@ -363,7 +363,7 @@ impl GreenTokenElement {
             let mut arr = vec![GreenToken::new_missing(SyntaxKind::EndOfFileMarkerToken); last_token_kind + 1];
 
             for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
-                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let kind = SyntaxKind::try_from(kind_value as u8).expect("token kind value must be valid");
                 *slot = GreenToken::new(kind);
             }
 
@@ -379,7 +379,7 @@ impl GreenTokenElement {
             let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
             for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
-                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let kind = SyntaxKind::try_from(kind_value as u8).expect("token kind value must be valid");
                 let space = GreenSyntaxFactory::space().into();
                 let space_node = GreenNode::new(SyntaxKind::List, vec![space]);
                 *slot = GreenTokenWithTrivia::new(kind, None, Some(space_node));
@@ -397,7 +397,7 @@ impl GreenTokenElement {
             let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
             for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
-                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let kind = SyntaxKind::try_from(kind_value as u8).expect("token kind value must be valid");
                 let lf = GreenSyntaxFactory::line_feed().into();
                 let lf_node = GreenNode::new(SyntaxKind::List, vec![lf]);
                 *slot = GreenTokenWithTrivia::new(kind, None, Some(lf_node));
@@ -415,7 +415,7 @@ impl GreenTokenElement {
             let mut arr = vec![GreenTokenWithTrivia::new(SyntaxKind::EndOfFileMarkerToken, None, None); last_token_kind + 1];
 
             for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
-                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let kind = SyntaxKind::try_from(kind_value as u8).expect("token kind value must be valid");
                 let crlf = GreenSyntaxFactory::carriage_return_line_feed().into();
                 let crlf_node = GreenNode::new(SyntaxKind::List, vec![crlf]);
                 *slot = GreenTokenWithTrivia::new(kind, None, Some(crlf_node));
@@ -433,7 +433,7 @@ impl GreenTokenElement {
             let mut arr = vec![GreenToken::new_missing(SyntaxKind::EndOfFileMarkerToken); last_token_kind + 1];
 
             for (kind_value, slot) in arr.iter_mut().enumerate().take(last_token_kind + 1).skip(first_token_kind) {
-                let kind = SyntaxKind::try_from(kind_value as u16).expect("token kind value must be valid");
+                let kind = SyntaxKind::try_from(kind_value as u8).expect("token kind value must be valid");
                 *slot = GreenToken::new_missing(kind);
             }
 

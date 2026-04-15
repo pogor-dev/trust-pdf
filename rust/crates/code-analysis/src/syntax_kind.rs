@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u16)] // TODO: consider using u8 if the number of syntax kinds is less than 256
+#[repr(u8)]
 pub enum SyntaxKind {
     None,
     List,
@@ -261,8 +261,8 @@ impl SyntaxKind {
     pub const LAST_WELL_KNOWN_TEXT_TOKEN_KIND: SyntaxKind = SyntaxKind::CloseDictToken;
 
     pub fn is_any_token(&self) -> bool {
-        let kind_value = *self as u16;
-        match kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
+        let kind_value = *self as u8;
+        match kind_value >= (SyntaxKind::PdfVersionToken as u8) && kind_value < (SyntaxKind::EndOfLineTrivia as u8) {
             true => true,
             false => false,
         }
@@ -293,18 +293,18 @@ impl SyntaxKind {
     }
 }
 
-impl From<SyntaxKind> for u16 {
+impl From<SyntaxKind> for u8 {
     fn from(kind: SyntaxKind) -> Self {
-        kind as u16
+        kind as u8
     }
 }
 
-impl TryFrom<u16> for SyntaxKind {
+impl TryFrom<u8> for SyntaxKind {
     type Error = ();
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        if value <= SyntaxKind::CurveToFinalReplicatedOperator as u16 {
-            Ok(unsafe { std::mem::transmute::<u16, SyntaxKind>(value) })
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value <= SyntaxKind::CurveToFinalReplicatedOperator as u8 {
+            Ok(unsafe { std::mem::transmute::<u8, SyntaxKind>(value) })
         } else {
             Err(())
         }
