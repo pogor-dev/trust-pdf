@@ -282,6 +282,12 @@ impl<H, T> Deref for HeaderSlice<H, [T; 0]> {
 /// or space efficiency.
 ///
 /// Note that we use `[T; 0]` in order to have the right alignment for `T`.
+/// We use `HeaderSlice<H, [T; 0]>` as a sized layout placeholder.
+/// The zero-length array is not the runtime payload; it gives the struct the
+/// same alignment as `T` and preserves the offset where the inline slice data
+/// begins. The actual element count lives in `HeaderSlice::length`, and we
+/// later reconstruct a fat `HeaderSlice<H, [T]>` view from the thin pointer
+/// plus that stored length.
 ///
 /// `ThinArc` solves this by storing the length in the allocation itself,
 /// via `HeaderSlice`.
@@ -378,12 +384,11 @@ impl<H, T> ThinArc<H, T> {
             // Write the data.
             //
             // Note that any panics here (i.e. from the iterator) are safe, since
-            // we'll just leak the uninitialized memory.
-            ptr::write(ptr::addr_of_mut!((*ptr).count), count);
-            ptr::write(ptr::addr_of_mut!((*ptr).data.header), header);
-            ptr::write(ptr::addr_of_mut!((*ptr).data.length), num_items);
+            ptr::write(&raw mut (*ptr).count, count);
+            ptr::write(&raw mut (*ptr).data.header, header);
+            ptr::write(&raw mut (*ptr).data.length, num_items);
             if num_items != 0 {
-                let mut current = ptr::addr_of_mut!((*ptr).data.slice) as *mut T;
+                let mut current = &raw mut (*ptr).data.slice as *mut T;
                 debug_assert_eq!(current as usize - buffer as usize, slice_offset);
                 for _ in 0..num_items {
                     ptr::write(current, items.next().expect("ExactSizeIterator over-reported length"));
