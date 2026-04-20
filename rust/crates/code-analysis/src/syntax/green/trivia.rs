@@ -3,21 +3,15 @@
 //! This variant stores per-instance trivia text bytes inline in the green node
 //! tail. Trivia text is read from the inline byte slice provided by callers.
 
-use std::{
-    borrow::Borrow,
-    fmt,
-    mem::{self, ManuallyDrop},
-    ops, ptr,
-};
+use std::{borrow::Borrow, fmt, mem, ops, ptr};
 
 use crate::{
+    GreenDiagnostic, SyntaxKind,
     arc::{Arc, HeaderSlice, ThinArc},
     syntax::green::{diagnostics, flags::GreenFlags},
 };
-use countme::Count;
 
-use crate::GreenDiagnostic;
-use crate::SyntaxKind;
+use countme::Count;
 
 type Repr = HeaderSlice<GreenTriviaHead, [u8]>;
 type ReprThin = HeaderSlice<GreenTriviaHead, [u8; 0]>;
@@ -25,9 +19,9 @@ type ReprThin = HeaderSlice<GreenTriviaHead, [u8; 0]>;
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTriviaHead {
-    kind: SyntaxKind,       // 2 bytes
-    flags: GreenFlags,      // 1 byte
-    _c: Count<GreenTrivia>, // 0 bytes
+    kind: SyntaxKind,
+    flags: GreenFlags,
+    _c: Count<GreenTrivia>,
 }
 
 /// Borrowed trivia view with inline trivia text.
@@ -37,35 +31,37 @@ pub(crate) struct GreenTriviaData {
 }
 
 impl GreenTriviaData {
-    /// Kind of this trivia.
+    /// Returns the trivia kind (end of line, whitespace, or comment).
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
     }
 
-    /// Text of this trivia.
+    /// Returns the trivia text as a byte slice.
     #[inline]
     pub fn text(&self) -> &[u8] {
         self.data.slice()
     }
 
-    /// Returns the length of the text covered by this trivia.
+    /// Returns the width of this trivia, which is the length of its text in bytes.
     #[inline]
     pub fn width(&self) -> u8 {
         self.data.slice().len() as u8
     }
 
-    /// Returns the flags of this trivia.
+    /// Returns the flags associated with this trivia, which may indicate if it's missing or contains diagnostics.
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
 
+    /// Returns true if this trivia has diagnostics associated.
     #[inline]
     pub fn contains_diagnostics(&self) -> bool {
         self.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC)
     }
 
+    /// Returns true if this trivia is missing.
     #[inline]
     pub fn is_missing(&self) -> bool {
         !self.flags().contains(GreenFlags::IS_NOT_MISSING)
@@ -89,8 +85,7 @@ impl fmt::Display for GreenTriviaData {
 
 impl fmt::Debug for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let text = self.text();
-        let text_str = String::from_utf8_lossy(text);
+        let text_str: String = self.text().iter().flat_map(|&byte| std::ascii::escape_default(byte)).map(char::from).collect();
 
         f.debug_struct("GreenTrivia")
             .field("kind", &self.kind())
@@ -100,20 +95,8 @@ impl fmt::Debug for GreenTriviaData {
     }
 }
 
-impl ToOwned for GreenTriviaData {
-    type Owned = GreenTrivia;
-
-    #[inline]
-    fn to_owned(&self) -> GreenTrivia {
-        let green = unsafe { GreenTrivia::from_raw(ptr::NonNull::from(self)) };
-        let green = ManuallyDrop::new(green);
-        GreenTrivia::clone(&green)
-    }
-}
-
-/// Leaf node in the immutable tree.
-///
-/// Represents trivia with caller-provided text bytes stored inline.
+/// Represents a trivia node in the green tree,
+/// which is attached to tokens and carries end-of-line, whitespace, or comment text.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTrivia {
@@ -125,20 +108,21 @@ impl GreenTrivia {
     /// Creates new trivia.
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
-        Self::create_full(kind, text, GreenFlags::IS_NOT_MISSING, Vec::new())
+        Self::create_full(kind, text, Vec::new())
     }
 
     #[inline]
     pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
-        Self::create_full(kind, text, GreenFlags::IS_NOT_MISSING, diagnostics)
+        Self::create_full(kind, text, diagnostics)
     }
 
     #[inline]
-    fn create_full(kind: SyntaxKind, text: &[u8], base_flags: GreenFlags, diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
+    fn create_full(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
         let has_diagnostics = !diagnostics.is_empty();
+        let flags = GreenFlags::IS_NOT_MISSING;
         let flags = match has_diagnostics {
-            true => base_flags | GreenFlags::CONTAINS_DIAGNOSTIC,
-            false => base_flags,
+            true => flags | GreenFlags::CONTAINS_DIAGNOSTIC,
+            false => flags,
         };
 
         let head = GreenTriviaHead { kind, flags, _c: Count::new() };
@@ -151,6 +135,17 @@ impl GreenTrivia {
         }
 
         trivia
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTriviaData = self;
+        data as *const GreenTriviaData as usize
     }
 }
 
@@ -175,52 +170,6 @@ impl fmt::Debug for GreenTrivia {
     }
 }
 
-#[allow(dead_code)]
-impl GreenTrivia {
-    /// Consumes the handle and returns a raw non-null pointer to the data.
-    #[inline]
-    pub(crate) fn into_raw(this: GreenTrivia) -> ptr::NonNull<GreenTriviaData> {
-        let green = ManuallyDrop::new(this);
-        let green: &GreenTriviaData = &green;
-        ptr::NonNull::from(green)
-    }
-
-    /// Reconstructs an owned handle from a raw pointer.
-    ///
-    /// # Safety
-    ///
-    /// The raw pointer must have been produced by `into_raw` and not yet
-    /// consumed. The underlying `Arc` allocation must still be live.
-    #[inline]
-    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTriviaData>) -> GreenTrivia {
-        let arc = unsafe {
-            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
-            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTriviaHead, u8>>(arc)
-        };
-        GreenTrivia { ptr: arc }
-    }
-
-    #[inline]
-    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
-        use crate::syntax::green::diagnostics;
-
-        diagnostics::get_diagnostics(self.diagnostics_key())
-    }
-
-    #[inline]
-    fn clear_diagnostics(&self) {
-        use crate::syntax::green::diagnostics;
-
-        diagnostics::remove_diagnostics(self.diagnostics_key());
-    }
-
-    #[inline]
-    fn diagnostics_key(&self) -> usize {
-        let data: &GreenTriviaData = self;
-        data as *const GreenTriviaData as usize
-    }
-}
-
 impl Drop for GreenTrivia {
     #[inline]
     fn drop(&mut self) {
@@ -229,7 +178,7 @@ impl Drop for GreenTrivia {
         // still alive and keeps diagnostics lifetime tied to green data.
         let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
         if should_clear {
-            self.clear_diagnostics();
+            diagnostics::remove_diagnostics(self.diagnostics_key());
         }
     }
 }
@@ -244,6 +193,187 @@ impl ops::Deref for GreenTrivia {
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
             mem::transmute::<&ReprThin, &GreenTriviaData>(repr)
         }
+    }
+}
+
+#[cfg(test)]
+mod green_trivia_tests {
+    use super::*;
+    use crate::syntax::green::diagnostics;
+    use crate::{DiagnosticKind, DiagnosticSeverity};
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_new_trivia() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq!(trivia.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia.text(), b" ");
+    }
+
+    #[test]
+    fn test_new_when_created_expect_is_not_missing_flag_set() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
+    }
+
+    #[test]
+    fn test_kind() {
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, b"% comment");
+        assert_eq!(trivia.kind(), SyntaxKind::CommentTrivia);
+    }
+
+    #[test]
+    fn test_text() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"   ");
+        assert_eq!(trivia.text(), b"   ");
+    }
+
+    #[test]
+    fn test_width() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n\t");
+        assert_eq!(trivia.width(), 2);
+    }
+
+    #[test]
+    fn test_eq_when_same_kind_and_text_expect_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_eq_when_different_text_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+        assert_ne!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_eq_when_different_kind_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
+        assert_ne!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_clone() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        let trivia2 = trivia1.clone();
+        assert_eq!(trivia1, trivia2);
+        assert_eq!(trivia2.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia2.text(), b" \n\t");
+    }
+
+    #[test]
+    fn test_display() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        assert_eq!(trivia.to_string(), " \n\t");
+    }
+
+    #[test]
+    fn test_debug() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let debug_str = format!("{:?}", trivia);
+        let expected = "GreenTrivia { kind: WhitespaceTrivia, text: \" \", width: 1 }";
+        assert_eq!(debug_str, expected);
+    }
+
+    #[test]
+    fn test_debug_when_text_contains_control_characters_expect_escaped_output() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n\t");
+        let debug_str = format!("{:?}", trivia);
+        let expected = "GreenTrivia { kind: WhitespaceTrivia, text: \"\\\\n\\\\t\", width: 2 }";
+        assert_eq!(debug_str, expected);
+    }
+
+    #[test]
+    fn test_empty_text() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"");
+        assert_eq!(trivia.text(), b"");
+        assert_eq!(trivia.width(), 0);
+    }
+
+    #[test]
+    fn test_multiline_comment_text() {
+        let text = b"% line1\n% line2\n% line3";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u8);
+    }
+
+    #[test]
+    fn test_unicode_comment_text() {
+        let text = b"% \xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96\xE7\x95\x8C";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u8);
+    }
+
+    #[test]
+    fn test_borrow() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let borrowed: &GreenTriviaData = trivia.borrow();
+        assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(borrowed.text(), b" ");
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "trivia diag");
+        let key;
+
+        {
+            let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![diagnostic.clone()]);
+            assert!(trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+            let diagnostics = trivia.diagnostics().expect("diagnostics should exist");
+            assert_eq!(diagnostics, vec![diagnostic]);
+
+            key = (&*trivia as *const GreenTriviaData) as usize;
+            assert!(diagnostics::contains_diagnostics(key));
+        }
+
+        assert!(!diagnostics::contains_diagnostics(key));
+    }
+
+    #[test]
+    fn test_new_with_diagnostic_when_empty_expect_same_as_new_without_diagnostic_flag() {
+        let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![]);
+        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
+        assert!(!trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
+        assert!(trivia.diagnostics().is_none());
+    }
+}
+
+#[cfg(test)]
+mod green_trivia_data_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_eq_when_same_kind_and_text_expect_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_eq!(data1, data2);
+    }
+
+    #[test]
+    fn test_eq_when_different_text_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_ne!(data1, data2);
+    }
+
+    #[test]
+    fn test_eq_when_different_kind_expect_not_equal() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
+        let data1: &GreenTriviaData = &*trivia1;
+        let data2: &GreenTriviaData = &*trivia2;
+        assert_ne!(data1, data2);
     }
 }
 
@@ -348,194 +478,5 @@ mod memory_layout_tests {
                 assert_eq!(expected_heap_allocation_size(trivia.width() as usize), expected);
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod green_trivia_tests {
-    use super::*;
-    use crate::syntax::green::diagnostics;
-    use crate::{DiagnosticKind, DiagnosticSeverity};
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_new_trivia() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert_eq!(trivia.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(trivia.text(), b" ");
-    }
-
-    #[test]
-    fn test_new_when_created_expect_is_not_missing_flag_set() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
-    }
-
-    #[test]
-    fn test_kind() {
-        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, b"% comment");
-        assert_eq!(trivia.kind(), SyntaxKind::CommentTrivia);
-    }
-
-    #[test]
-    fn test_text() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"   ");
-        assert_eq!(trivia.text(), b"   ");
-    }
-
-    #[test]
-    fn test_width() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n\t");
-        assert_eq!(trivia.width(), 2);
-    }
-
-    #[test]
-    fn test_eq_when_same_kind_and_text_expect_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert_eq!(trivia1, trivia2);
-    }
-
-    #[test]
-    fn test_eq_when_different_text_expect_not_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
-        assert_ne!(trivia1, trivia2);
-    }
-
-    #[test]
-    fn test_eq_when_different_kind_expect_not_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
-        assert_ne!(trivia1, trivia2);
-    }
-
-    #[test]
-    fn test_clone() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
-        let trivia2 = trivia1.clone();
-        assert_eq!(trivia1, trivia2);
-        assert_eq!(trivia2.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(trivia2.text(), b" \n\t");
-    }
-
-    #[test]
-    fn test_display() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
-        assert_eq!(trivia.to_string(), " \n\t");
-    }
-
-    #[test]
-    fn test_debug() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let debug_str = format!("{:?}", trivia);
-        let expected = "GreenTrivia { kind: WhitespaceTrivia, text: \" \", width: 1 }";
-        assert_eq!(debug_str, expected);
-    }
-
-    #[test]
-    fn test_empty_text() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"");
-        assert_eq!(trivia.text(), b"");
-        assert_eq!(trivia.width(), 0);
-    }
-
-    #[test]
-    fn test_multiline_comment_text() {
-        let text = b"% line1\n% line2\n% line3";
-        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
-        assert_eq!(trivia.text(), text);
-        assert_eq!(trivia.width(), text.len() as u8);
-    }
-
-    #[test]
-    fn test_unicode_comment_text() {
-        let text = b"% \xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96\xE7\x95\x8C";
-        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
-        assert_eq!(trivia.text(), text);
-        assert_eq!(trivia.width(), text.len() as u8);
-    }
-
-    #[test]
-    fn test_into_raw_and_from_raw() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let ptr = GreenTrivia::into_raw(trivia.clone());
-        let reconstructed = unsafe { GreenTrivia::from_raw(ptr) };
-        assert_eq!(trivia, reconstructed);
-    }
-
-    #[test]
-    fn test_borrow() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let borrowed: &GreenTriviaData = trivia.borrow();
-        assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(borrowed.text(), b" ");
-    }
-
-    #[test]
-    fn test_new_with_diagnostic_when_created_expect_accessible_and_cleared_on_drop() {
-        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "trivia diag");
-        let key;
-
-        {
-            let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![diagnostic.clone()]);
-            assert!(trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
-            let diagnostics = trivia.diagnostics().expect("diagnostics should exist");
-            assert_eq!(diagnostics, vec![diagnostic]);
-
-            key = (&*trivia as *const GreenTriviaData) as usize;
-            assert!(diagnostics::contains_diagnostics(key));
-        }
-
-        assert!(!diagnostics::contains_diagnostics(key));
-    }
-
-    #[test]
-    fn test_new_with_diagnostic_when_empty_expect_same_as_new_without_diagnostic_flag() {
-        let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![]);
-        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
-        assert!(!trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
-        assert!(trivia.diagnostics().is_none());
-    }
-}
-
-#[cfg(test)]
-mod green_trivia_data_tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn test_to_owned() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let data: &GreenTriviaData = &*trivia;
-        let owned = data.to_owned();
-        assert_eq!(trivia, owned);
-    }
-
-    #[test]
-    fn test_eq_when_same_kind_and_text_expect_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_eq!(data1, data2);
-    }
-
-    #[test]
-    fn test_eq_when_different_text_expect_not_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_ne!(data1, data2);
-    }
-
-    #[test]
-    fn test_eq_when_different_kind_expect_not_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_ne!(data1, data2);
     }
 }

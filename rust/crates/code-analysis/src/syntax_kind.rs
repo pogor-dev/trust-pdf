@@ -53,11 +53,18 @@ pub enum SyntaxKind {
     BadToken,
 
     // trivia
-    // \r, \n, \r\n
+    /// End-of-line trivia for LF, CR, or CRLF sequences.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     EndOfLineTrivia,
-    /// Null, horizontal tab, form feed, vertical tab, space, non-breaking space
+    /// Horizontal spacing trivia such as NUL, horizontal tab, form feed,
+    /// vertical tab, space, or non-breaking space.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     WhitespaceTrivia,
-    /// % Comment 1
+    /// Comment trivia beginning with `%` and ending before the next EOL.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.4 Comments.
     CommentTrivia,
 
     // primary expressions
