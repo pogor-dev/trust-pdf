@@ -258,6 +258,10 @@ impl<H, T> HeaderSlice<H, [T]> {
     pub(crate) fn slice(&self) -> &[T] {
         &self.slice
     }
+
+    pub(crate) fn slice_len(&self) -> usize {
+        self.length
+    }
 }
 
 impl<H, T> Deref for HeaderSlice<H, [T; 0]> {

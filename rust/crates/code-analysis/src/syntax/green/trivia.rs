@@ -46,7 +46,7 @@ impl GreenTriviaData {
     /// Returns the width of this trivia, which is the length of its text in bytes.
     #[inline]
     pub fn width(&self) -> u8 {
-        self.data.slice().len() as u8
+        self.data.slice_len() as u8
     }
 
     /// Returns the flags associated with this trivia, which may indicate if it's missing or contains diagnostics.
@@ -70,7 +70,7 @@ impl GreenTriviaData {
 
 impl PartialEq for GreenTriviaData {
     fn eq(&self, other: &Self) -> bool {
-        self.kind() == other.kind() && self.text() == other.text()
+        self.kind() == other.kind() && self.width() == other.width() && self.text() == other.text()
     }
 }
 
