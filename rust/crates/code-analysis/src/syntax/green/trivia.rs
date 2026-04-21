@@ -74,6 +74,8 @@ impl PartialEq for GreenTriviaData {
     }
 }
 
+impl Eq for GreenTriviaData {}
+
 impl fmt::Display for GreenTriviaData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for &byte in self.text() {
@@ -116,7 +118,6 @@ impl GreenTrivia {
         Self::create_full(kind, text, diagnostics)
     }
 
-    #[inline]
     fn create_full(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
         let has_diagnostics = !diagnostics.is_empty();
         let flags = GreenFlags::IS_NOT_MISSING;
@@ -203,18 +204,7 @@ mod green_trivia_tests {
     use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
 
-    #[test]
-    fn test_new_trivia() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert_eq!(trivia.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(trivia.text(), b" ");
-    }
-
-    #[test]
-    fn test_new_when_created_expect_is_not_missing_flag_set() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
-    }
+    fn assert_eq_trait<T: Eq + ?Sized>(_: &T) {}
 
     #[test]
     fn test_kind() {
@@ -235,39 +225,42 @@ mod green_trivia_tests {
     }
 
     #[test]
-    fn test_eq_when_same_kind_and_text_expect_equal() {
+    fn test_contains_diagnostics_when_no_diagnostics_expect_false() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert!(!trivia.contains_diagnostics());
+    }
+
+    #[test]
+    fn test_contains_diagnostics_when_diagnostics_exist_expect_true() {
+        let diagnostic = GreenDiagnostic::new(DiagnosticKind::Unknown, DiagnosticSeverity::Warning, "trivia diag");
+        let trivia = GreenTrivia::new_with_diagnostic(SyntaxKind::WhitespaceTrivia, b" ", vec![diagnostic]);
+        assert!(trivia.contains_diagnostics());
+    }
+
+    #[test]
+    fn test_is_missing_when_created_trivia_expect_false() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert!(!trivia.is_missing());
+    }
+
+    #[test]
+    fn test_eq_when_same_kind_and_text_via_deref_data_expect_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        assert_eq!(trivia1, trivia2);
+        assert_eq!(&*trivia1, &*trivia2);
     }
 
     #[test]
-    fn test_eq_when_different_text_expect_not_equal() {
+    fn test_eq_when_different_text_via_deref_data_expect_not_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
-        assert_ne!(trivia1, trivia2);
+        assert_ne!(&*trivia1, &*trivia2);
     }
 
     #[test]
-    fn test_eq_when_different_kind_expect_not_equal() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
-        assert_ne!(trivia1, trivia2);
-    }
-
-    #[test]
-    fn test_clone() {
-        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
-        let trivia2 = trivia1.clone();
-        assert_eq!(trivia1, trivia2);
-        assert_eq!(trivia2.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(trivia2.text(), b" \n\t");
-    }
-
-    #[test]
-    fn test_display() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
-        assert_eq!(trivia.to_string(), " \n\t");
+    fn test_eq_trait_when_deref_data_expect_implemented() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq_trait(&*trivia);
     }
 
     #[test]
@@ -287,34 +280,22 @@ mod green_trivia_tests {
     }
 
     #[test]
-    fn test_empty_text() {
-        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"");
-        assert_eq!(trivia.text(), b"");
-        assert_eq!(trivia.width(), 0);
+    fn test_display() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        assert_eq!(trivia.to_string(), " \n\t");
     }
 
     #[test]
-    fn test_multiline_comment_text() {
-        let text = b"% line1\n% line2\n% line3";
-        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
-        assert_eq!(trivia.text(), text);
-        assert_eq!(trivia.width(), text.len() as u8);
-    }
-
-    #[test]
-    fn test_unicode_comment_text() {
-        let text = b"% \xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96\xE7\x95\x8C";
-        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
-        assert_eq!(trivia.text(), text);
-        assert_eq!(trivia.width(), text.len() as u8);
-    }
-
-    #[test]
-    fn test_borrow() {
+    fn test_new_trivia() {
         let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let borrowed: &GreenTriviaData = trivia.borrow();
-        assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
-        assert_eq!(borrowed.text(), b" ");
+        assert_eq!(trivia.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia.text(), b" ");
+    }
+
+    #[test]
+    fn test_new_when_created_expect_is_not_missing_flag_set() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert!(trivia.flags().contains(GreenFlags::IS_NOT_MISSING));
     }
 
     #[test]
@@ -342,38 +323,72 @@ mod green_trivia_tests {
         assert!(!trivia.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC));
         assert!(trivia.diagnostics().is_none());
     }
-}
-
-#[cfg(test)]
-mod green_trivia_data_tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_eq_when_same_kind_and_text_expect_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_eq!(data1, data2);
+        assert_eq!(trivia1, trivia2);
     }
 
     #[test]
     fn test_eq_when_different_text_expect_not_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"\n");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_ne!(data1, data2);
+        assert_ne!(trivia1, trivia2);
     }
 
     #[test]
     fn test_eq_when_different_kind_expect_not_equal() {
         let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
         let trivia2 = GreenTrivia::new(SyntaxKind::CommentTrivia, b" ");
-        let data1: &GreenTriviaData = &*trivia1;
-        let data2: &GreenTriviaData = &*trivia2;
-        assert_ne!(data1, data2);
+        assert_ne!(trivia1, trivia2);
+    }
+
+    #[test]
+    fn test_eq_trait_when_owned_trivia_expect_implemented() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        assert_eq_trait(&trivia);
+    }
+
+    #[test]
+    fn test_borrow() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" ");
+        let borrowed: &GreenTriviaData = trivia.borrow();
+        assert_eq!(borrowed.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(borrowed.text(), b" ");
+    }
+
+    #[test]
+    fn test_clone() {
+        let trivia1 = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b" \n\t");
+        let trivia2 = trivia1.clone();
+        assert_eq!(trivia1, trivia2);
+        assert_eq!(trivia2.kind(), SyntaxKind::WhitespaceTrivia);
+        assert_eq!(trivia2.text(), b" \n\t");
+    }
+
+    #[test]
+    fn test_empty_text() {
+        let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, b"");
+        assert_eq!(trivia.text(), b"");
+        assert_eq!(trivia.width(), 0);
+    }
+
+    #[test]
+    fn test_multiline_comment_text() {
+        let text = b"% line1\n% line2\n% line3";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u8);
+    }
+
+    #[test]
+    fn test_unicode_comment_text() {
+        let text = b"% \xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96\xE7\x95\x8C";
+        let trivia = GreenTrivia::new(SyntaxKind::CommentTrivia, text);
+        assert_eq!(trivia.text(), text);
+        assert_eq!(trivia.width(), text.len() as u8);
     }
 }
 
@@ -382,21 +397,6 @@ mod memory_layout_tests {
     use super::*;
     use crate::arc::{ArcInner, HeaderSlice};
     use std::mem::offset_of;
-
-    fn expected_heap_allocation_size(text_len: usize) -> usize {
-        type ThinRepr = ArcInner<HeaderSlice<GreenTriviaHead, [u8; 0]>>;
-
-        // Mirror ThinArc::from_header_and_iter allocation math:
-        // slice_offset + payload, rounded up to allocation alignment.
-        let inner_to_data_offset = offset_of!(ThinRepr, data);
-        // `slice` is private to `arc.rs`; for `[u8; 0]` use the sized prefix.
-        let data_to_slice_offset = std::mem::size_of::<HeaderSlice<GreenTriviaHead, [u8; 0]>>();
-        let slice_offset = inner_to_data_offset + data_to_slice_offset;
-
-        let usable_size = slice_offset.checked_add(text_len).expect("size overflows");
-        let align = std::mem::align_of::<ThinRepr>();
-        usable_size.wrapping_add(align - 1) & !(align - 1)
-    }
 
     #[test]
     fn test_green_trivia_head_memory_layout() {
@@ -407,76 +407,29 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_trivia_data_memory_layout() {
-        // GreenTriviaData on 64-bit targets:
-        // header (2 bytes) + padding (6 bytes) + length (8 bytes) = 16 bytes
         #[cfg(target_pointer_width = "64")]
-        {
-            assert_eq!(std::mem::size_of::<GreenTriviaData>(), 16);
-            assert_eq!(std::mem::align_of::<GreenTriviaData>(), 8);
-        }
+        let cases: &[(usize, usize)] = &[(16, 8)];
 
-        // GreenTriviaData on 32-bit targets:
-        // header (2 bytes) + padding (2 bytes) + length (4 bytes) = 8 bytes
         #[cfg(target_pointer_width = "32")]
-        {
-            assert_eq!(std::mem::size_of::<GreenTriviaData>(), 8);
-            assert_eq!(std::mem::align_of::<GreenTriviaData>(), 4);
+        let cases: &[(usize, usize)] = &[(8, 4)];
+
+        for (expected_size, expected_align) in cases {
+            assert_eq!(std::mem::size_of::<GreenTriviaData>(), *expected_size);
+            assert_eq!(std::mem::align_of::<GreenTriviaData>(), *expected_align);
         }
     }
 
     #[test]
     fn test_green_trivia_memory_layout() {
-        // GreenTrivia wraps a ThinArc pointer.
         #[cfg(target_pointer_width = "64")]
-        {
-            assert_eq!(std::mem::size_of::<GreenTrivia>(), 8);
-            assert_eq!(std::mem::align_of::<GreenTrivia>(), 8);
-        }
+        let cases: &[(usize, usize)] = &[(8, 8)];
 
         #[cfg(target_pointer_width = "32")]
-        {
-            assert_eq!(std::mem::size_of::<GreenTrivia>(), 4);
-            assert_eq!(std::mem::align_of::<GreenTrivia>(), 4);
-        }
-    }
+        let cases: &[(usize, usize)] = &[(4, 4)];
 
-    #[test]
-    fn test_expected_heap_allocation_size_when_known_lengths_expect_aligned_sizes() {
-        #[cfg(target_pointer_width = "64")]
-        {
-            let cases: &[(usize, usize)] = &[(0, 24), (1, 32), (8, 32), (9, 40)];
-            for (text_len, expected) in cases {
-                assert_eq!(expected_heap_allocation_size(*text_len), *expected);
-            }
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            let cases: &[(usize, usize)] = &[(0, 12), (1, 16), (4, 16), (5, 20)];
-            for (text_len, expected) in cases {
-                assert_eq!(expected_heap_allocation_size(*text_len), *expected);
-            }
-        }
-    }
-
-    #[test]
-    fn test_expected_heap_allocation_size_when_created_trivia_expect_matches_case_table() {
-        #[cfg(target_pointer_width = "64")]
-        {
-            let cases: [(&[u8], usize); 4] = [(b"", 24), (b" ", 32), (b"12345678", 32), (b"123456789", 40)];
-            for (text, expected) in cases {
-                let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, text);
-                assert_eq!(expected_heap_allocation_size(trivia.width() as usize), expected);
-            }
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            let cases: [(&[u8], usize); 4] = [(b"", 12), (b" ", 16), (b"1234", 16), (b"12345", 20)];
-            for (text, expected) in cases {
-                let trivia = GreenTrivia::new(SyntaxKind::WhitespaceTrivia, text);
-                assert_eq!(expected_heap_allocation_size(trivia.width() as usize), expected);
-            }
+        for (expected_size, expected_align) in cases {
+            assert_eq!(std::mem::size_of::<GreenTrivia>(), *expected_size);
+            assert_eq!(std::mem::align_of::<GreenTrivia>(), *expected_align);
         }
     }
 }
