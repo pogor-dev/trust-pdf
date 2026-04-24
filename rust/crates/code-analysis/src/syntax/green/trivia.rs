@@ -203,6 +203,7 @@ mod green_trivia_tests {
     use crate::syntax::green::diagnostics;
     use crate::{DiagnosticKind, DiagnosticSeverity};
     use pretty_assertions::assert_eq;
+    use std::mem::offset_of;
 
     fn assert_eq_trait<T: Eq + ?Sized>(_: &T) {}
 
@@ -390,17 +391,9 @@ mod green_trivia_tests {
         assert_eq!(trivia.text(), text);
         assert_eq!(trivia.width(), text.len() as u8);
     }
-}
-
-#[cfg(test)]
-mod memory_layout_tests {
-    use super::*;
-    use crate::arc::{ArcInner, HeaderSlice};
-    use std::mem::offset_of;
 
     #[test]
     fn test_green_trivia_head_memory_layout() {
-        // GreenTriviaHead: kind (1 byte) + flags (1 byte) + _c (0 bytes)
         assert_eq!(std::mem::size_of::<GreenTriviaHead>(), 2);
         assert_eq!(std::mem::align_of::<GreenTriviaHead>(), 1);
     }
@@ -408,28 +401,36 @@ mod memory_layout_tests {
     #[test]
     fn test_green_trivia_data_memory_layout() {
         #[cfg(target_pointer_width = "64")]
-        let cases: &[(usize, usize)] = &[(16, 8)];
+        let expected_size = 16usize;
+
+        #[cfg(target_pointer_width = "64")]
+        let expected_align = 8usize;
 
         #[cfg(target_pointer_width = "32")]
-        let cases: &[(usize, usize)] = &[(8, 4)];
+        let expected_size = 8usize;
 
-        for (expected_size, expected_align) in cases {
-            assert_eq!(std::mem::size_of::<GreenTriviaData>(), *expected_size);
-            assert_eq!(std::mem::align_of::<GreenTriviaData>(), *expected_align);
-        }
+        #[cfg(target_pointer_width = "32")]
+        let expected_align = 4usize;
+
+        assert_eq!(std::mem::size_of::<GreenTriviaData>(), expected_size);
+        assert_eq!(std::mem::align_of::<GreenTriviaData>(), expected_align);
     }
 
     #[test]
     fn test_green_trivia_memory_layout() {
         #[cfg(target_pointer_width = "64")]
-        let cases: &[(usize, usize)] = &[(8, 8)];
+        let expected_size = 8usize;
+
+        #[cfg(target_pointer_width = "64")]
+        let expected_align = 8usize;
 
         #[cfg(target_pointer_width = "32")]
-        let cases: &[(usize, usize)] = &[(4, 4)];
+        let expected_size = 4usize;
 
-        for (expected_size, expected_align) in cases {
-            assert_eq!(std::mem::size_of::<GreenTrivia>(), *expected_size);
-            assert_eq!(std::mem::align_of::<GreenTrivia>(), *expected_align);
-        }
+        #[cfg(target_pointer_width = "32")]
+        let expected_align = 4usize;
+
+        assert_eq!(std::mem::size_of::<GreenTrivia>(), expected_size);
+        assert_eq!(std::mem::align_of::<GreenTrivia>(), expected_align);
     }
 }
