@@ -315,7 +315,7 @@ impl ops::Deref for GreenTokenWithTrivia {
     #[inline]
     fn deref(&self) -> &GreenTokenWithTriviaData {
         unsafe {
-            let repr: &Repr = &*self.ptr;
+            let repr: &Repr = &self.ptr;
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
             mem::transmute::<&ReprThin, &GreenTokenWithTriviaData>(repr)
         }

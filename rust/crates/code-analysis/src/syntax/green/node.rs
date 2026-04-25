@@ -505,7 +505,7 @@ impl ops::Deref for GreenNode {
     #[inline]
     fn deref(&self) -> &GreenNodeData {
         unsafe {
-            let repr: &Repr = &*self.ptr;
+            let repr: &Repr = &self.ptr;
             let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
             mem::transmute::<&ReprThin, &GreenNodeData>(repr)
         }

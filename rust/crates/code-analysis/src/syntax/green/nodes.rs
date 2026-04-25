@@ -2,6 +2,7 @@ mod collections;
 mod document;
 #[path = "./nodes/trait.rs"]
 mod green_trait;
+#[allow(clippy::module_inception)]
 mod nodes;
 mod objects;
 mod primitives;

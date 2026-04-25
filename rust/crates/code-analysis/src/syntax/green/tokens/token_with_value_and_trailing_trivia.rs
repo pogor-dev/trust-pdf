@@ -307,7 +307,7 @@ impl<T> ops::Deref for GreenTokenWithValueAndTrailingTrivia<T> {
     #[inline]
     fn deref(&self) -> &GreenTokenWithValueAndTrailingTriviaData<T> {
         unsafe {
-            let repr: &Repr<T> = &*self.ptr;
+            let repr: &Repr<T> = &self.ptr;
             let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
             mem::transmute::<&ReprThin<T>, &GreenTokenWithValueAndTrailingTriviaData<T>>(repr)
         }

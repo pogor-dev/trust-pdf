@@ -27,7 +27,7 @@ jobs:
           - language: javascript-typescript
             build-mode: none
           - language: rust
-            build-mode: manual
+            build-mode: none
 
     steps:
       - name: "☁️ Checkout repository"
@@ -51,11 +51,6 @@ jobs:
             paths-ignore:
               - '**/node_modules'
               - '**/target'
-
-      - name: "⚙️ Build Rust (for CodeQL)"
-        if: matrix.build-mode == 'manual'
-        working-directory: rust
-        run: cargo build --all
 
       - name: "🔍 Perform CodeQL Analysis"
         uses: github/codeql-action/analyze@b25d0ebf40e5b63ee81e1bd6e5d2a12b7c2aeb61
