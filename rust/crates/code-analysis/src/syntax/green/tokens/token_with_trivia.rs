@@ -350,7 +350,7 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithTriviaHead>(), 16);
+            assert_eq!(std::mem::size_of::<GreenTokenWithTriviaHead>(), 12);
             assert_eq!(std::mem::align_of::<GreenTokenWithTriviaHead>(), 4);
         }
     }
@@ -365,7 +365,7 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithTriviaData>(), 20);
+            assert_eq!(std::mem::size_of::<GreenTokenWithTriviaData>(), 16);
             assert_eq!(std::mem::align_of::<GreenTokenWithTriviaData>(), 4);
         }
     }
@@ -392,7 +392,7 @@ mod memory_layout_tests {
         assert_eq!(expected_heap_allocation_size(0), 40);
 
         #[cfg(target_pointer_width = "32")]
-        assert_eq!(expected_heap_allocation_size(0), 24);
+        assert_eq!(expected_heap_allocation_size(0), 20);
     }
 
     #[test]
@@ -404,7 +404,7 @@ mod memory_layout_tests {
         let expected = 40;
 
         #[cfg(target_pointer_width = "32")]
-        let expected = 24;
+        let expected = 20;
 
         let actuals = [token.kind(), token_missing.kind()];
 
