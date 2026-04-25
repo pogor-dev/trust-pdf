@@ -1,7 +1,9 @@
 //! Green trivia representation with inline PDF trivia bytes.
 //!
-//! This variant stores per-instance trivia text bytes inline in the green node
-//! tail. Trivia text is read from the inline byte slice provided by callers.
+//! In the green layer, trivia exists to preserve full-fidelity source text while
+//! keeping nodes immutable and shareable. Trivia bytes are stored inline in the
+//! allocation tail so common whitespace and comment fragments stay compact and
+//! cheap to clone across trees.
 
 use std::{borrow::Borrow, fmt, mem, ops, ptr};
 
@@ -24,44 +26,48 @@ struct GreenTriviaHead {
     _c: Count<GreenTrivia>,
 }
 
-/// Borrowed trivia view with inline trivia text.
+/// Borrowed green trivia view.
+///
+/// This is the position-free payload used by red wrappers. It stores the
+/// trivia kind, compact flags, and raw trivia bytes exactly as parsed so
+/// reconstruction can remain lossless.
 #[repr(transparent)]
 pub(crate) struct GreenTriviaData {
     data: ReprThin,
 }
 
 impl GreenTriviaData {
-    /// Returns the trivia kind (end of line, whitespace, or comment).
+    /// Returns the trivia kind, such as whitespace, end-of-line, or comment.
     #[inline]
     pub fn kind(&self) -> SyntaxKind {
         self.data.header.kind
     }
 
-    /// Returns the trivia text as a byte slice.
+    /// Returns the exact trivia bytes captured by the lexer.
     #[inline]
     pub fn text(&self) -> &[u8] {
         self.data.slice()
     }
 
-    /// Returns the width of this trivia, which is the length of its text in bytes.
+    /// Returns the trivia width in bytes.
     #[inline]
     pub fn width(&self) -> u8 {
         self.data.slice_len() as u8
     }
 
-    /// Returns the flags associated with this trivia, which may indicate if it's missing or contains diagnostics.
+    /// Returns internal flags used by green trivia bookkeeping.
     #[inline]
     pub(crate) fn flags(&self) -> GreenFlags {
         self.data.header.flags
     }
 
-    /// Returns true if this trivia has diagnostics associated.
+    /// Returns `true` when diagnostics are associated with this trivia.
     #[inline]
     pub fn contains_diagnostics(&self) -> bool {
         self.flags().contains(GreenFlags::CONTAINS_DIAGNOSTIC)
     }
 
-    /// Returns true if this trivia is missing.
+    /// Returns `true` when this trivia represents a missing synthetic value.
     #[inline]
     pub fn is_missing(&self) -> bool {
         !self.flags().contains(GreenFlags::IS_NOT_MISSING)
@@ -97,8 +103,11 @@ impl fmt::Debug for GreenTriviaData {
     }
 }
 
-/// Represents a trivia node in the green tree,
-/// which is attached to tokens and carries end-of-line, whitespace, or comment text.
+/// Owning green trivia handle backed by `ThinArc`.
+///
+/// Like other green values, this type is immutable and can be shared across
+/// many parents or trees. Diagnostics are stored in a side table keyed by this
+/// trivia's stable data address.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTrivia {
@@ -107,17 +116,24 @@ pub(crate) struct GreenTrivia {
 
 #[allow(dead_code)]
 impl GreenTrivia {
-    /// Creates new trivia.
+    /// Creates trivia without diagnostics.
+    ///
+    /// Use this for regular lexical trivia captured from source text.
     #[inline]
     pub fn new(kind: SyntaxKind, text: &[u8]) -> GreenTrivia {
         Self::create_full(kind, text, Vec::new())
     }
 
+    /// Creates trivia and associates diagnostics with it.
+    ///
+    /// This is used for error-tolerant parsing where malformed trivia still
+    /// needs to survive in the green tree together with reporting data.
     #[inline]
     pub fn new_with_diagnostic(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
         Self::create_full(kind, text, diagnostics)
     }
 
+    /// Internal constructor that sets flags and side-table diagnostics in one place.
     fn create_full(kind: SyntaxKind, text: &[u8], diagnostics: Vec<GreenDiagnostic>) -> GreenTrivia {
         let has_diagnostics = !diagnostics.is_empty();
         let flags = GreenFlags::IS_NOT_MISSING;
@@ -138,11 +154,13 @@ impl GreenTrivia {
         trivia
     }
 
+    /// Returns a copy of diagnostics attached to this trivia, if any.
     #[inline]
     pub(crate) fn diagnostics(&self) -> Option<Vec<GreenDiagnostic>> {
         diagnostics::get_diagnostics(self.diagnostics_key())
     }
 
+    /// Produces the key used for trivia diagnostics side-table operations.
     #[inline]
     fn diagnostics_key(&self) -> usize {
         let data: &GreenTriviaData = self;
