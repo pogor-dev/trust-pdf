@@ -258,6 +258,10 @@ impl<H, T> HeaderSlice<H, [T]> {
     pub(crate) fn slice(&self) -> &[T] {
         &self.slice
     }
+
+    pub(crate) fn slice_len(&self) -> usize {
+        self.length
+    }
 }
 
 impl<H, T> Deref for HeaderSlice<H, [T; 0]> {
@@ -282,6 +286,12 @@ impl<H, T> Deref for HeaderSlice<H, [T; 0]> {
 /// or space efficiency.
 ///
 /// Note that we use `[T; 0]` in order to have the right alignment for `T`.
+/// We use `HeaderSlice<H, [T; 0]>` as a sized layout placeholder.
+/// The zero-length array is not the runtime payload; it gives the struct the
+/// same alignment as `T` and preserves the offset where the inline slice data
+/// begins. The actual element count lives in `HeaderSlice::length`, and we
+/// later reconstruct a fat `HeaderSlice<H, [T]>` view from the thin pointer
+/// plus that stored length.
 ///
 /// `ThinArc` solves this by storing the length in the allocation itself,
 /// via `HeaderSlice`.
@@ -343,7 +353,24 @@ impl<H, T> ThinArc<H, T> {
 
         // Round up size to alignment.
         let align = mem::align_of::<ArcInner<HeaderSlice<H, [T; 0]>>>();
-        let size = usable_size.wrapping_add(align - 1) & !(align - 1);
+
+        // 26        0001_1010
+        // 7         0000_0111 (+)
+        // -------------------
+        // 33        0010_0001
+        let added = usable_size.wrapping_add(align - 1);
+
+        // 7         0000_0111 (!)
+        // -------------------
+        // 248       1111_1000
+        let mask = !(align - 1);
+
+        // 248       1111_1000
+        // 33        0010_0001 (&)
+        // -------------------
+        // 32        0010_0000
+        let size = added & mask;
+
         assert!(size >= usable_size, "size overflows");
         let layout = Layout::from_size_align(size, align).expect("invalid layout");
 
@@ -355,27 +382,17 @@ impl<H, T> ThinArc<H, T> {
                 alloc::handle_alloc_error(layout);
             }
 
-            // // Synthesize the fat pointer. We do this by claiming we have a direct
-            // // pointer to a [T], and then changing the type of the borrow. The key
-            // // point here is that the length portion of the fat pointer applies
-            // // only to the number of elements in the dynamically-sized portion of
-            // // the type, so the value will be the same whether it points to a [T]
-            // // or something else with a [T] as its last member.
-            // let fake_slice: &mut [T] = slice::from_raw_parts_mut(buffer as *mut T, num_items);
-            // ptr = fake_slice as *mut [T] as *mut ArcInner<HeaderSlice<H, [T]>>;
             ptr = buffer as *mut _;
-
             let count = atomic::AtomicUsize::new(1);
 
             // Write the data.
             //
             // Note that any panics here (i.e. from the iterator) are safe, since
-            // we'll just leak the uninitialized memory.
-            ptr::write(ptr::addr_of_mut!((*ptr).count), count);
-            ptr::write(ptr::addr_of_mut!((*ptr).data.header), header);
-            ptr::write(ptr::addr_of_mut!((*ptr).data.length), num_items);
+            ptr::write(&raw mut (*ptr).count, count);
+            ptr::write(&raw mut (*ptr).data.header, header);
+            ptr::write(&raw mut (*ptr).data.length, num_items);
             if num_items != 0 {
-                let mut current = ptr::addr_of_mut!((*ptr).data.slice) as *mut T;
+                let mut current = &raw mut (*ptr).data.slice as *mut T;
                 debug_assert_eq!(current as usize - buffer as usize, slice_offset);
                 for _ in 0..num_items {
                     ptr::write(current, items.next().expect("ExactSizeIterator over-reported length"));

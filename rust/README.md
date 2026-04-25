@@ -1,7 +1,19 @@
+## Run tests
+
+```sh
+cargo nextest run
+```
+
+Install `cargo-nextest` first if you don't already have it:
+
+```sh
+cargo install cargo-nextest --locked
+```
+
 ## Run test coverage
 
 ```sh
-cargo llvm-cov --ignore-filename-regex=".*_tests.rs" --html --open
+cargo llvm-cov nextest --ignore-filename-regex=".*_tests.rs" --html --open
 ```
 
 ## Run macro expansion viewer

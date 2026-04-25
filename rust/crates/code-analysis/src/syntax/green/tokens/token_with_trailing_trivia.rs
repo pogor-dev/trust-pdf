@@ -21,6 +21,9 @@ use countme::Count;
 use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
+type Repr = HeaderSlice<GreenTokenWithTrailingTriviaHead, [u8]>;
+type ReprThin = HeaderSlice<GreenTokenWithTrailingTriviaHead, [u8; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenWithTrailingTriviaHead {
@@ -116,12 +119,24 @@ impl fmt::Debug for GreenTokenWithTrailingTriviaData {
     }
 }
 
+impl ToOwned for GreenTokenWithTrailingTriviaData {
+    type Owned = GreenTokenWithTrailingTrivia;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTokenWithTrailingTrivia {
+        let green = unsafe { GreenTokenWithTrailingTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTokenWithTrailingTrivia::clone(&green)
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithTrailingTrivia {
     ptr: ThinArc<GreenTokenWithTrailingTriviaHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenTokenWithTrailingTrivia {
     #[inline]
     pub fn new(kind: SyntaxKind, trailing_trivia: Option<GreenNode>) -> Self {
@@ -176,12 +191,97 @@ impl GreenTokenWithTrailingTrivia {
     }
 }
 
-impl_green_boilerplate!(
-    GreenTokenWithTrailingTriviaHead,
-    GreenTokenWithTrailingTriviaData,
-    GreenTokenWithTrailingTrivia,
-    u8
-);
+impl Borrow<GreenTokenWithTrailingTriviaData> for GreenTokenWithTrailingTrivia {
+    #[inline]
+    fn borrow(&self) -> &GreenTokenWithTrailingTriviaData {
+        self
+    }
+}
+
+impl fmt::Display for GreenTokenWithTrailingTrivia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithTrailingTriviaData = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl fmt::Debug for GreenTokenWithTrailingTrivia {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithTrailingTriviaData = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl GreenTokenWithTrailingTrivia {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenTokenWithTrailingTrivia) -> ptr::NonNull<GreenTokenWithTrailingTriviaData> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenTokenWithTrailingTriviaData = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithTrailingTriviaData>) -> GreenTokenWithTrailingTrivia {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenWithTrailingTriviaHead, u8>>(arc)
+        };
+        GreenTokenWithTrailingTrivia { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTokenWithTrailingTriviaData = self;
+        data as *const GreenTokenWithTrailingTriviaData as usize
+    }
+}
+
+impl Drop for GreenTokenWithTrailingTrivia {
+    #[inline]
+    fn drop(&mut self) {
+        // Clear side-table diagnostics only for the final owner.
+        // This avoids duplicate removals while cloned green handles are
+        // still alive and keeps diagnostics lifetime tied to green data.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl ops::Deref for GreenTokenWithTrailingTrivia {
+    type Target = GreenTokenWithTrailingTriviaData;
+
+    #[inline]
+    fn deref(&self) -> &GreenTokenWithTrailingTriviaData {
+        unsafe {
+            let repr: &Repr = &self.ptr;
+            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
+            mem::transmute::<&ReprThin, &GreenTokenWithTrailingTriviaData>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {
@@ -217,10 +317,10 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithTrailingTriviaHead>(), 12);
+            assert_eq!(std::mem::size_of::<GreenTokenWithTrailingTriviaHead>(), 8);
             assert_eq!(std::mem::align_of::<GreenTokenWithTrailingTriviaHead>(), 4);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithTrailingTriviaData>(), 16);
+            assert_eq!(std::mem::size_of::<GreenTokenWithTrailingTriviaData>(), 12);
             assert_eq!(std::mem::align_of::<GreenTokenWithTrailingTriviaData>(), 4);
 
             assert_eq!(std::mem::size_of::<GreenTokenWithTrailingTrivia>(), 4);
@@ -234,7 +334,7 @@ mod memory_layout_tests {
         assert_eq!(expected_heap_allocation_size(0), 32);
 
         #[cfg(target_pointer_width = "32")]
-        assert_eq!(expected_heap_allocation_size(0), 20);
+        assert_eq!(expected_heap_allocation_size(0), 16);
     }
 
     #[test]
@@ -246,7 +346,7 @@ mod memory_layout_tests {
         let expected = 32;
 
         #[cfg(target_pointer_width = "32")]
-        let expected = 20;
+        let expected = 16;
 
         let actuals = [token.kind(), token_missing.kind()];
 

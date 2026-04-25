@@ -213,6 +213,7 @@ impl From<GreenTokenElement> for GreenNodeElement {
 #[cfg(test)]
 mod memory_layout_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_green_node_element_memory_layout() {
@@ -251,6 +252,7 @@ mod memory_layout_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_kind_when_node_token_trivia_variants_expect_inner_kinds() {

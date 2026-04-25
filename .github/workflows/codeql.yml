@@ -1,0 +1,58 @@
+name: "🔍 CodeQL"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "18 10 * * 5"
+
+jobs:
+  analyze:
+    name: "🔍 Analyze (${{ matrix.language }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: javascript-typescript
+            build-mode: none
+          - language: rust
+            build-mode: none
+
+    steps:
+      - name: "☁️ Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🔧 Install Rust target"
+        if: matrix.language == 'rust'
+        working-directory: rust
+        run: rustup show
+
+      - name: "🔍 Initialize CodeQL"
+        uses: github/codeql-action/init@b25d0ebf40e5b63ee81e1bd6e5d2a12b7c2aeb61
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config: |
+            paths:
+              - docs
+              - editors
+              - rust
+            paths-ignore:
+              - '**/node_modules'
+              - '**/target'
+
+      - name: "🔍 Perform CodeQL Analysis"
+        uses: github/codeql-action/analyze@b25d0ebf40e5b63ee81e1bd6e5d2a12b7c2aeb61
+        with:
+          category: "/language:${{ matrix.language }}"

@@ -18,50 +18,173 @@ pub enum TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
 }
 
 impl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> {
-    impl_token_type_accessors!(
-        (into_token, as_token, Token, T1),
-        (into_token_with_trivia, as_token_with_trivia, TokenWithTrivia, T2),
-        (into_token_with_int_value, as_token_with_int_value, TokenWithIntValue, T3),
-        (into_token_with_float_value, as_token_with_float_value, TokenWithFloatValue, T4),
-        (into_token_with_string_value, as_token_with_string_value, TokenWithStringValue, T5),
-        (into_token_with_trailing_trivia, as_token_with_trailing_trivia, TokenWithTrailingTrivia, T6),
-        (
-            into_token_with_int_value_and_trivia,
-            as_token_with_int_value_and_trivia,
-            TokenWithIntValueAndTrivia,
-            T7
-        ),
-        (
-            into_token_with_float_value_and_trivia,
-            as_token_with_float_value_and_trivia,
-            TokenWithFloatValueAndTrivia,
-            T8
-        ),
-        (
-            into_token_with_string_value_and_trivia,
-            as_token_with_string_value_and_trivia,
-            TokenWithStringValueAndTrivia,
-            T9
-        ),
-        (
-            into_token_with_int_value_and_trailing_trivia,
-            as_token_with_int_value_and_trailing_trivia,
-            TokenWithIntValueAndTrailingTrivia,
-            T10
-        ),
-        (
-            into_token_with_float_value_and_trailing_trivia,
-            as_token_with_float_value_and_trailing_trivia,
-            TokenWithFloatValueAndTrailingTrivia,
-            T11
-        ),
-        (
-            into_token_with_string_value_and_trailing_trivia,
-            as_token_with_string_value_and_trailing_trivia,
-            TokenWithStringValueAndTrailingTrivia,
-            T12
-        ),
-    );
+    pub fn into_token(self) -> Option<T1> {
+        match self {
+            Self::Token(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token(&self) -> Option<&T1> {
+        match self {
+            Self::Token(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_trivia(self) -> Option<T2> {
+        match self {
+            Self::TokenWithTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_trivia(&self) -> Option<&T2> {
+        match self {
+            Self::TokenWithTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_int_value(self) -> Option<T3> {
+        match self {
+            Self::TokenWithIntValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_int_value(&self) -> Option<&T3> {
+        match self {
+            Self::TokenWithIntValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_float_value(self) -> Option<T4> {
+        match self {
+            Self::TokenWithFloatValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_float_value(&self) -> Option<&T4> {
+        match self {
+            Self::TokenWithFloatValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_string_value(self) -> Option<T5> {
+        match self {
+            Self::TokenWithStringValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_string_value(&self) -> Option<&T5> {
+        match self {
+            Self::TokenWithStringValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_trailing_trivia(self) -> Option<T6> {
+        match self {
+            Self::TokenWithTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_trailing_trivia(&self) -> Option<&T6> {
+        match self {
+            Self::TokenWithTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_int_value_and_trivia(self) -> Option<T7> {
+        match self {
+            Self::TokenWithIntValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_int_value_and_trivia(&self) -> Option<&T7> {
+        match self {
+            Self::TokenWithIntValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_float_value_and_trivia(self) -> Option<T8> {
+        match self {
+            Self::TokenWithFloatValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_float_value_and_trivia(&self) -> Option<&T8> {
+        match self {
+            Self::TokenWithFloatValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_string_value_and_trivia(self) -> Option<T9> {
+        match self {
+            Self::TokenWithStringValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_string_value_and_trivia(&self) -> Option<&T9> {
+        match self {
+            Self::TokenWithStringValueAndTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_int_value_and_trailing_trivia(self) -> Option<T10> {
+        match self {
+            Self::TokenWithIntValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_int_value_and_trailing_trivia(&self) -> Option<&T10> {
+        match self {
+            Self::TokenWithIntValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_float_value_and_trailing_trivia(self) -> Option<T11> {
+        match self {
+            Self::TokenWithFloatValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_float_value_and_trailing_trivia(&self) -> Option<&T11> {
+        match self {
+            Self::TokenWithFloatValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn into_token_with_string_value_and_trailing_trivia(self) -> Option<T12> {
+        match self {
+            Self::TokenWithStringValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_token_with_string_value_and_trailing_trivia(&self) -> Option<&T12> {
+        match self {
+            Self::TokenWithStringValueAndTrailingTrivia(v) => Some(v),
+            _ => None,
+        }
+    }
 }
 
 impl<T1: Deref, T2: Deref, T3: Deref, T4: Deref, T5: Deref, T6: Deref, T7: Deref, T8: Deref, T9: Deref, T10: Deref, T11: Deref, T12: Deref>
@@ -117,13 +240,27 @@ impl<
 > fmt::Display for TokenType<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match_token_type!(self, t => fmt::Display::fmt(t, f))
+        match self {
+            Self::Token(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithIntValue(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithFloatValue(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithStringValue(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithTrailingTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithIntValueAndTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithFloatValueAndTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithStringValueAndTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithIntValueAndTrailingTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithFloatValueAndTrailingTrivia(t) => fmt::Display::fmt(t, f),
+            Self::TokenWithStringValueAndTrailingTrivia(t) => fmt::Display::fmt(t, f),
+        }
     }
 }
 
 #[cfg(test)]
 mod memory_layout_tests {
     use super::TokenType;
+    use pretty_assertions::assert_eq;
 
     type U8TokenType = TokenType<u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8>;
     type PointerTokenType = TokenType<usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize, usize>;
@@ -160,6 +297,7 @@ mod tests {
         GreenTokenWithIntValueAndTrailingTrivia, GreenTokenWithIntValueAndTrivia, GreenTokenWithStringValue, GreenTokenWithStringValueAndTrailingTrivia,
         GreenTokenWithStringValueAndTrivia, GreenTokenWithTrailingTrivia, GreenTokenWithTrivia, SyntaxKind,
     };
+    use pretty_assertions::assert_eq;
 
     type TestTokenType = TokenType<
         GreenToken,

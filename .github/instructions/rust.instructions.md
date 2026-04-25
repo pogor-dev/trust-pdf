@@ -79,7 +79,7 @@ When having multiple structs in a single file, organize them as follows:
   - Normal cases as per the PDF specification
   - Edge cases, including malformed PDFs and error conditions
 - Ensure the number of tests is proportional to the complexity of the code being tested.
-- Check the code coverage by using `cargo llvm-cov --lcov --output-path target/lcov.info`
+- Check the code coverage by using `cargo llvm-cov nextest --lcov --output-path target/lcov.info`
 - Test cases naming convention should follow the pattern `test_<function>_when_<condition>_expect_<expected_result>`, where:
   - `<function>` is the name of the function being tested
   - `<condition>` describes the specific scenario being tested, optional

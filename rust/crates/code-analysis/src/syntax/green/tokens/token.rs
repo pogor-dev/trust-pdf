@@ -21,6 +21,9 @@ use countme::Count;
 use crate::GreenDiagnostic;
 use crate::SyntaxKind;
 
+type Repr = HeaderSlice<GreenTokenHead, [u8]>;
+type ReprThin = HeaderSlice<GreenTokenHead, [u8; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenHead {
@@ -117,6 +120,17 @@ impl fmt::Debug for GreenTokenData {
     }
 }
 
+impl ToOwned for GreenTokenData {
+    type Owned = GreenToken;
+
+    #[inline]
+    fn to_owned(&self) -> GreenToken {
+        let green = unsafe { GreenToken::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenToken::clone(&green)
+    }
+}
+
 /// Leaf node in the immutable tree.
 ///
 /// Represents a token whose text is well-known for its `SyntaxKind` and can be
@@ -127,6 +141,7 @@ pub(crate) struct GreenToken {
     ptr: ThinArc<GreenTokenHead, u8>,
 }
 
+#[allow(dead_code)]
 impl GreenToken {
     /// Creates a present (non-missing) token.
     #[inline]
@@ -174,7 +189,97 @@ impl GreenToken {
     }
 }
 
-impl_green_boilerplate!(GreenTokenHead, GreenTokenData, GreenToken, u8);
+impl Borrow<GreenTokenData> for GreenToken {
+    #[inline]
+    fn borrow(&self) -> &GreenTokenData {
+        self
+    }
+}
+
+impl fmt::Display for GreenToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenData = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl fmt::Debug for GreenToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenData = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl GreenToken {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenToken) -> ptr::NonNull<GreenTokenData> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenTokenData = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenData>) -> GreenToken {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenTokenHead, u8>>(arc)
+        };
+        GreenToken { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTokenData = self;
+        data as *const GreenTokenData as usize
+    }
+}
+
+impl Drop for GreenToken {
+    #[inline]
+    fn drop(&mut self) {
+        // Clear side-table diagnostics only for the final owner.
+        // This avoids duplicate removals while cloned green handles are
+        // still alive and keeps diagnostics lifetime tied to green data.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl ops::Deref for GreenToken {
+    type Target = GreenTokenData;
+
+    #[inline]
+    fn deref(&self) -> &GreenTokenData {
+        unsafe {
+            let repr: &Repr = &self.ptr;
+            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
+            mem::transmute::<&ReprThin, &GreenTokenData>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {
@@ -196,16 +301,15 @@ mod memory_layout_tests {
 
     #[test]
     fn test_green_token_head_memory_layout() {
-        // GreenTokenHead: kind (2 bytes) + flags (1 byte) + _c (0 bytes)
-        // Expected: 2 + 1 + 1 padding for alignment = 4 bytes
-        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 4);
-        assert_eq!(std::mem::align_of::<GreenTokenHead>(), 2);
+        // GreenTokenHead: kind (1 byte) + flags (1 byte) + _c (0 bytes)
+        assert_eq!(std::mem::size_of::<GreenTokenHead>(), 2);
+        assert_eq!(std::mem::align_of::<GreenTokenHead>(), 1);
     }
 
     #[test]
     fn test_green_token_data_memory_layout() {
         // GreenTokenData on 64-bit targets:
-        // header (4 bytes) + padding (4 bytes) + length (8 bytes) = 16 bytes
+        // header (2 bytes) + padding (6 bytes) + length (8 bytes) = 16 bytes
         #[cfg(target_pointer_width = "64")]
         {
             assert_eq!(std::mem::size_of::<GreenTokenData>(), 16);
@@ -213,7 +317,7 @@ mod memory_layout_tests {
         }
 
         // GreenTokenData on 32-bit targets:
-        // header (4 bytes) + length (4 bytes) = 8 bytes
+        // header (2 bytes) + padding (2 bytes) + length (4 bytes) = 8 bytes
         #[cfg(target_pointer_width = "32")]
         {
             assert_eq!(std::mem::size_of::<GreenTokenData>(), 8);

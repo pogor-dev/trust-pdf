@@ -28,15 +28,18 @@ pub(crate) type GreenTokenWithIntValueAndTriviaData = GreenTokenWithValueAndTriv
 pub(crate) type GreenTokenWithFloatValueAndTriviaData = GreenTokenWithValueAndTriviaData<f32>;
 pub(crate) type GreenTokenWithStringValueAndTriviaData = GreenTokenWithValueAndTriviaData<String>;
 
+type Repr<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8]>;
+type ReprThin<T> = HeaderSlice<GreenTokenWithValueAndTriviaHead<T>, [u8; 0]>;
+
 #[derive(PartialEq, Eq, Hash)]
 #[repr(C)]
 struct GreenTokenWithValueAndTriviaHead<T> {
     leading_trivia: Option<GreenNode>,           // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
     trailing_trivia: Option<GreenNode>,          // 8 bytes on 64-bit targets, 4 bytes on 32-bit targets
+    value: T,                                    // size depends on T
     full_width: u16,                             // 2 bytes
     kind: SyntaxKind,                            // 2 bytes (`repr(u16)`)
     flags: GreenFlags,                           // 1 byte
-    value: T,                                    // size depends on T
     _c: Count<GreenTokenWithValueAndTrivia<()>>, // 0 bytes
 }
 
@@ -137,6 +140,17 @@ impl<T> fmt::Debug for GreenTokenWithValueAndTriviaData<T> {
     }
 }
 
+impl<T: Clone> ToOwned for GreenTokenWithValueAndTriviaData<T> {
+    type Owned = GreenTokenWithValueAndTrivia<T>;
+
+    #[inline]
+    fn to_owned(&self) -> GreenTokenWithValueAndTrivia<T> {
+        let green = unsafe { GreenTokenWithValueAndTrivia::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenTokenWithValueAndTrivia::<T>::clone(&green)
+    }
+}
+
 #[derive(Clone)]
 #[repr(transparent)]
 pub(crate) struct GreenTokenWithValueAndTrivia<T> {
@@ -158,6 +172,7 @@ impl<T> Hash for GreenTokenWithValueAndTrivia<T> {
     }
 }
 
+#[allow(dead_code)]
 impl<T> GreenTokenWithValueAndTrivia<T> {
     #[inline]
     pub fn new(
@@ -223,7 +238,96 @@ impl<T> GreenTokenWithValueAndTrivia<T> {
     }
 }
 
-impl_green_boilerplate!(generic GreenTokenWithValueAndTriviaHead, GreenTokenWithValueAndTriviaData, GreenTokenWithValueAndTrivia, u8);
+impl<T> Borrow<GreenTokenWithValueAndTriviaData<T>> for GreenTokenWithValueAndTrivia<T> {
+    #[inline]
+    fn borrow(&self) -> &GreenTokenWithValueAndTriviaData<T> {
+        self
+    }
+}
+
+impl<T> fmt::Display for GreenTokenWithValueAndTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl<T> fmt::Debug for GreenTokenWithValueAndTrivia<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl<T> GreenTokenWithValueAndTrivia<T> {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenTokenWithValueAndTrivia<T>) -> ptr::NonNull<GreenTokenWithValueAndTriviaData<T>> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenTokenWithValueAndTriviaData<T> = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenTokenWithValueAndTriviaData<T>>) -> GreenTokenWithValueAndTrivia<T> {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin<T>);
+            mem::transmute::<Arc<ReprThin<T>>, ThinArc<GreenTokenWithValueAndTriviaHead<T>, u8>>(arc)
+        };
+        GreenTokenWithValueAndTrivia { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenTokenWithValueAndTriviaData<T> = self;
+        data as *const GreenTokenWithValueAndTriviaData<T> as usize
+    }
+}
+
+impl<T> Drop for GreenTokenWithValueAndTrivia<T> {
+    #[inline]
+    fn drop(&mut self) {
+        // Same rationale as non-generic variant: remove diagnostics on
+        // last-owner drop so cleanup is deterministic and race-free.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl<T> ops::Deref for GreenTokenWithValueAndTrivia<T> {
+    type Target = GreenTokenWithValueAndTriviaData<T>;
+
+    #[inline]
+    fn deref(&self) -> &GreenTokenWithValueAndTriviaData<T> {
+        unsafe {
+            let repr: &Repr<T> = &self.ptr;
+            let repr: &ReprThin<T> = &*(repr as *const Repr<T> as *const ReprThin<T>);
+            mem::transmute::<&ReprThin<T>, &GreenTokenWithValueAndTriviaData<T>>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {
@@ -247,14 +351,14 @@ mod memory_layout_tests {
     fn test_green_token_memory_layout() {
         #[cfg(target_pointer_width = "64")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 32);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 24);
             assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 8);
-            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 40);
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 32);
             assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTriviaData>(), 8);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 32);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 24);
             assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 8);
-            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 40);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 32);
             assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTriviaData>(), 8);
 
             assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<String>>(), 48);
@@ -272,19 +376,19 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 20);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 16);
             assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<u32>>(), 4);
-            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 24);
+            assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTriviaData>(), 20);
             assert_eq!(std::mem::align_of::<GreenTokenWithIntValueAndTriviaData>(), 4);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 20);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 16);
             assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<f32>>(), 4);
-            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 24);
+            assert_eq!(std::mem::size_of::<GreenTokenWithFloatValueAndTriviaData>(), 20);
             assert_eq!(std::mem::align_of::<GreenTokenWithFloatValueAndTriviaData>(), 4);
 
-            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<String>>(), 28);
+            assert_eq!(std::mem::size_of::<GreenTokenWithValueAndTriviaHead<String>>(), 24);
             assert_eq!(std::mem::align_of::<GreenTokenWithValueAndTriviaHead<String>>(), 4);
-            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTriviaData>(), 32);
+            assert_eq!(std::mem::size_of::<GreenTokenWithStringValueAndTriviaData>(), 28);
             assert_eq!(std::mem::align_of::<GreenTokenWithStringValueAndTriviaData>(), 4);
 
             assert_eq!(std::mem::size_of::<GreenTokenWithIntValueAndTrivia>(), 4);
@@ -300,12 +404,12 @@ mod memory_layout_tests {
     fn test_expected_heap_allocation_size_when_known_lengths_expect_aligned_sizes() {
         #[cfg(target_pointer_width = "64")]
         {
-            let cases_u32: &[(usize, usize)] = &[(0, 48), (1, 56), (8, 56), (9, 64)];
+            let cases_u32: &[(usize, usize)] = &[(0, 40), (1, 48), (8, 48), (9, 56)];
             for (text_len, expected) in cases_u32 {
                 assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
             }
 
-            let cases_f32: &[(usize, usize)] = &[(0, 48), (1, 56), (8, 56), (9, 64)];
+            let cases_f32: &[(usize, usize)] = &[(0, 40), (1, 48), (8, 48), (9, 56)];
             for (text_len, expected) in cases_f32 {
                 assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
             }
@@ -318,17 +422,17 @@ mod memory_layout_tests {
 
         #[cfg(target_pointer_width = "32")]
         {
-            let cases_u32: &[(usize, usize)] = &[(0, 28), (1, 32), (4, 32), (5, 36)];
+            let cases_u32: &[(usize, usize)] = &[(0, 24), (1, 28), (4, 28), (5, 32)];
             for (text_len, expected) in cases_u32 {
                 assert_eq!(expected_heap_allocation_size::<u32>(*text_len), *expected);
             }
 
-            let cases_f32: &[(usize, usize)] = &[(0, 28), (1, 32), (4, 32), (5, 36)];
+            let cases_f32: &[(usize, usize)] = &[(0, 24), (1, 28), (4, 28), (5, 32)];
             for (text_len, expected) in cases_f32 {
                 assert_eq!(expected_heap_allocation_size::<f32>(*text_len), *expected);
             }
 
-            let cases_string: &[(usize, usize)] = &[(0, 36), (1, 40), (4, 40), (5, 44)];
+            let cases_string: &[(usize, usize)] = &[(0, 32), (1, 36), (4, 36), (5, 40)];
             for (text_len, expected) in cases_string {
                 assert_eq!(expected_heap_allocation_size::<String>(*text_len), *expected);
             }

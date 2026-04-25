@@ -10,6 +10,9 @@ use countme::Count;
 
 use crate::DiagnosticKind;
 
+type Repr = HeaderSlice<GreenDiagnosticHead, [u8]>;
+type ReprThin = HeaderSlice<GreenDiagnosticHead, [u8; 0]>;
+
 /// Severity level of a diagnostic message.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
@@ -88,6 +91,17 @@ impl fmt::Debug for GreenDiagnosticData {
     }
 }
 
+impl ToOwned for GreenDiagnosticData {
+    type Owned = GreenDiagnostic;
+
+    #[inline]
+    fn to_owned(&self) -> GreenDiagnostic {
+        let green = unsafe { GreenDiagnostic::from_raw(ptr::NonNull::from(self)) };
+        let green = ManuallyDrop::new(green);
+        GreenDiagnostic::clone(&green)
+    }
+}
+
 /// Diagnostic node in the immutable tree.
 #[derive(PartialEq, Eq, Hash, Clone)]
 #[repr(transparent)]
@@ -112,7 +126,97 @@ impl GreenDiagnostic {
     }
 }
 
-impl_green_boilerplate!(GreenDiagnosticHead, GreenDiagnosticData, GreenDiagnostic, u8);
+impl Borrow<GreenDiagnosticData> for GreenDiagnostic {
+    #[inline]
+    fn borrow(&self) -> &GreenDiagnosticData {
+        self
+    }
+}
+
+impl fmt::Display for GreenDiagnostic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenDiagnosticData = self;
+        fmt::Display::fmt(data, f)
+    }
+}
+
+impl fmt::Debug for GreenDiagnostic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let data: &GreenDiagnosticData = self;
+        fmt::Debug::fmt(data, f)
+    }
+}
+
+impl GreenDiagnostic {
+    /// Consumes the handle and returns a raw non-null pointer to the data.
+    #[inline]
+    pub(crate) fn into_raw(this: GreenDiagnostic) -> ptr::NonNull<GreenDiagnosticData> {
+        let green = ManuallyDrop::new(this);
+        let green: &GreenDiagnosticData = &green;
+        ptr::NonNull::from(green)
+    }
+
+    /// Reconstructs an owned handle from a raw pointer.
+    ///
+    /// # Safety
+    ///
+    /// The raw pointer must have been produced by `into_raw` and not yet
+    /// consumed. The underlying `Arc` allocation must still be live.
+    #[inline]
+    pub(crate) unsafe fn from_raw(ptr: ptr::NonNull<GreenDiagnosticData>) -> GreenDiagnostic {
+        let arc = unsafe {
+            let arc = Arc::from_raw(&ptr.as_ref().data as *const ReprThin);
+            mem::transmute::<Arc<ReprThin>, ThinArc<GreenDiagnosticHead, u8>>(arc)
+        };
+        GreenDiagnostic { ptr: arc }
+    }
+
+    #[inline]
+    pub(crate) fn diagnostics(&self) -> Option<Vec<crate::GreenDiagnostic>> {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::get_diagnostics(self.diagnostics_key())
+    }
+
+    #[inline]
+    fn clear_diagnostics(&self) {
+        use crate::syntax::green::diagnostics;
+
+        diagnostics::remove_diagnostics(self.diagnostics_key());
+    }
+
+    #[inline]
+    fn diagnostics_key(&self) -> usize {
+        let data: &GreenDiagnosticData = self;
+        data as *const GreenDiagnosticData as usize
+    }
+}
+
+impl Drop for GreenDiagnostic {
+    #[inline]
+    fn drop(&mut self) {
+        // Clear side-table diagnostics only for the final owner.
+        // This avoids duplicate removals while cloned green handles are
+        // still alive and keeps diagnostics lifetime tied to green data.
+        let should_clear = self.ptr.with_arc(|arc| arc.is_unique());
+        if should_clear {
+            self.clear_diagnostics();
+        }
+    }
+}
+
+impl ops::Deref for GreenDiagnostic {
+    type Target = GreenDiagnosticData;
+
+    #[inline]
+    fn deref(&self) -> &GreenDiagnosticData {
+        unsafe {
+            let repr: &Repr = &self.ptr;
+            let repr: &ReprThin = &*(repr as *const Repr as *const ReprThin);
+            mem::transmute::<&ReprThin, &GreenDiagnosticData>(repr)
+        }
+    }
+}
 
 #[cfg(test)]
 mod memory_layout_tests {

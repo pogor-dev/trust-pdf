@@ -157,6 +157,7 @@ impl<'source> super::Parser<'source> {
 #[cfg(test)]
 mod tests {
     use crate::{Lexer, Parser, SyntaxKind};
+    use pretty_assertions::assert_eq;
 
     /// Helper to create a parser from PDF source
     fn create_parser(source: &[u8]) -> Parser<'_> {

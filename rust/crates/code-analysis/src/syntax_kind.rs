@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u16)] // TODO: consider using u8 if the number of syntax kinds is less than 256
+#[repr(u8)]
 pub enum SyntaxKind {
     None,
     List,
@@ -53,11 +53,18 @@ pub enum SyntaxKind {
     BadToken,
 
     // trivia
-    // \r, \n, \r\n
+    /// End-of-line trivia for LF, CR, or CRLF sequences.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     EndOfLineTrivia,
-    /// Null, horizontal tab, form feed, vertical tab, space, non-breaking space
+    /// Horizontal spacing trivia such as NUL, horizontal tab, form feed,
+    /// vertical tab, space, or non-breaking space.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.3 Character set.
     WhitespaceTrivia,
-    /// % Comment 1
+    /// Comment trivia beginning with `%` and ending before the next EOL.
+    ///
+    /// See: ISO 32000-2:2020, §7.2.4 Comments.
     CommentTrivia,
 
     // primary expressions
@@ -261,8 +268,8 @@ impl SyntaxKind {
     pub const LAST_WELL_KNOWN_TEXT_TOKEN_KIND: SyntaxKind = SyntaxKind::CloseDictToken;
 
     pub fn is_any_token(&self) -> bool {
-        let kind_value = *self as u16;
-        match kind_value >= (SyntaxKind::PdfVersionToken as u16) && kind_value < (SyntaxKind::EndOfLineTrivia as u16) {
+        let kind_value = *self as u8;
+        match kind_value >= (SyntaxKind::PdfVersionToken as u8) && kind_value < (SyntaxKind::EndOfLineTrivia as u8) {
             true => true,
             false => false,
         }
@@ -293,18 +300,18 @@ impl SyntaxKind {
     }
 }
 
-impl From<SyntaxKind> for u16 {
+impl From<SyntaxKind> for u8 {
     fn from(kind: SyntaxKind) -> Self {
-        kind as u16
+        kind as u8
     }
 }
 
-impl TryFrom<u16> for SyntaxKind {
+impl TryFrom<u8> for SyntaxKind {
     type Error = ();
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        if value <= SyntaxKind::CurveToFinalReplicatedOperator as u16 {
-            Ok(unsafe { std::mem::transmute::<u16, SyntaxKind>(value) })
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value <= SyntaxKind::CurveToFinalReplicatedOperator as u8 {
+            Ok(unsafe { std::mem::transmute::<u8, SyntaxKind>(value) })
         } else {
             Err(())
         }

@@ -24,5 +24,6 @@
   "sonarlint.connectedMode.project": {
     "connectionId": "pogor-dev",
     "projectKey": "pogor-dev_trust-pdf"
-  }
+  },
+  "astro.content-intellisense": true
 }

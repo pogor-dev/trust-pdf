@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![allow(unused_imports)]
 
 mod arc;
 mod diagnostic_kind;
@@ -33,4 +34,4 @@ pub(crate) use crate::{
     },
 };
 
-pub use crate::syntax::{SyntaxNode, SyntaxToken, SyntaxTrivia};
+pub use crate::syntax::{SyntaxNode, SyntaxToken, SyntaxTokenValueRef, SyntaxTrivia};

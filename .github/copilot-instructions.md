@@ -22,11 +22,14 @@ Key architectural decisions:
 
 ### Testing & Coverage
 ```bash
+# Run tests
+cargo nextest run
+
 # Run tests with coverage (HTML output)
-cargo llvm-cov --ignore-filename-regex=".*_tests.rs" --html --open
+cargo llvm-cov nextest --ignore-filename-regex=".*_tests.rs" --html --open
 
 # Generate LCOV format for CI
-cargo llvm-cov --lcov --output-path target/lcov.info
+cargo llvm-cov nextest --lcov --output-path target/lcov.info
 ```
 
 ### Toolchain Requirements

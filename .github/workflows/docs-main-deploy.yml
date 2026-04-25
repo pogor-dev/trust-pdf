@@ -1,0 +1,45 @@
+name: "🚀 Docs Deploy to Cloudflare Pages"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/**
+      - editors/**
+      - .github/workflows/docs-*.yml
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: "⚙️ Build Docs"
+    uses: ./.github/workflows/docs-build.yml
+    with:
+      upload_artifact: true
+
+  deploy:
+    name: "🚀 Deploy to Cloudflare Pages"
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: "☁️ Download docs artifact"
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-build-artifact
+          path: docs-dist
+
+      - name: "🚀 Publish"
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy docs-dist --project-name=trust-pdf
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
