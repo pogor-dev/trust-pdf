@@ -2,8 +2,16 @@ name: Rust
 on:
   push:
     branches: ["main"]
+    paths:
+      - rust/**
+      - .github/workflows/rust.yml
+      - .github/rust.json
   pull_request:
     branches: ["main"]
+    paths:
+      - rust/**
+      - .github/workflows/rust.yml
+      - .github/rust.json
 
 permissions:
   contents: read
@@ -53,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 1
 
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
@@ -96,7 +104,7 @@ jobs:
 
       - name: Run Clippy
         working-directory: rust
-        run: cargo clippy --all --all-features --target ${{ matrix.target }} -- # -D warnings
+        run: cargo clippy --all --all-features --target ${{ matrix.target }} -- -D warnings
 
       - name: Run Format Check
         working-directory: rust
@@ -119,6 +127,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
         working-directory: rust
         run: cargo llvm-cov nextest --lcov --output-path coverage.lcov
+
+      - name: Upload coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-coverage-lcov
+          path: rust/coverage.lcov
+          retention-days: 7
 
       # - name: SonarQube Scan
       #   uses: SonarSource/sonarqube-scan-action@v6
