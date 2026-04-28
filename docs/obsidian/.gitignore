@@ -1,7 +1,0 @@
-# Ignore Obsidian workspace files
-.obsidian/workspace.json
-.obsidian/workspaces.json
-.obsidian/plugins/
-
-# other files and folders
-.DS_Store

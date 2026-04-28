@@ -2,7 +2,6 @@
 title: Trivia
 description: What trivia is in trust-pdf and why trivia is modeled in the green layer.
 ---
-
 # Trivia in the green layer
 
 In `trust-pdf`, **trivia** is syntax text that is not a semantic token value, but is still part of the original file.

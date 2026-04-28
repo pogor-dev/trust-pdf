@@ -17,5 +17,10 @@ pnpm-debug.log*
 .env
 .env.production
 
+# Ignore Obsidian workspace files
+.obsidian/workspace.json
+.obsidian/workspaces.json
+.obsidian/plugins/
+
 # macOS-specific files
 .DS_Store
