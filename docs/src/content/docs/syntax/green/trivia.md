@@ -14,9 +14,11 @@ In this example, we can note **spaces** and a **comment** (it starts with `%` ch
 
 Typical trivia includes:
 
-- White-space characters (`\x00`, `\t`, `\n`, `\f`, `\r`, ` `) (ISO 32000-2:2020, §7.2.3)
+- White-space characters (`\x00`, `\t`, `\n`, `\f`, ` `) (ISO 32000-2:2020, §7.2.3)
 - End-of-line markers (`\r`, `\n`, `\r\n`) (ISO 32000-2:2020, §7.2.3)
-- Comments (for example `% comment`) (ISO 32000-2:2020, §7.2.4)
+- Single-line comments (`% comment`) (ISO 32000-2:2020, §7.2.4)
+
+## Where trivia is required
 ## Further reading
 
 - [Green Nodes](./index.md)
